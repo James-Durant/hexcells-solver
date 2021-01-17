@@ -8,10 +8,11 @@ class Grid:
     
     __DIRECT_DELTAS = __FLOWER_DELTAS[::3]
     
-    def __init__(self, grid):
+    def __init__(self, grid, remaining):
         self.__grid = grid
         self.__rows = len(grid)
         self.__cols = len(grid[0])
+        self.__remaining = remaining
       
     @property
     def rows(self):
@@ -21,6 +22,16 @@ class Grid:
     def cols(self):
         return self.__cols
     
+    @property
+    def remaining(self):
+        return self.__remaining
+    
+    @remaining.setter
+    def remaining(self, remaining):
+        if remaining >= 0:
+            return self.__remaining
+        raise RuntimeError('number remaining must be greater than 0')
+    
     def known_cells(self):
         known = []
         for row in range(self.__rows):
@@ -28,8 +39,8 @@ class Grid:
                 cell = self[(row, col)]
                 if cell != None and (cell.colour == Cell.BLACK or cell.colour == Cell.BLUE):
                     known.append(cell)
-        return known
-    
+        return known    
+
     def unknown_cells(self):
         unknown = []
         for row in range(self.__rows):
@@ -37,7 +48,7 @@ class Grid:
                 cell = self[(row, col)]
                 if cell != None and cell.colour == Cell.ORANGE:
                     unknown.append(cell)
-        return unknown        
+        return unknown  
     
     def neighbours(self, cell):
         deltas = []

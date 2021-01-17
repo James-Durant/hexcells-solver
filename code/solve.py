@@ -5,18 +5,16 @@ import time
 class Solver:
     @staticmethod
     def __get_constraints(grid, known):
-        unknown = set()
         #Map unknown cells to all relevant constraints of known cells that they are a member of.
         constraints = {}
         for cell1 in known:
             for cell2 in grid.neighbours(cell1):
                 if cell2 != None and cell2.colour == Cell.ORANGE:
-                    unknown.add(cell2)
                     try:
                         constraints[cell2].add(cell1)
                     except:
                         constraints[cell2] = set([cell1])
-        return unknown, constraints
+        return constraints
     
     @staticmethod
     def __get_reps(unknown, constraints):
@@ -26,8 +24,10 @@ class Solver:
                 for cell2 in unknown:
                     if cell2 in constraints and constraints[cell1] == constraints[cell2]:
                         rep_of[cell1] = cell2
+            else:
+                rep_of[cell1] = cell1
         
-        for cell in unknown:
+        for cell in constraints:
             for constraint in constraints[cell]:
                 if constraint.hint != 'normal':
                     rep_of[cell] = cell
@@ -72,22 +72,24 @@ class Solver:
     def solve(window, grid):
         while True:
             clicked_cells = Solver.__solve_single_step(window, grid)
-            time.sleep(1)
+            if len(clicked_cells)-len(grid.unknown_cells()) == 0:
+                break
+            
+            mistakes, remaining = window.parse_mistakes_remaining()   
+            grid.remaining = remaining
+            time.sleep(0.6)
             window.parse_clicked_cells(clicked_cells)
     
     @staticmethod
     def __solve_single_step(window, grid):
-        known = grid.known_cells()
+        unknown     = grid.unknown_cells()
+        known       = grid.known_cells()
+        constraints = Solver.__get_constraints(grid, known)
+        rep_of      = Solver.__get_reps(unknown, constraints)
+        classes     = Solver.__get_classes(unknown, rep_of)
         
-        unknown, constraints = Solver.__get_constraints(grid, known)
-        
-        rep_of  = Solver.__get_reps(unknown, constraints)
-        classes = Solver.__get_classes(unknown, rep_of)
-
-        solver  = GLPK_CMD(path=r'C:\Users\james\Documents\winglpk-4.65\glpk-4.65\w64\glpsol.exe', msg=False, options=['--cuts'])
-        problem = LpProblem('HexcellsMILP', LpMinimize)
-    
-        # For every equivalence class of cells there is a integer variable, modeling the number of blue cells in that class.
+        solver    = GLPK_CMD(path=r'C:\Users\james\Documents\winglpk-4.65\glpk-4.65\w64\glpsol.exe', msg=False, options=['--cuts'])
+        problem   = LpProblem('HexcellsMILP', LpMinimize)
         variables = {rep: LpVariable(str(rep.grid_coords), 0, size, 'Integer') for rep, size in classes.items()}
 
         # The number of remaining blue cells is known
@@ -164,4 +166,5 @@ class Solver:
             # remember only those classes that subbornly kept their pure trueness/falseness
             true_class  &= true_new
             false_class &= false_new
-                
+            
+        raise RuntimeError('solver failed to finish puzzle')

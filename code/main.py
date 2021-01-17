@@ -33,10 +33,14 @@ class Window:
     def parse_grid(self):
         return self.__parser.parse_grid(self.__screenshot())
     
+    def parse_mistakes_remaining(self):
+        return self.__parser.parse_mistakes_remaining(self.__screenshot())
+    
     def parse_clicked_cells(self, clicked_cells):
         image = self.__screenshot()
         for i, cell in enumerate(clicked_cells):
             self.__parser.parse_clicked_cell(image, cell)
+            
     
     def click_cell(self, cell, button):
         x1, y1, _, _ = self.__get_position()

@@ -7,12 +7,44 @@ pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tessera
 class Parser:
     def __init__(self):
         self.__hex_contour = Parser.__get_hex_contour()
+        self.__remaining_contour = Parser.__get_remaining_contour()
       
     @staticmethod
-    def __get_hex_contour(filename='./resources/hex_mask.png'):
+    def __get_hex_contour(filename='../resources/hex_mask.png'):
         image = cv2.imread(filename)
         mask  = cv2.inRange(image, Cell.ORANGE, Cell.ORANGE)
         return cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0] 
+    
+    @staticmethod
+    def __get_remaining_contour(filename='../resources/remaining_mask.png'):
+        image = cv2.imread(filename)
+        mask  = cv2.inRange(image, Cell.BLUE, Cell.BLUE)
+        return cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0] 
+    
+    def parse_mistakes_remaining(self, image, match_threshold=0.05):
+        mask     = cv2.inRange(image, Cell.BLUE, Cell.BLUE)
+        contours = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+        
+        boxes = []
+        for contour in contours:
+            if cv2.matchShapes(contour, self.__remaining_contour, 1, 0) < 0.05:
+                x,y,w,h = cv2.boundingRect(contour)
+                y = round(y+h*0.35)
+                h = round(h*0.65)
+                boxes.append((x,y,w,h))
+                
+        if len(boxes) != 2:
+            raise RuntimeError('mistakes and/or remaining box not found')
+        else:
+            x,y,w,h = boxes[1]
+            cropped = image[y: y+h, x: x+w]
+            _, thresh = cv2.threshold(cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY), 240, 255, cv2.THRESH_BINARY_INV)
+            digit_str = pytesseract.image_to_string(thresh, lang='eng', config='--psm 10 -c tessedit_char_whitelist=0123456789')
+            digit = digit_str.split('\n')[0]
+            try:
+                return 0, int(digit)
+            except ValueError:
+                raise RuntimeError('remaining OCR failed')
     
     def parse_clicked_cell(self, image, cell):
         cx, cy, w, h = *cell.image_coords, round(self.__avg_hex_width), round(self.__avg_hex_height)
@@ -65,7 +97,8 @@ class Parser:
             cell.grid_coords = (row, col)
             grid[row][col] = cell
 
-        return Grid(grid)
+        _, remaining = self.parse_mistakes_remaining(image)
+        return Grid(grid, remaining)
     
         #cv2.imshow('Parsed Grid', image)
         #cv2.waitKey(0)
