@@ -8,23 +8,23 @@ class Parser:
     def __init__(self):
         self.__hex_contour = Parser.__get_hex_contour()
         self.__remaining_contour = Parser.__get_remaining_contour()
-      
+
     @staticmethod
     def __get_hex_contour(filename='../resources/hex_mask.png'):
         image = cv2.imread(filename)
         mask  = cv2.inRange(image, Cell.ORANGE, Cell.ORANGE)
-        return cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0] 
-    
+        return cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0]
+
     @staticmethod
     def __get_remaining_contour(filename='../resources/remaining_mask.png'):
         image = cv2.imread(filename)
         mask  = cv2.inRange(image, Cell.BLUE, Cell.BLUE)
-        return cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0] 
-    
+        return cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0]
+
     def parse_mistakes_remaining(self, image, match_threshold=0.05):
         mask     = cv2.inRange(image, Cell.BLUE, Cell.BLUE)
         contours = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
-        
+
         boxes = []
         for contour in contours:
             if cv2.matchShapes(contour, self.__remaining_contour, 1, 0) < 0.05:
@@ -32,60 +32,63 @@ class Parser:
                 y = round(y+h*0.35)
                 h = round(h*0.65)
                 boxes.append((x,y,w,h))
-                
+
         if len(boxes) != 2:
             raise RuntimeError('mistakes and/or remaining box not found')
         else:
             x,y,w,h = boxes[1]
             cropped = image[y: y+h, x: x+w]
             _, thresh = cv2.threshold(cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY), 240, 255, cv2.THRESH_BINARY_INV)
-            digit_str = pytesseract.image_to_string(thresh, lang='eng', config='--psm 10 -c tessedit_char_whitelist=0123456789')
+            digit_str = pytesseract.image_to_string(thresh, lang='counter', config='--psm 6 -c tessedit_char_whitelist=0123456789')
             digit = digit_str.split('\n')[0]
             try:
                 return 0, int(digit)
             except ValueError:
-                raise RuntimeError('remaining OCR failed')
-    
+                print("Parsed remaining: ", digit)
+                cv2.imshow('Remaining', thresh)
+                cv2.waitKey(0)
+                raise RuntimeError('mistakes and/or remaining OCR failed')
+
     def parse_clicked_cell(self, image, cell):
         cx, cy, w, h = *cell.image_coords, round(self.__avg_hex_width), round(self.__avg_hex_height)
-        
+
         x1, x2  = cx-w//2, cx+w//2
         y1, y2  = cy-h//2, cy+h//2
         cropped = image[y1+10: y2-10, x1+10: x2-10]
-        
-        if tuple(cropped[5,5]) == Cell.BLACK:
-            cell.colour = Cell.BLACK 
-        elif tuple(cropped[5,5]) == Cell.BLUE: 
-            cell.colour = Cell.BLUE 
+
+        if tuple(cropped[10,10]) == Cell.BLACK:
+            cell.colour = Cell.BLACK
+        elif tuple(cropped[10,10]) == Cell.BLUE:
+            cell.colour = Cell.BLUE
         else:
-            #cv2.imshow('Cell', cropped)
-            #cv2.waitKey(0)
+            cv2.imshow('Cell', cropped)
+            cv2.waitKey(0)
             raise RuntimeError('cell must be blue or black after click')
-            
+
         _, thresh = cv2.threshold(cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY), 240, 255, cv2.THRESH_BINARY_INV)
         digit_str = pytesseract.image_to_string(thresh, lang='eng', config='--psm 10 -c tessedit_char_whitelist=?{}-0123456789')
         digit = digit_str.split('\n')[0]
         if digit == '\x0c':
             digit = None
-        cell.digit = digit    
-    
+        cell.digit = digit
+
     def parse_grid(self, image):
         self.__hex_widths, self.__hex_heights = 0, 0
         self.__x_min, self.__x_max = float("inf"), -float("inf")
         self.__y_min, self.__y_max = float("inf"), -float("inf")
-        
+
         blue_cells   = self.__parse_cell_colour(image, Cell.BLUE)
         black_cells  = self.__parse_cell_colour(image, Cell.BLACK)
         orange_cells = self.__parse_cell_colour(image, Cell.ORANGE)
-        
+
         cells = blue_cells + black_cells + orange_cells
 
         self.__avg_hex_width  = self.__hex_widths  / len(cells)
         self.__avg_hex_height = self.__hex_heights / len(cells)
-        
+
         x_spacing = self.__avg_hex_width*1.085 #88
-        y_spacing = self.__avg_hex_height*0.72 #50   
-        
+        y_spacing = self.__avg_hex_height*0.72 #50
+
         cols = round((self.__x_max - self.__x_min) / x_spacing) + 1
         rows = round((self.__y_max - self.__y_min) / y_spacing) + 1
         grid = [[None]*cols for _ in range(rows)]
@@ -97,12 +100,11 @@ class Parser:
             cell.grid_coords = (row, col)
             grid[row][col] = cell
 
-        _, remaining = self.parse_mistakes_remaining(image)
-        return Grid(grid, remaining)
-    
+        return Grid(grid)
+
         #cv2.imshow('Parsed Grid', image)
         #cv2.waitKey(0)
-    
+
     def __parse_cell_colour(self, image, cell_colour, match_threshold=0.05):
         mask     = cv2.inRange(image, cell_colour, cell_colour)
         contours = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
@@ -111,7 +113,7 @@ class Parser:
         for contour in contours:
             if cv2.matchShapes(contour, self.__hex_contour, 1, 0) < match_threshold:
                 x,y,w,h = cv2.boundingRect(contour)
-            
+
                 digit = None
                 if cell_colour != Cell.ORANGE:
                     cropped   = image[y+10: y+h-10, x+10: x+w-10]
@@ -122,20 +124,19 @@ class Parser:
                         digit = None
                     #else:
                     #    cv2.rectangle(image, (x+10,y+10), (x+w-10,y+h-10), (0,0,255), 1)
-        
+
                 cx, cy = x + w//2, y + h//2
-                
+
                 self.__hex_widths  += w
                 self.__hex_heights += h
                 self.__x_min = min(self.__x_min, cx)
                 self.__x_max = max(self.__x_max, cx)
                 self.__y_min = min(self.__y_min, cy)
                 self.__y_max = max(self.__y_max, cy)
-                
+
                 cell = Cell((cx, cy), cell_colour, digit)
                 cells.append(cell)
                 #cv2.drawContours(image, [contour], -1, (0, 255, 0), 1)
                 #cv2.putText(image, str((cx, cy)), (cx, cy), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 1)
-            
-        return cells  
-    
+
+        return cells

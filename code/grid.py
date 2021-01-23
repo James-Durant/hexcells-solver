@@ -8,11 +8,11 @@ class Grid:
     
     __DIRECT_DELTAS = __FLOWER_DELTAS[::3]
     
-    def __init__(self, grid, remaining):
+    def __init__(self, grid):
         self.__grid = grid
         self.__rows = len(grid)
         self.__cols = len(grid[0])
-        self.__remaining = remaining
+        self.__remaining = float("inf")
       
     @property
     def rows(self):
@@ -29,8 +29,9 @@ class Grid:
     @remaining.setter
     def remaining(self, remaining):
         if remaining >= 0:
-            return self.__remaining
-        raise RuntimeError('number remaining must be greater than 0')
+            self.__remaining = remaining
+        else:
+            raise RuntimeError('number remaining must be greater than 0')
     
     def known_cells(self):
         known = []
@@ -148,7 +149,7 @@ class Cell:
             if digit == None:
                 raise RuntimeError('OCR missed black cell digit')
             elif digit == '?':
-                self.__digit = None
+                self.__digit = '?'
             else:
                 if digit[0] == '{' and digit[-1] == '}':
                     if len(digit) == 2:
@@ -185,11 +186,11 @@ class Cell:
         elif self.__colour == Cell.ORANGE:
             colour = '?'
             
-        if self.__hint == "consecutive":
-            digit = "{" + str(self.__digit) + "}"
-        elif self.__hint == "non-consecutive":
-            digit = "-" + str(self.__digit) + "-"
-        elif self.__hint == "normal":
+        if self.__hint == 'consecutive':
+            digit = '{' + str(self.__digit) + '}'
+        elif self.__hint == 'non-consecutive':
+            digit = '-' + str(self.__digit) + '-'
+        elif self.__hint == 'normal' or self.__digit == '?':
             if self.__digit is None:
                 digit = '   '
             else:

@@ -8,12 +8,14 @@ class Solver:
         #Map unknown cells to all relevant constraints of known cells that they are a member of.
         constraints = {}
         for cell1 in known:
-            for cell2 in grid.neighbours(cell1):
-                if cell2 != None and cell2.colour == Cell.ORANGE:
-                    try:
-                        constraints[cell2].add(cell1)
-                    except:
-                        constraints[cell2] = set([cell1])
+            if cell1.digit != '?':
+                for cell2 in grid.neighbours(cell1):
+                    if cell2 != None and cell2.colour == Cell.ORANGE:
+                        try:
+                            constraints[cell2].add(cell1)
+                        except:
+                            constraints[cell2] = set([cell1])
+ 
         return constraints
     
     @staticmethod
@@ -71,33 +73,35 @@ class Solver:
     @staticmethod 
     def solve(window, grid):
         while True:
+            _, remaining = window.parse_mistakes_remaining()
+            grid.remaining = remaining
+            
             clicked_cells = Solver.__solve_single_step(window, grid)
             if len(clicked_cells)-len(grid.unknown_cells()) == 0:
                 break
-            
-            mistakes, remaining = window.parse_mistakes_remaining()   
-            grid.remaining = remaining
-            time.sleep(0.6)
+        
+            time.sleep(1)
             window.parse_clicked_cells(clicked_cells)
-    
+        
     @staticmethod
     def __solve_single_step(window, grid):
+        print(grid.remaining)
         unknown     = grid.unknown_cells()
         known       = grid.known_cells()
         constraints = Solver.__get_constraints(grid, known)
         rep_of      = Solver.__get_reps(unknown, constraints)
         classes     = Solver.__get_classes(unknown, rep_of)
-        
+
         solver    = GLPK_CMD(path=r'C:\Users\james\Documents\winglpk-4.65\glpk-4.65\w64\glpsol.exe', msg=False, options=['--cuts'])
         problem   = LpProblem('HexcellsMILP', LpMinimize)
         variables = {rep: LpVariable(str(rep.grid_coords), 0, size, 'Integer') for rep, size in classes.items()}
 
         # The number of remaining blue cells is known
-        #problem += lpSum(Solver.__get_var(cell, rep_of, variables) for cell in unknown) == grid.remaining
+        problem += lpSum(Solver.__get_var(cell, rep_of, variables) for cell in unknown) == grid.remaining
         
         # Constraints from cell number information
         for cell in known:
-            if cell.digit != None and cell.digit != '?':
+            if cell.digit != None and cell.digit != '?':       
                 neighbours = grid.neighbours(cell)
                 problem += lpSum(Solver.__get_var(neighbour, rep_of, variables) for neighbour in neighbours) == cell.digit
                 
