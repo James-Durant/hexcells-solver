@@ -1,9 +1,0 @@
-Commands:
-tesseract --psm 6 -c tessedit_char_whitelist=0123456789 counter.font.exp0.tif counter.font.exp0 nobatch box.train
-unicharset_extractor counter.font.exp0.box
-shapeclustering -F font_properties -U unicharset -O unicharset counter.font.exp0.tr
-mftraining -F font_properties -U unicharset -O unicharset counter.font.exp0.tr
-cntraining counter.font.exp0.tr
-combine_tessdata counter.
-
-Also need to prefix interm, normproto, pffmtable, shapetable, unicharset with counter.

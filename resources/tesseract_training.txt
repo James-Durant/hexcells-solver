@@ -1,0 +1,9 @@
+1. tesseract --psm 6 --oem 3 font_name.font.exp0.tif font_name.font.exp0 makebox
+2. Fix boxes in editor
+3. tesseract --psm 6 -c tessedit_char_whitelist=0123456789 counter.font.exp0.tif counter.font.exp0 nobatch box.train
+4. unicharset_extractor counter.font.exp0.box
+5. shapeclustering -F font_properties -U unicharset -O unicharset counter.font.exp0.tr
+6. mftraining -F font_properties -U unicharset -O unicharset counter.font.exp0.tr
+7. cntraining counter.font.exp0.tr
+8. prefix interm, normproto, pffmtable, shapetable, unicharset with counter.
+9. combine_tessdata counter.

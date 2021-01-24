@@ -8,19 +8,11 @@ class Grid:
     
     __DIRECT_DELTAS = __FLOWER_DELTAS[::3]
     
-    def __init__(self, grid):
+    def __init__(self, grid, remaining):
         self.__grid = grid
         self.__rows = len(grid)
         self.__cols = len(grid[0])
-        self.__remaining = float("inf")
-      
-    @property
-    def rows(self):
-        return self.__rows
-    
-    @property
-    def cols(self):
-        return self.__cols
+        self.__remaining = remaining
     
     @property
     def remaining(self):
@@ -33,23 +25,20 @@ class Grid:
         else:
             raise RuntimeError('number remaining must be greater than 0')
     
-    def known_cells(self):
-        known = []
+    def __cells(self):
+        cells = []
         for row in range(self.__rows):
             for col in range(self.__cols):
                 cell = self[(row, col)]
-                if cell != None and (cell.colour == Cell.BLACK or cell.colour == Cell.BLUE):
-                    known.append(cell)
-        return known    
+                if cell != None:
+                    cells.append(cell)
+        return cells  
+    
+    def known_cells(self):
+        return [cell for cell in self.__cells() if cell.colour != Cell.ORANGE]   
 
     def unknown_cells(self):
-        unknown = []
-        for row in range(self.__rows):
-            for col in range(self.__cols):
-                cell = self[(row, col)]
-                if cell != None and cell.colour == Cell.ORANGE:
-                    unknown.append(cell)
-        return unknown  
+        return [cell for cell in self.__cells() if cell.colour == Cell.ORANGE]  
     
     def neighbours(self, cell):
         deltas = []
@@ -88,12 +77,15 @@ class Grid:
 
 class Cell:
     BLUE   = (235, 164, 5)
-    BLACK  = (62,  62,  62)
-    ORANGE = (41,  177, 255)
+    BLACK  = (62, 62, 62)
+    ORANGE = (41, 177, 255) 
+    ORANGE_OLD = (41, 175, 255) 
     
-    def __init__(self, image_coords, colour, digit=None):
+    def __init__(self, image_coords, width, height, colour, digit=None):
         self.__image_coords = image_coords
         self.__grid_coords  = None
+        self.__width  = width
+        self.__height = height
         self.__hint = 'normal'
         self.colour = colour
         self.digit  = digit
@@ -101,6 +93,14 @@ class Cell:
     @property
     def image_coords(self):
         return self.__image_coords
+    
+    @property 
+    def width(self):
+        return self.__width
+    
+    @property 
+    def height(self):
+        return self.__height
     
     @property
     def grid_coords(self):
@@ -116,7 +116,7 @@ class Cell:
     
     @colour.setter
     def colour(self, colour):
-        if colour not in [Cell.BLUE, Cell.BLACK, Cell.ORANGE]:
+        if colour not in [Cell.BLUE, Cell.BLACK, Cell.ORANGE, Cell.ORANGE_OLD]:
             raise RuntimeError('invalid cell colour')
         else:
             self.__colour = colour
@@ -148,7 +148,7 @@ class Cell:
         elif self.__colour == Cell.BLACK:
             if digit == None:
                 raise RuntimeError('OCR missed black cell digit')
-            elif digit == '?':
+            if digit == '?':
                 self.__digit = '?'
             else:
                 if digit[0] == '{' and digit[-1] == '}':

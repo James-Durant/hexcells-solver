@@ -71,21 +71,19 @@ class Solver:
         return true_set, false_set
     
     @staticmethod 
-    def solve(window, grid):
+    def solve(parser):
+        grid = parser.parse_grid()
+        
         while True:
-            _, remaining = window.parse_mistakes_remaining()
-            grid.remaining = remaining
-            
-            clicked_cells = Solver.__solve_single_step(window, grid)
+            clicked_cells = Solver.__solve_single_step(parser.window, grid)
             if len(clicked_cells)-len(grid.unknown_cells()) == 0:
                 break
         
             time.sleep(1)
-            window.parse_clicked_cells(clicked_cells)
+            grid.remaining = parser.parse_clicked_cells(clicked_cells)
         
     @staticmethod
     def __solve_single_step(window, grid):
-        print(grid.remaining)
         unknown     = grid.unknown_cells()
         known       = grid.known_cells()
         constraints = Solver.__get_constraints(grid, known)
