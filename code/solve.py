@@ -16,6 +16,13 @@ class Solver:
                         except:
                             constraints[cell2] = set([cell1])
  
+        for constraint in grid.constraints:
+            for cell in constraint.members:
+                try:
+                    constraints[cell].add(constraint)
+                except:
+                    constraints[cell] = set([constraint])
+    
         return constraints
     
     @staticmethod
@@ -84,6 +91,7 @@ class Solver:
         
     @staticmethod
     def __solve_single_step(window, grid):
+        #print(grid)
         unknown     = grid.unknown_cells()
         known       = grid.known_cells()
         constraints = Solver.__get_constraints(grid, known)
@@ -97,6 +105,24 @@ class Solver:
         # The number of remaining blue cells is known
         problem += lpSum(Solver.__get_var(cell, rep_of, variables) for cell in unknown) == grid.remaining
         
+        # Constraints from column number information
+        for constraint in grid.constraints:
+            # The sum of all cells in that column is the column value
+            problem += lpSum(Solver.__get_var(cell, rep_of, variables) for cell in constraint.members) == constraint.size
+            
+            # Additional information (together/seperated) available?
+            if constraint.hint == 'consecutive':
+                # For {n}: cells that are at least n appart cannot be both blue.
+                # Example: For {3}, the configurations X??X, X???X, X????X, ... are impossible.
+                for span in range(constraint.size, len(constraint.members)):
+                    for start in range(len(constraint.members)-span):
+                        problem += lpSum([Solver.__get_var(constraint.members[start], rep_of, variables), Solver.__get_var(constraint.members[start+span], rep_of, variables)]) <= 1
+                        
+            elif constraint.hint == 'non-consecutive':
+                # For -n-, the sum of any range of n cells may contain at most n-1 blues
+                for offset in range(len(constraint.members)-constraint.size+1):
+                    problem += lpSum(Solver.__get_var(constraint.members[offset+i], rep_of, variables) for i in range(constraint.size)) <= constraint.size-1
+    
         # Constraints from cell number information
         for cell in known:
             if cell.digit != None and cell.digit != '?':       

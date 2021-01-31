@@ -1,3 +1,21 @@
+class Constraint:
+    def __init__(self, size, hint, members):
+        self.__size = size
+        self.__hint = hint
+        self.__members = members
+        
+    @property 
+    def size(self):
+        return self.__size 
+    
+    @property 
+    def hint(self):
+        return self.__hint 
+    
+    @property 
+    def members(self):
+        return self.__members
+
 class Grid:
     __FLOWER_DELTAS = [( 0, -2), ( 0, -4), ( 1, -3),
                        ( 1, -1), ( 2, -2), ( 2,  0),
@@ -13,6 +31,15 @@ class Grid:
         self.__rows = len(grid)
         self.__cols = len(grid[0])
         self.__remaining = remaining
+        self.__constraints = []
+    
+    @property
+    def rows(self):
+        return self.__rows
+    
+    @property
+    def cols(self):
+        return self.__cols
     
     @property
     def remaining(self):
@@ -24,7 +51,62 @@ class Grid:
             self.__remaining = remaining
         else:
             raise RuntimeError('number remaining must be greater than 0')
+     
+    @property    
+    def constraints(self):
+        return self.__constraints
     
+    def add_constraint(self, row, col, digit, angle):
+        if digit is None:
+            return
+        
+        if len(digit) == 1:
+            hint = 'normal'
+        elif len(digit) == 3:
+            if digit[0] == '{' and digit[-1] == '}':
+                hint = 'consecutive'
+                digit = digit[1:-1]
+                
+            elif digit[0] == '-' and digit[-1] == '-':
+                hint = 'non-consecutive'
+                digit = digit[1:-1]
+            
+            else:
+                print(digit)
+                raise RuntimeError('consecutive/non-consecutive grid hint parsed incorrectly')
+    
+        else:
+            raise RuntimeError('grid constraint parsed incorrectly')    
+        
+        try:
+            size = int(digit)
+        except ValueError:
+            raise RuntimeError('grid constraint parsed incorrectly')    
+        
+        if angle == 0:
+            cells = [self[(i,col)] for i in range(row, self.__rows+1) if self[(i,col)] != None]
+            
+        elif angle == -60:
+            cells = []
+            while 0 <= row < self.__rows and 0<= col < self.__cols:
+                if self[row,col] != None:
+                    cells.append(self[row,col])
+                row += 1
+                col += 1
+            
+        elif angle == 60:
+            cells = []
+            while 0 <= row < self.__rows and 0<= col < self.__cols:
+                if self[row,col] != None:
+                    cells.append(self[row,col])
+                row += 1
+                col -= 1
+            
+        else:
+            raise RuntimeError('invalid grid constraint angle')
+
+        self.__constraints.append(Constraint(size, hint, cells))
+        
     def __cells(self):
         cells = []
         for row in range(self.__rows):

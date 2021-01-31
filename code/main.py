@@ -57,4 +57,5 @@ if __name__ == "__main__":
     #make_blue_digit_dataset(parser, save_path)
     
     #save_path = '../resources/training/black_digits'
-    #make_black_digit_dataset(parser, save_path)
+    #resolution = '2048x1152'
+    #make_black_digit_dataset(parser, resolution, save_path)

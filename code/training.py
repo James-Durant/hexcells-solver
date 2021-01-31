@@ -25,16 +25,16 @@ def make_blue_digit_dataset(parser, save_path):
     parser.parse_cells_of_colour(image, Cell.BLUE, save_paths)
 
             
-def make_black_digit_dataset(parser, save_path):
+def make_black_digit_dataset(parser, resolution, save_path):
     if not os.path.exists(save_path):
         os.makedir(save_path)
         
+        
     digits = ['{1}', '{2}', '{3}', '{4}', '{5}', '{6}',
                '1',   '2',   '3',   '4',   '5',   '6',
-              '-2-', '-3-', '-4-',  '?',  '{0}',  '0'] 
+               'question-mark',  '-2-', '-3-', '-4-', '{0}',  '0'] 
     
     image = parser.window.screenshot()
-    #Load the blue digit level which has all blue cells with digits from 0-18.
-    #Cells will be parsed in order from 0 to 18 by the way the level is defined.
-    save_paths = [save_path+'/black_digit_{}.png'.format(digit) for digit in digits]
+    #Load the black digit level which has all possible black cells.
+    save_paths = [save_path+'/black_digit_{0}_{1}.png'.format(resolution, digit) for digit in digits]
     parser.parse_cells_of_colour(image, Cell.BLACK, save_paths)
