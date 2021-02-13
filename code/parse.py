@@ -5,120 +5,38 @@ pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tessera
 from grid import Grid, Cell
 
 class Parser:
-    counter_threshold = 0.01
-    cell_threshold = 0.05
+    __hex_mask_path = '../resources/hex_mask.png'
+    __hex_threshold = 0.05
+    __counter_mask_path = '../resources/counter_mask.png'
+    __counter_threshold = 0.01
+    __angles = np.asarray([-60, 0, 60])
     
     def __init__(self, window):
         self.__window = window
-        self.__hex_contour = Parser.__get_hex_contour()
-        self.__counter_contour = Parser.__get_counter_contour()
-
+        self.__hex_contour, self.__counter_contour = Parser.__load_masks()
+  
     @property 
     def window(self):
         return self.__window
+    
+    @staticmethod 
+    def __load_masks():
+        hex_image = cv2.imread(Parser.__hex_mask_path)
+        hex_mask  = cv2.inRange(hex_image, Cell.ORANGE , Cell.ORANGE)
+        hex_contour, _ = cv2.findContours(hex_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    @staticmethod
-    def __get_hex_contour(filename='../resources/hex_mask.png'):
-        image = cv2.imread(filename)
-        mask  = cv2.inRange(image, Cell.ORANGE , Cell.ORANGE)
-        return cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0]
-
-    @staticmethod
-    def __get_counter_contour(filename='../resources/counter_mask.png'):
-        mask = cv2.inRange(cv2.imread(filename), Cell.BLUE, Cell.BLUE)
-        return cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0]
-
-    @staticmethod
-    def __parse_cell_digit(cropped, cell_colour, save_path=None):
-        if cell_colour == None:
-            #import sys
-            #np.set_printoptions(threshold=sys.maxsize)
-            #print(cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY))
-            _, thresh = cv2.threshold(cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY), 200, 255, cv2.THRESH_BINARY)
-        else: #Impove this using the grid digit parsing method (remove background, leave digit)
-            _, thresh = cv2.threshold(cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY), 240, 255, cv2.THRESH_BINARY_INV)
+        counter_image = cv2.imread(Parser.__counter_mask_path)
+        counter_mask  = cv2.inRange(counter_image, Cell.BLUE, Cell.BLUE)
+        counter_contour, _ = cv2.findContours(counter_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        if 0 not in thresh:
-            return None
+        return hex_contour[0], counter_contour[0]
         
-        if save_path != None:
-            cv2.imwrite(save_path, thresh)
-        
-        if cell_colour == Cell.BLACK:
-            lang = 'black_digits'
-            config = '--psm 6 -c tessedit_char_whitelist=0123456?{}-'
-        elif cell_colour == Cell.BLUE:
-            lang = 'blue_digits'
-            config = '--psm 6 -c tessedit_char_whitelist=0123456789'
-        else: #grid contraints
-            lang = 'black_digits'
-            config = '--psm 6 -c tessedit_char_whitelist=0123456789{}-'
-        
-        digit_str = pytesseract.image_to_string(thresh, lang=lang, config=config)
-        digit = digit_str.split('\n')[0]
-        return None if digit == '\x0c' else digit
-
-    def parse_counters(self, image, save_path=None):
-        mask     = cv2.inRange(image, Cell.BLUE, Cell.BLUE)
-        contours = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
-
-        boxes = []
-        for contour in contours:
-            if cv2.matchShapes(contour, self.__counter_contour, 1, 0) < Parser.counter_threshold:
-                x,y,w,h = cv2.boundingRect(contour)
-                y = round(y+h*0.35)
-                h = round(h*0.65)
-                boxes.append((x,y,w,h))
-
-        if len(boxes) != 2:
-            raise RuntimeError('mistakes and/or remaining box not found')
-        else:
-            x,y,w,h = boxes[1]
-            cropped = image[y: y+h, x: x+w]
-            _, thresh = cv2.threshold(cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY), 240, 255, cv2.THRESH_BINARY_INV)
-            
-            if save_path != None:
-                cv2.imwrite(save_path, thresh)
-            
-            digit_str = pytesseract.image_to_string(thresh, lang='counter', config='--psm 6 -c tessedit_char_whitelist=0123456789')
-            digit = digit_str.split('\n')[0]
-            try:
-                return 0, int(digit)
-            except ValueError:
-                raise RuntimeError('mistakes and/or remaining OCR failed')
-
-    def parse_clicked_cells(self, clicked_cells):
-        image = self.__window.screenshot()
-        for cell in clicked_cells:
-            self.__parse_clicked_cell(image, cell)
-            
-        _, remaining = self.parse_counters(image)
-        return remaining
-
-    def __parse_clicked_cell(self, image, cell):
-        cx, cy, w, h = *cell.image_coords, self.__hex_width, self.__hex_height
-
-        x1, x2  = cx-w//2, cx+w//2
-        y1, y2  = cy-h//2, cy+h//2
-        cropped = image[y1+10: y2-10, x1+10: x2-10]
-        
-        if np.count_nonzero(cropped == Cell.BLACK) >= 10:
-            cell.colour = Cell.BLACK
-        elif np.count_nonzero(cropped == Cell.BLUE) >= 10:
-            cell.colour = Cell.BLUE
-        else:
-            cv2.imshow('Cell', cropped)
-            cv2.waitKey(0)
-            raise RuntimeError('cell must be blue or black after click')
-
-        cell.digit = Parser.__parse_cell_digit(cropped, cell.colour)
-
     def parse_grid(self):
         image = self.__window.screenshot()
 
-        blue_cells   = self.parse_cells_of_colour(image, Cell.BLUE)
-        black_cells  = self.parse_cells_of_colour(image, Cell.BLACK)
-        orange_cells = self.parse_cells_of_colour(image, Cell.ORANGE)
+        blue_cells   = self.__parse_cells(image, Cell.BLUE)
+        black_cells  = self.__parse_cells(image, Cell.BLACK)
+        orange_cells = self.__parse_cells(image, Cell.ORANGE)
 
         cells = blue_cells + black_cells + orange_cells
 
@@ -147,86 +65,139 @@ class Parser:
             cell.grid_coords = (row, col)
             grid[row][col] = cell
 
-        _, remaining = self.parse_counters(image)
-        #cv2.imshow('Test', image)
-        #cv2.waitKey(0)
-        grid_obj = Grid(grid, remaining)
-        self.__parse_grid_contraints(image, grid_obj)
-        return grid_obj
+        _, remaining = self.__parse_counters(image)
+        
+        scene = Grid(grid, cells, remaining)
+        self.__parse_columns(image, scene)
+        
+        return scene
 
-    def parse_cells_of_colour(self, image, cell_colour, save_paths=None):
-        mask     = cv2.inRange(image, cell_colour, cell_colour)
-        contours = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+    def __parse_cells(self, image, cell_colour):
+        mask = cv2.inRange(image, cell_colour, cell_colour)
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         cells = []
-        i = 0
         for contour in contours:
-            if cv2.matchShapes(contour, self.__hex_contour, 1, 0) < Parser.cell_threshold:
-                x,y,w,h = cv2.boundingRect(contour)
-
-                if cell_colour == Cell.ORANGE or cell_colour == Cell.ORANGE_OLD:
-                    digit = None
-                else:
-                    cropped = image[y+10: y+h-10, x+10: x+w-10]
-                    path = None if save_paths == None else save_paths[i]
-                    try:
-                        digit = Parser.__parse_cell_digit(cropped, cell_colour, path)
-                    except cv2.error:
-                        continue
-                    i += 1
-            
-                cx, cy = x + w//2, y + h//2
-                cells.append(Cell((cx, cy), w, h, cell_colour, digit))
-                #cv2.drawContours(image, [contour], -1, (0, 255, 0), 1)
+            if cv2.contourArea(contour) > 3000 and cv2.matchShapes(contour, self.__hex_contour, 1, 0) < Parser.__hex_threshold:
+                x, y, w, h = cv2.boundingRect(contour)
+                
+                cropped = image[y+10: y+h-10, x+12: x+w-12]
+                digit = self.__parse_cell_digit(cropped, cell_colour)
+                
+                centre = (x + w//2, y + h//2)
+                cell = Cell(centre, w, h, cell_colour, digit) 
+                cells.append(cell)
 
         return cells
-     
-    @staticmethod
-    def __rotate(image, centre, angle):
-      rot_mat = cv2.getRotationMatrix2D(centre, angle, 1.0)
-      return cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
-                      
-    def __parse_grid_contraints(self, image, grid):
-        for row in range(grid.rows):
-            for col in range(grid.cols):
-                cell = grid[(row,col)]
-                if cell != None:
-                    cx, cy, w, h = *cell.image_coords, self.__hex_width, self.__hex_height
 
-                    x1 = cx - w//2 + 10
-                    x2 = cx + w//2 - 10
-                    y1 = cy - round(1.35*h)
-                    y2 = cy - round(0.85*h)
-    
-                    if y1 > 10:
-                        if grid[(row-2,col)] == None:   
-                            cropped = image[y1:y2,x1:x2]
-                            _, thresh = cv2.threshold(cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY), 200, 255, cv2.THRESH_BINARY)
+    def __parse_cell_digit(self, image, cell_colour):
+        if cell_colour == Cell.ORANGE:
+            return None
+        elif cell_colour == Cell.BLACK:
+            lang = 'eng'
+            config = '--psm 8 -c tessedit_char_whitelist=0123456?{}-'
+        elif cell_colour == Cell.BLUE:
+            lang = 'eng'
+            config = '--psm 6 -c tessedit_char_whitelist=0123456789'
+        else:
+            raise RuntimeError('invalid cell colour found')
+
+        thresh = np.where(image == cell_colour, 255, 0).astype(np.uint8)
         
-                            if np.mean(thresh[:y2-y1, (x2-x1)//2-5:(x2-x1)//2+5]) < 150:
-                                cv2.imshow('Test', thresh)
-                                cv2.waitKey(0)  
-                                digit = Parser.__parse_cell_digit(cropped, None)
-                                grid.add_constraint(row, col, digit, 0)
-                    
-                        if grid[(row-1,col-1)] == None:
-                            rotated = Parser.__rotate(image, cell.image_coords, -60)
-                            cropped = rotated[y1:y2,x1:x2]
-                            _, thresh = cv2.threshold(cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY), 200, 255, cv2.THRESH_BINARY)
-                            
-                            if np.mean(thresh[:y2-y1, (x2-x1)//2-5:(x2-x1)//2+5]) < 150:
-                                cv2.imshow('Test', thresh)
-                                cv2.waitKey(0)  
-                                digit = Parser.__parse_cell_digit(cropped, None)
-                                grid.add_constraint(row, col, digit, -60)              
-                            
-                        if grid[(row-1,col+1)] == None:
-                            rotated = Parser.__rotate(image, cell.image_coords, 60)
-                            cropped = rotated[y1:y2,x1:x2]
-                            _, thresh = cv2.threshold(cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY), 200, 255, cv2.THRESH_BINARY)
-                            
-                            if np.mean(thresh[:y2-y1, (x2-x1)//2-5:(x2-x1)//2+5]) < 150:
-                                cv2.imshow('Test', thresh)
-                                cv2.waitKey(0)  
-                                digit = Parser.__parse_cell_digit(cropped, None)
-                                grid.add_constraint(row, col, digit, 60)
+        if 0 not in thresh:
+            return None
+        else:            
+            digit_str = pytesseract.image_to_string(thresh, lang=lang, config=config)
+            digit = digit_str.split('\n')[0]
+            return None if digit == '\x0c' else digit
+
+    def __parse_counters(self, image):
+        mask = cv2.inRange(image, Cell.BLUE, Cell.BLUE)
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        lang = 'counter'
+        config = '--psm 6 -c tessedit_char_whitelist=0123456789'
+        
+        values = []
+        for contour in contours:
+            if cv2.matchShapes(contour, self.__counter_contour, 1, 0) < Parser.__counter_threshold:
+                x,y,w,h = cv2.boundingRect(contour)
+                y = round(y+h*0.35)
+                h = round(h*0.65)
+
+                cropped = image[y: y+h, x: x+w]
+                thresh  = np.where(cropped == Cell.BLUE, 255, 0).astype(np.uint8)
+
+                digit_str = pytesseract.image_to_string(thresh, lang=lang, config=config)
+                digit = digit_str.split('\n')[0]
+                values.append(digit)
+        try:
+            return int(values[0]), int(values[1])
+        except:
+            raise RuntimeError('mistakes and/or remaining OCR failed')
+
+    def __parse_columns(self, image, grid):
+        _, thresh = cv2.threshold(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 100, 255, cv2.THRESH_BINARY_INV)
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        rects = [] 
+        for contour in contours:
+            if cv2.matchShapes(contour, self.__hex_contour, 1, 0) > Parser.__hex_threshold:
+                x, y, w, h = cv2.boundingRect(contour) 
+                rects += [(x,y,w,h), (x,y,w,h)]
+        
+        bounding_boxes, _ = cv2.groupRectangles(rects, 1, 1.5)
+        for x, y, w, h in bounding_boxes:
+            box_coords = np.asarray([x + w//2, y + h//2])
+            nearest_cell = grid.nearest_cell(box_coords)
+            nearest_coords = nearest_cell.image_coords
+                
+            delta_x = box_coords[0] - nearest_coords[0]
+            delta_y = nearest_coords[1] - box_coords[1]
+            theta = 90 - (180 / np.pi * np.arctan2(delta_y, delta_x))
+            angle = Parser.__angles[np.argmin(np.abs(Parser.__angles-theta))]
+            
+            cropped = image[y-10: y+h+10, x-15: x+w+15]
+            
+            cv2.imshow('test', cropped)
+            cv2.waitKey(0)
+            
+            centre  = (w//2 + 15, h//2 + 10)
+            rot_mat = cv2.getRotationMatrix2D(centre, angle, 1.0)
+            rotated = cv2.warpAffine(cropped, rot_mat, cropped.shape[1::-1], 
+                                     flags=cv2.INTER_LINEAR, borderValue=(255,255,255))
+            
+            _, thresh = cv2.threshold(cv2.cvtColor(rotated, cv2.COLOR_BGR2GRAY), 200, 255, cv2.THRESH_BINARY)
+       
+            lang = 'eng'
+            config = '--psm 6 -c tessedit_char_whitelist=0123456789{}-'
+        
+            digit_str = pytesseract.image_to_string(thresh, lang=lang, config=config)
+            digit = digit_str.split('\n')[0]
+            
+            row, col = nearest_cell.grid_coords
+            grid.add_constraint(row, col, digit, angle)
+            
+    def parse_clicked_cells(self, clicked_cells):
+        image = self.__window.screenshot()
+        for cell in clicked_cells:
+            self.__parse_clicked_cell(image, cell)
+            
+        _, remaining = self.parse_counters(image)
+        return remaining
+
+    def __parse_clicked_cell(self, image, cell):
+        cx, cy, w, h = *cell.image_coords, self.__hex_width, self.__hex_height
+
+        x1, x2  = cx-w//2, cx+w//2
+        y1, y2  = cy-h//2, cy+h//2
+        cropped = image[y1+10: y2-10, x1+10: x2-10]
+        
+        if np.count_nonzero(cropped == Cell.BLACK) > 10:
+            cell.colour = Cell.BLACK
+        elif np.count_nonzero(cropped == Cell.BLUE) > 10:
+            cell.colour = Cell.BLUE
+        else:
+            raise RuntimeError('cell must be blue or black after click')
+
+        cell.digit = Parser.__parse_cell_digit(cropped, cell.colour)

@@ -3,112 +3,124 @@ from parse import Cell
 import time
 
 class Solver:
-    @staticmethod
-    def __get_constraints(grid, known):
-        #Map unknown cells to all relevant constraints of known cells that they are a member of.
-        constraints = {}
-        for cell1 in known:
-            if cell1.digit != '?':
-                for cell2 in grid.neighbours(cell1):
-                    if cell2 != None and cell2.colour == Cell.ORANGE:
-                        try:
-                            constraints[cell2].add(cell1)
-                        except:
-                            constraints[cell2] = set([cell1])
- 
-        for constraint in grid.constraints:
-            for cell in constraint.members:
-                try:
-                    constraints[cell].add(constraint)
-                except:
-                    constraints[cell] = set([constraint])
+    __GLPK_PATH = r'C:\Users\james\Documents\winglpk-4.65\glpk-4.65\w64\glpsol.exe'
     
-        return constraints
-    
-    @staticmethod
-    def __get_reps(unknown, constraints):
-        rep_of = {}
-        for cell1 in unknown:
-            if cell1 in constraints:
-                for cell2 in unknown:
-                    if cell2 in constraints and constraints[cell1] == constraints[cell2]:
-                        rep_of[cell1] = cell2
-            else:
-                rep_of[cell1] = cell1
-        
-        for cell in constraints:
-            for constraint in constraints[cell]:
-                if constraint.hint != 'normal':
-                    rep_of[cell] = cell
-                
-        return rep_of
-    
-    @staticmethod
-    def __get_classes(unknown, rep_of):
-        classes = {}
-        for rep in unknown:
-            if rep_of[rep] is rep:
-                classes[rep] = sum(1 for cell in unknown if rep_of[cell] is rep)
-        return classes
-    
-    @staticmethod
-    def __get_var(cell, rep_of, variables):
-        if cell is None or cell.colour == Cell.BLACK:
-            return 0
-        if cell.colour == Cell.BLUE:
-            return 1
-        if rep_of[cell] is cell:
-            return variables[cell]
-        else: # cell is non representative
-            return 0
-        
-    @staticmethod  
-    def __get_true_false_classes(classes, rep_of, variables):
-        true_set  = set()
-        false_set = set()
-        
-        for rep, size in classes.items():
-            var = Solver.__get_var(rep, rep_of, variables)
-            
-            if value(var) == 0:
-                false_set.add(rep)
-            elif value(var) == size:
-                true_set.add(rep)
-                
-        return true_set, false_set
-    
-    @staticmethod 
-    def solve(parser):
-        grid = parser.parse_grid()
+    def __init__(self, parser):
+        self.__parser  = parser
+
+    def solve(self):
+        self.__grid = self.__parser.parse_grid()
         
         while True:
-            clicked_cells = Solver.__solve_single_step(parser.window, grid)
-            if len(clicked_cells)-len(grid.unknown_cells()) == 0:
+            self.__setup_problem()
+            clicked_cells = self.__solve_single_step()
+            if len(clicked_cells)-len(self.__grid.unknown_cells()) == 0:
                 break
         
             time.sleep(1)
-            grid.remaining = parser.parse_clicked_cells(clicked_cells)
+            self.__grid.remaining = self.__parser.parse_clicked_cells(clicked_cells)
+    
+    def __setup_problem(self):
+        self.__unknown = self.__grid.unknown_cells()
+        self.__known   = self.__grid.known_cells()
         
-    @staticmethod
-    def __solve_single_step(window, grid):
-        #print(grid)
-        unknown     = grid.unknown_cells()
-        known       = grid.known_cells()
-        constraints = Solver.__get_constraints(grid, known)
-        rep_of      = Solver.__get_reps(unknown, constraints)
-        classes     = Solver.__get_classes(unknown, rep_of)
-
-        solver    = GLPK_CMD(path=r'C:\Users\james\Documents\winglpk-4.65\glpk-4.65\w64\glpsol.exe', msg=False, options=['--cuts'])
-        problem   = LpProblem('HexcellsMILP', LpMinimize)
-        variables = {rep: LpVariable(str(rep.grid_coords), 0, size, 'Integer') for rep, size in classes.items()}
-
-        # The number of remaining blue cells is known
-        problem += lpSum(Solver.__get_var(cell, rep_of, variables) for cell in unknown) == grid.remaining
+        self.__constraints()
+        self.__reps()
+        self.__classes()
+        self.__variables()
         
+        self.__solver  = GLPK_CMD(path=Solver.__GLPK_PATH, msg=False, options=['--cuts'])
+        self.__problem = LpProblem('HexcellsMILP', LpMinimize)
+        
+        self.__add_remaining_constraint()
+        self.__add_column_constraints()
+        self.__add_cell_constraints()
+        
+        temp = LpVariable('spam', 0, 1, 'binary')
+        self.__problem += (temp == 1)
+        self.__problem.setObjective(temp)
+        self.__problem.solve(self.__solver)
+    
+    def __solve_single_step(self):   
+        clicked_cells = []
+        true_class, false_class = self.__true_false_classes()
+        while true_class or false_class:
+            true_sum  = lpSum(self.__get_var(true)  for true  in true_class)
+            false_sum = lpSum(self.__get_var(false) for false in false_class)
+            
+            self.__problem.setObjective(true_sum-false_sum)
+            self.__problem.solve(self.__solver)
+            
+            if value(self.__problem.objective) == sum(self.__classes[rep] for rep in true_class):
+                for tf_set, kind in [(true_class, "left"), (false_class, "right")]:
+                    for rep in tf_set:
+                        for cell in self.__unknown:
+                            if self.__rep_of[cell] is rep:
+                                self.__parser.window.click_cell(cell, kind)
+                                clicked_cells.append(cell)
+                                
+                return clicked_cells
+            
+            true_new, false_new = self.__true_false_classes()
+
+            true_class  &= true_new
+            false_class &= false_new
+            
+        raise RuntimeError('solver failed to finish puzzle')
+    
+    def __constraints(self):
+        #Map unknown cells to all relevant constraints of known cells that they are a member of.
+        self.__constraints = {}
+        for cell1 in self.__known:
+            if cell1.digit != '?':
+                for cell2 in self.__grid.neighbours(cell1):
+                    if cell2 != None and cell2.colour == Cell.ORANGE:
+                        try:
+                            self.__constraints[cell2].add(cell1)
+                        except:
+                            self.__constraints[cell2] = set([cell1])
+ 
+        for constraint in self.__grid.constraints:
+            for cell in constraint.members:
+                try:
+                    self.__constraints[cell].add(constraint)
+                except:
+                    self.__constraints[cell] = set([constraint])
+    
+    def __reps(self):
+        self.__rep_of = {}
+        for cell1 in self.__unknown:
+            if cell1 in self.__constraints:
+                for cell2 in self.__unknown:
+                    if cell2 in self.__constraints and self.__constraints[cell1] == self.__constraints[cell2]:
+                        self.__rep_of[cell1] = cell2
+            else:
+                self.__rep_of[cell1] = cell1
+        
+        for cell in self.__constraints:
+            for constraint in self.__constraints[cell]:
+                if constraint.hint != 'normal':
+                    self.__rep_of[cell] = cell
+    
+    def __classes(self):
+        self.__classes = {}
+        for rep in self.__unknown:
+            if self.__rep_of[rep] is rep:
+                self.__classes[rep] = sum(1 for cell in self.__unknown if self.__rep_of[cell] is rep)
+    
+    def __variables(self):
+        self.__variables = {}
+        for rep, size in self.__classes.items():
+            self.__variables[rep] = LpVariable(str(rep.grid_coords), 0, size, 'Integer')
+    
+    def __add_remaining_constraint(self):
+        self.__problem += lpSum(self.get_var(cell) for cell in self.__unknown) == self.__grid.remaining
+    
+    def __add_column_constraints(self):
         # Constraints from column number information
-        for constraint in grid.constraints:
+        for constraint in self.__grid.constraints:
             # The sum of all cells in that column is the column value
-            problem += lpSum(Solver.__get_var(cell, rep_of, variables) for cell in constraint.members) == constraint.size
+            self.__problem += lpSum(self.get_var(cell) for cell in constraint.members) == constraint.size
             
             # Additional information (together/seperated) available?
             if constraint.hint == 'consecutive':
@@ -116,83 +128,54 @@ class Solver:
                 # Example: For {3}, the configurations X??X, X???X, X????X, ... are impossible.
                 for span in range(constraint.size, len(constraint.members)):
                     for start in range(len(constraint.members)-span):
-                        problem += lpSum([Solver.__get_var(constraint.members[start], rep_of, variables), Solver.__get_var(constraint.members[start+span], rep_of, variables)]) <= 1
+                        self.__problem += lpSum([self.__get_var(constraint.members[start]), self.__get_var(constraint.members[start+span])]) <= 1
                         
             elif constraint.hint == 'non-consecutive':
                 # For -n-, the sum of any range of n cells may contain at most n-1 blues
                 for offset in range(len(constraint.members)-constraint.size+1):
-                    problem += lpSum(Solver.__get_var(constraint.members[offset+i], rep_of, variables) for i in range(constraint.size)) <= constraint.size-1
+                    self.__problem += lpSum(self.__get_var(constraint.members[offset+i]) for i in range(constraint.size)) <= constraint.size-1
     
-        # Constraints from cell number information
-        for cell in known:
+    def __add_cell_constraints(self):
+        for cell in self.__known:
             if cell.digit != None and cell.digit != '?':       
-                neighbours = grid.neighbours(cell)
-                problem += lpSum(Solver.__get_var(neighbour, rep_of, variables) for neighbour in neighbours) == cell.digit
-                
-                # Additional togetherness information available. Only relevant if value between 2 and 4.
+                neighbours = self.__grid.neighbours(cell)
+                self.__problem += lpSum(self.__get_var(neighbour) for neighbour in neighbours) == cell.digit
                 if cell.hint != 'normal' and 2 <= cell.digit <= 4:
-                    m = neighbours + neighbours #Have array wrap around.
+                    m = neighbours + neighbours
                     
                     if cell.hint == 'consecutive':
-                        # two patterns not occuring: "-X-" and the "X-X": No lonely blue cell and no lonely gap
                         for i in range(len(neighbours)):
-                            # No lonely cell condition:
-                            # Say m[i] is a blue.
-                            # Then m[i-1] or m[i+1] must be blue.
-                            # That means: -m[i-1] +m[i] -m[i+1] <= 0
-                            # Note that m[i+1] and m[i-1] only count
-                            # if they are real neighbours.
-                            cond = Solver.__get_var(m[i], rep_of, variables)
-                            cond -= Solver.__get_var(m[i-1], rep_of, variables)
-                            cond -= Solver.__get_var(m[i+1], rep_of, variables)
+                            cond  = self.__get_var(m[i])
+                            cond -= self.__get_var(m[i-1])
+                            cond -= self.__get_var(m[i+1])
                                 
-                            # no isolated cell
-                            problem += cond <= 0
-                            # no isolated gap (works by a similar argument)
-                            problem += cond >= -1
+                            self.__problem += cond <= 0
+                            self.__problem += cond >= -1
                             
                     elif cell.hint == 'non-consecutive':
-                        # any circular range of n cells contains at most n-1 blues.
                         for i in range(len(neighbours)):
-                            # the range m[i], ..., m[i+n-1] may not all be blue if they are consecutive
                             if all(m[i+j+1] != None for j in range(cell.digit-1)):
-                                problem += lpSum(Solver.__get_var(m[i+j], rep_of, variables) for j in range(cell.digit)) <= cell.digit-1
-                
-        # First, get any solution.
-        # Default solver can't handle no objective, so invent one:
-        spam = LpVariable('spam', 0, 1, 'binary')
-        problem += (spam == 1)
-        problem.setObjective(spam) # no optimisation function yet
-        problem.solve(solver)
-                
-        true_class, false_class = Solver.__get_true_false_classes(classes, rep_of, variables)
+                                self.__problem += lpSum(self.__get_var(m[i+j]) for j in range(cell.digit)) <= cell.digit-1
+   
+    def __get_var(self, cell):
+        if cell is None or cell.colour == Cell.BLACK:
+            return 0
+        if cell.colour == Cell.BLUE:
+            return 1
+        if self.__rep_of[cell] is cell:
+            return self.__variables[cell]
+        else:
+            return 0
+   
+    def __get_true_false_classes(self):
+        true_set, false_set = set(), set()
         
-        clicked_cells = []
-        while true_class or false_class:
-            # Now try to vary as much away from the
-            # initial solution as possible:
-            # We try to make the variables True, that were False before
-            # and vice versa. If no change could be achieved, then
-            # the remaining variables have their unique possible value.
-            problem.setObjective(lpSum(Solver.__get_var(t, rep_of, variables) for t in true_class) - lpSum(Solver.__get_var(f, rep_of, variables) for f in false_class))
-            problem.solve(solver)
+        for rep, size in self.__classes.items():
+            val = value(self.__get_var(rep))
             
-            # all true variables stayed true and false stayed false?
-            # Then they have their unique value and we are done!
-            if value(problem.objective) == sum(classes[rep] for rep in true_class):
-                for tf_set, kind in [(true_class, "left"), (false_class, "right")]:
-                    for rep in tf_set:
-                        for cell in unknown:
-                            if rep_of[cell] is rep:
-                                window.click_cell(cell, kind)
-                                clicked_cells.append(cell)
-                                
-                return clicked_cells
-            
-            true_new, false_new = Solver.__get_true_false_classes(classes, rep_of, variables)
-            
-            # remember only those classes that subbornly kept their pure trueness/falseness
-            true_class  &= true_new
-            false_class &= false_new
-            
-        raise RuntimeError('solver failed to finish puzzle')
+            if val == 0:
+                false_set.add(rep)
+            elif val == size:
+                true_set.add(rep)
+                
+        return true_set, false_set

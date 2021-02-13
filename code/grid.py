@@ -1,3 +1,5 @@
+import numpy as np
+
 class Constraint:
     def __init__(self, size, hint, members):
         self.__size = size
@@ -26,12 +28,15 @@ class Grid:
     
     __DIRECT_DELTAS = __FLOWER_DELTAS[::3]
     
-    def __init__(self, grid, remaining):
+    def __init__(self, grid, cells, remaining):
         self.__grid = grid
         self.__rows = len(grid)
         self.__cols = len(grid[0])
         self.__remaining = remaining
         self.__constraints = []
+        
+        self.__cells = cells
+        self.__cell_image_coords = np.asarray([cell.image_coords for cell in cells])
     
     @property
     def rows(self):
@@ -56,71 +61,48 @@ class Grid:
     def constraints(self):
         return self.__constraints
     
-    def add_constraint(self, row, col, digit, angle):
-        if digit is None:
-            return
-        
-        if len(digit) == 1:
-            hint = 'normal'
-        elif len(digit) == 3:
-            if digit[0] == '{' and digit[-1] == '}':
-                hint = 'consecutive'
-                digit = digit[1:-1]
-                
-            elif digit[0] == '-' and digit[-1] == '-':
-                hint = 'non-consecutive'
-                digit = digit[1:-1]
-            
-            else:
-                print(digit)
-                raise RuntimeError('consecutive/non-consecutive grid hint parsed incorrectly')
+    @property
+    def cells(self):
+        return self.__cells
     
+    def nearest_cell(self, query_coords):
+        nearest = np.argmin(np.sum((self.__cell_image_coords - query_coords)**2, axis=1))
+        return self.__cells[nearest]
+    
+    def add_constraint(self, row, col, digit, angle):
+        if digit[0] == '{' and digit[-1] == '}':
+            hint = 'consecutive'
+            digit = digit[1:-1]
+        elif digit[0] == '-' and digit[-1] == '-':
+            hint = 'non-consecutive'
+            digit = digit[1]
         else:
-            raise RuntimeError('grid constraint parsed incorrectly')    
+            hint = 'normal' 
         
         try:
             size = int(digit)
         except ValueError:
             raise RuntimeError('grid constraint parsed incorrectly')    
         
-        if angle == 0:
-            cells = [self[(i,col)] for i in range(row, self.__rows+1) if self[(i,col)] != None]
+        cells = []
+        while 0 <= row < self.__rows and 0<= col < self.__cols:
+            cell = self[(row, col)]
+            if cell != None:
+                cells.append(cell)
+            row += 1
             
-        elif angle == -60:
-            cells = []
-            while 0 <= row < self.__rows and 0<= col < self.__cols:
-                if self[row,col] != None:
-                    cells.append(self[row,col])
-                row += 1
+            if angle == -60:
                 col += 1
-            
-        elif angle == 60:
-            cells = []
-            while 0 <= row < self.__rows and 0<= col < self.__cols:
-                if self[row,col] != None:
-                    cells.append(self[row,col])
-                row += 1
+            elif angle == 60:
                 col -= 1
-            
-        else:
-            raise RuntimeError('invalid grid constraint angle')
 
         self.__constraints.append(Constraint(size, hint, cells))
-        
-    def __cells(self):
-        cells = []
-        for row in range(self.__rows):
-            for col in range(self.__cols):
-                cell = self[(row, col)]
-                if cell != None:
-                    cells.append(cell)
-        return cells  
     
     def known_cells(self):
-        return [cell for cell in self.__cells() if cell.colour != Cell.ORANGE]   
+        return [cell for cell in self.cells if cell.colour != Cell.ORANGE]   
 
     def unknown_cells(self):
-        return [cell for cell in self.__cells() if cell.colour == Cell.ORANGE]  
+        return [cell for cell in self.cells if cell.colour == Cell.ORANGE]  
     
     def neighbours(self, cell):
         deltas = []
@@ -140,6 +122,7 @@ class Grid:
             return self.__grid[row][col]
         return None
     
+    #Make this better
     def __str__(self):
         return_str = ''
         for row in range(self.__rows):
@@ -176,6 +159,14 @@ class Cell:
     def image_coords(self):
         return self.__image_coords
     
+    @property
+    def grid_coords(self):
+        return self.__grid_coords
+    
+    @grid_coords.setter
+    def grid_coords(self, grid_coords):
+        self.__grid_coords = grid_coords
+    
     @property 
     def width(self):
         return self.__width
@@ -185,16 +176,12 @@ class Cell:
         return self.__height
     
     @property
-    def grid_coords(self):
-        return self.__grid_coords
-    
-    @grid_coords.setter
-    def grid_coords(self, grid_coords):
-        self.__grid_coords = grid_coords
-    
-    @property
     def colour(self):
         return self.__colour
+    
+    @property
+    def hint(self):
+        return self.__hint
     
     @colour.setter
     def colour(self, colour):
@@ -213,15 +200,6 @@ class Cell:
             if digit == None:
                 self.__digit = None
             else:
-                if '-' in digit:
-                    raise RuntimeError('blue cell digit cannot be -')
-                    
-                if '{' in digit or '}' in digit:
-                    raise RuntimeError('blue cell digit cannot be { or }')    
-                
-                if '?' in digit:
-                    raise RuntimeError('blue cell digit cannot be ?')    
-                
                 try:
                     self.__digit = int(digit)
                 except ValueError:
@@ -255,10 +233,6 @@ class Cell:
                 raise RuntimeError('orange cells cannot have digits')
             else:
                 self.__digit = None
-        
-    @property
-    def hint(self):
-        return self.__hint
     
     def __str__(self):
         if self.__colour == Cell.BLUE:

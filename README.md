@@ -1,2 +1,2 @@
 # hexcells-solver
- A solver for the logic puzzle game series Hexcells
+A solver for the logic puzzle game series Hexcells.
