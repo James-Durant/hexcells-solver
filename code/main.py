@@ -1,4 +1,4 @@
-from window import Window, get_window
+from window import get_window
 from parse import Parser
 from solve import Solver
 
