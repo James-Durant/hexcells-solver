@@ -1,11 +1,15 @@
 import numpy as np
-import cv2, pytesseract, os
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+import cv2, pickle
+
+from PIL import Image
 
 from grid import Grid, Cell
 
-from PIL import Image
-import imagehash
+def average_hash(image, hash_size=16):
+    image = Image.fromarray(image).convert("L").resize((hash_size, hash_size), Image.ANTIALIAS)
+    pixels = np.array(image.getdata()).reshape((hash_size, hash_size))
+    diff = pixels > pixels.mean()
+    return diff.flatten()
 
 class Parser:
     __hex_mask_path = '../resources/hex_mask.png'
@@ -14,13 +18,17 @@ class Parser:
     __counter_match_threshold = 0.1
     __area_threshold = 550
     __angles = np.asarray([-60, 0, 60])
-    __DIMS = (65, 60)
+    __cell_dims = (65, 60)
+    __counter_dims = (200, 50)
 
-    def __init__(self, window):
+    def __init__(self, window, training=False):
         self.__window = window
         self.__hex_contour, self.__counter_contour = Parser.__load_masks()
-        self.__black_digits = self.__load_digits('black')
-        self.__blue_digits = self.__load_digits('blue')
+        
+        if not training:
+            self.__black_hashes = Parser.__load_hashes('black')
+            self.__blue_hashes = Parser.__load_hashes('blue')
+            self.__counter_hashes = Parser.__load_hashes('counter')
 
     @property
     def window(self):
@@ -38,17 +46,10 @@ class Parser:
 
         return hex_contour[0], counter_contour[0]
 
-    @staticmethod
-    def __load_digits(digit_type):
-        path = '../resources/'+digit_type+'_digits/'
-        images, labels = [], []
-        for filename in os.listdir(path):
-            img = cv2.imread(path+filename, cv2.IMREAD_GRAYSCALE)
-            if img is not None:
-                images.append(img)
-                labels.append(filename.split('_')[0])
-                
-        return images, labels
+    @staticmethod 
+    def __load_hashes(digit_type):
+        with open('../resources/{}_hashes.pickle'.format(digit_type), 'rb') as file:
+            return pickle.load(file)
 
     def parse_grid(self):
         image = self.__window.screenshot()
@@ -84,7 +85,7 @@ class Parser:
             cell.grid_coords = (row, col)
             grid[row][col] = cell
 
-        _, remaining = self.__parse_counters(image)
+        _, remaining = self.parse_counters(image)
 
         scene = Grid(grid, cells, remaining)
         self.__parse_columns(image, scene)
@@ -101,7 +102,7 @@ class Parser:
                 cv2.matchShapes(contour, self.__hex_contour, 1, 0) < Parser.__hex_match_threshold):
                 x, y, w, h = cv2.boundingRect(contour)
 
-                x_crop, y_crop = round(w*0.2), round(h*0.2)
+                x_crop, y_crop = round(w*0.18), round(h*0.18)
 
                 cropped = image[y+y_crop:y+h-y_crop, x+x_crop:x+w-x_crop]
 
@@ -120,24 +121,26 @@ class Parser:
             return None
 
         thresh = cv2.cvtColor(np.where(image==cell_colour, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)
-        thresh = cv2.resize(thresh, Parser.__DIMS, interpolation=cv2.INTER_AREA)
-
-        if training:
-            return thresh
+        thresh = cv2.resize(thresh, Parser.__cell_dims, interpolation=cv2.INTER_AREA)
 
         if 0 not in thresh:
             return None
+        
+        hashed = average_hash(thresh, hash_size=16)
+                                        
+        if training:
+            return hashed
 
         if cell_colour == Cell.BLACK:
-            images, labels = self.__black_digits
+            hashes, labels = self.__black_hashes
         elif cell_colour == Cell.BLUE:
-            images, labels = self.__blue_digits
+            hashes, labels = self.__blue_hashes
         
-        similarities = [imagehash.average_hash(Image.fromarray(thresh), hash_size=16)-imagehash.average_hash(Image.fromarray(img), hash_size=16) for img in images]
+        similarities = [np.sum(hashed != h) for h in hashes]
         match = labels[np.argmin(similarities)]
-        print(match)
-        cv2.imshow('test', thresh)
-        cv2.waitKey(0)
+        #print(match)
+        #cv2.imshow('test', thresh)
+        #cv2.waitKey(0)
         
         return match
 
@@ -145,23 +148,41 @@ class Parser:
         mask = cv2.inRange(image, Cell.BLUE, Cell.BLUE)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        values = []
+        i = 0
+        parsed = [0]
         for contour in contours:
             if (cv2.contourArea(contour) > Parser.__area_threshold and
                 cv2.matchShapes(contour, self.__counter_contour, 1, 0) < Parser.__counter_match_threshold):
-                x, y, w, h = cv2.boundingRect(contour)
-                y = round(y+h*0.35)
-                h = round(h*0.65)
+                
+                i += 1
+                if i > 2:
+                    raise RuntimeError('counters parsed incorrectly')
+                
+                if i == 2:
+                    x, y, w, h = cv2.boundingRect(contour)
+                    y = round(y+h*0.35)
+                    h = round(h*0.65)
 
-                cropped = image[y: y+h, x: x+w]
-                thresh = cv2.cvtColor(np.where(cropped==Cell.BLUE, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)
+                    cropped = image[y: y+h, x: x+w]
+                    thresh = cv2.cvtColor(np.where(cropped==Cell.BLUE, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)
+                    thresh = cv2.resize(thresh, Parser.__counter_dims, interpolation=cv2.INTER_AREA)
+    
+                    hashed = average_hash(thresh, hash_size=32)
+    
+                    if training:
+                        parsed.append(hashed)
+                        
+                    else:
+                        hashes, labels = self.__counter_hashes
+                        similarities = [np.sum(hashed != h) for h in hashes]
+                        match = labels[np.argmin(similarities)]
+                        print(match)
+                        cv2.imshow('test', thresh)
+                        cv2.waitKey(0)
+                        
+                        parsed.append(match)
 
-                if training:
-                    values.append(thresh)
-                else:
-                    values.append(1)
-
-        return values
+        return parsed
 
     def __parse_columns(self, image, grid):
         _, thresh = cv2.threshold(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 100, 255, cv2.THRESH_BINARY_INV)
@@ -227,4 +248,4 @@ class Parser:
         else:
             raise RuntimeError('cell must be blue or black after click')
 
-        cell.digit = Parser.__parse_cell_digit(cropped, cell.colour)
+        cell.digit = self.__parse_cell_digit(cropped, cell.colour)

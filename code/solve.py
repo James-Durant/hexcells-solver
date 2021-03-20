@@ -6,7 +6,7 @@ class Solver:
     __GLPK_PATH = r'C:\Users\james\Documents\winglpk-4.65\glpk-4.65\w64\glpsol.exe'
     
     def __init__(self, parser):
-        self.__parser  = parser
+        self.__parser = parser
 
     def solve(self):
         self.__grid = self.__parser.parse_grid()
@@ -22,14 +22,14 @@ class Solver:
     
     def __setup_problem(self):
         self.__unknown = self.__grid.unknown_cells()
-        self.__known   = self.__grid.known_cells()
+        self.__known = self.__grid.known_cells()
         
-        self.__constraints()
-        self.__reps()
-        self.__classes()
-        self.__variables()
+        self.__get_constraints()
+        self.__get_reps()
+        self.__get_classes()
+        self.__get_variables()
         
-        self.__solver  = GLPK_CMD(path=Solver.__GLPK_PATH, msg=False, options=['--cuts'])
+        self.__solver = GLPK_CMD(path=Solver.__GLPK_PATH, msg=False, options=['--cuts'])
         self.__problem = LpProblem('HexcellsMILP', LpMinimize)
         
         self.__add_remaining_constraint()
@@ -43,7 +43,7 @@ class Solver:
     
     def __solve_single_step(self):   
         clicked_cells = []
-        true_class, false_class = self.__true_false_classes()
+        true_class, false_class = self.__get_true_false_classes()
         while true_class or false_class:
             true_sum  = lpSum(self.__get_var(true)  for true  in true_class)
             false_sum = lpSum(self.__get_var(false) for false in false_class)
@@ -61,15 +61,14 @@ class Solver:
                                 
                 return clicked_cells
             
-            true_new, false_new = self.__true_false_classes()
+            true_new, false_new = self.__get_true_false_classes()
 
             true_class  &= true_new
             false_class &= false_new
             
         raise RuntimeError('solver failed to finish puzzle')
     
-    def __constraints(self):
-        #Map unknown cells to all relevant constraints of known cells that they are a member of.
+    def __get_constraints(self):
         self.__constraints = {}
         for cell1 in self.__known:
             if cell1.digit != '?':
@@ -87,7 +86,7 @@ class Solver:
                 except:
                     self.__constraints[cell] = set([constraint])
     
-    def __reps(self):
+    def __get_reps(self):
         self.__rep_of = {}
         for cell1 in self.__unknown:
             if cell1 in self.__constraints:
@@ -102,36 +101,30 @@ class Solver:
                 if constraint.hint != 'normal':
                     self.__rep_of[cell] = cell
     
-    def __classes(self):
+    def __get_classes(self):
         self.__classes = {}
         for rep in self.__unknown:
             if self.__rep_of[rep] is rep:
                 self.__classes[rep] = sum(1 for cell in self.__unknown if self.__rep_of[cell] is rep)
     
-    def __variables(self):
+    def __get_variables(self):
         self.__variables = {}
         for rep, size in self.__classes.items():
             self.__variables[rep] = LpVariable(str(rep.grid_coords), 0, size, 'Integer')
     
     def __add_remaining_constraint(self):
-        self.__problem += lpSum(self.get_var(cell) for cell in self.__unknown) == self.__grid.remaining
+        self.__problem += lpSum(self.__get_var(cell) for cell in self.__unknown) == self.__grid.remaining
     
     def __add_column_constraints(self):
-        # Constraints from column number information
         for constraint in self.__grid.constraints:
-            # The sum of all cells in that column is the column value
             self.__problem += lpSum(self.get_var(cell) for cell in constraint.members) == constraint.size
             
-            # Additional information (together/seperated) available?
             if constraint.hint == 'consecutive':
-                # For {n}: cells that are at least n appart cannot be both blue.
-                # Example: For {3}, the configurations X??X, X???X, X????X, ... are impossible.
                 for span in range(constraint.size, len(constraint.members)):
                     for start in range(len(constraint.members)-span):
                         self.__problem += lpSum([self.__get_var(constraint.members[start]), self.__get_var(constraint.members[start+span])]) <= 1
                         
             elif constraint.hint == 'non-consecutive':
-                # For -n-, the sum of any range of n cells may contain at most n-1 blues
                 for offset in range(len(constraint.members)-constraint.size+1):
                     self.__problem += lpSum(self.__get_var(constraint.members[offset+i]) for i in range(constraint.size)) <= constraint.size-1
     
