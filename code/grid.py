@@ -138,6 +138,7 @@ class Grid:
             if row != self.__rows-1:
                 return_str = return_str + '_'*self.__cols*5 + '\n'
                 
+        return_str = return_str + 'Remaining: ' + str(self.remaining) + '\n'      
         return return_str
 
 class Cell:

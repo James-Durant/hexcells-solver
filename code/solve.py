@@ -1,6 +1,5 @@
 from pulp import GLPK_CMD, LpProblem, LpMinimize, LpVariable, lpSum, value
 from parse import Cell
-import time
 
 class Solver:
     __GLPK_PATH = r'C:\Users\james\Documents\winglpk-4.65\glpk-4.65\w64\glpsol.exe'
@@ -13,14 +12,18 @@ class Solver:
         
         while True:
             self.__setup_problem()
-            clicked_cells = self.__solve_single_step()
-            if len(clicked_cells)-len(self.__grid.unknown_cells()) == 0:
+            left_click_cells, right_click_cells = self.__solve_single_step()
+            if len(left_click_cells)+len(right_click_cells)-len(self.__unknown) == 0:
+                for cell in left_click_cells:
+                    self.__parser.window.click_cell(cell, 'left')
+                for cell in right_click_cells:
+                    self.__parser.window.click_cell(cell, 'right')
                 break
-        
-            time.sleep(1)
-            self.__grid.remaining = self.__parser.parse_clicked_cells(clicked_cells)
+                
+            self.__grid.remaining = self.__parser.parse_clicked_cells(left_click_cells, right_click_cells)
     
     def __setup_problem(self):
+        print(self.__grid)
         self.__unknown = self.__grid.unknown_cells()
         self.__known = self.__grid.known_cells()
         
@@ -42,24 +45,26 @@ class Solver:
         self.__problem.solve(self.__solver)
     
     def __solve_single_step(self):   
-        clicked_cells = []
+        left_click_cells, right_click_cells = [], []
         true_class, false_class = self.__get_true_false_classes()
         while true_class or false_class:
-            true_sum  = lpSum(self.__get_var(true)  for true  in true_class)
+            true_sum  = lpSum(self.__get_var(true) for true in true_class)
             false_sum = lpSum(self.__get_var(false) for false in false_class)
             
             self.__problem.setObjective(true_sum-false_sum)
             self.__problem.solve(self.__solver)
             
             if value(self.__problem.objective) == sum(self.__classes[rep] for rep in true_class):
-                for tf_set, kind in [(true_class, "left"), (false_class, "right")]:
+                for tf_set, kind in [(true_class, 'left'), (false_class, 'right')]:
                     for rep in tf_set:
                         for cell in self.__unknown:
                             if self.__rep_of[cell] is rep:
-                                self.__parser.window.click_cell(cell, kind)
-                                clicked_cells.append(cell)
+                                if kind == 'left':
+                                    left_click_cells.append(cell)
+                                elif kind == 'right':
+                                    right_click_cells.append(cell)
                                 
-                return clicked_cells
+                return left_click_cells, right_click_cells
             
             true_new, false_new = self.__get_true_false_classes()
 

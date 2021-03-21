@@ -1,5 +1,5 @@
 import numpy as np
-import cv2, pickle
+import cv2, pickle, time
 
 from PIL import Image
 
@@ -69,10 +69,16 @@ class Parser:
         y_min, y_max = np.min(ys), np.max(ys)
         self.__hex_width  = int(np.median(widths))
         self.__hex_height = int(np.median(heights))
-
+        
         x_spacing = self.__hex_width*1.085
-        y_spacing = self.__hex_height*0.70
-
+        
+        print(self.__hex_height)
+        
+        if self.__hex_height > 70:
+            y_spacing = self.__hex_height*0.70
+        else:
+            y_spacing = self.__hex_height*0.72
+            
         cols = int(round((x_max - x_min) / x_spacing) + 1)
         rows = int(round((y_max - y_min) / y_spacing) + 1)
 
@@ -80,6 +86,7 @@ class Parser:
 
         for cell in cells:
             x, y = cell.image_coords
+            
             col = int(round((x - x_min) / x_spacing))
             row = int(round((y - y_min) / y_spacing))
             cell.grid_coords = (row, col)
@@ -88,7 +95,7 @@ class Parser:
         _, remaining = self.parse_counters(image)
 
         scene = Grid(grid, cells, remaining)
-        self.__parse_columns(image, scene)
+        #self.__parse_columns(image, scene)
 
         return scene
 
@@ -101,9 +108,8 @@ class Parser:
             if (cv2.contourArea(contour) > Parser.__area_threshold and
                 cv2.matchShapes(contour, self.__hex_contour, 1, 0) < Parser.__hex_match_threshold):
                 x, y, w, h = cv2.boundingRect(contour)
-
+                
                 x_crop, y_crop = round(w*0.18), round(h*0.18)
-
                 cropped = image[y+y_crop:y+h-y_crop, x+x_crop:x+w-x_crop]
 
                 parsed = self.__parse_cell_digit(cropped, cell_colour, training)
@@ -123,10 +129,10 @@ class Parser:
         thresh = cv2.cvtColor(np.where(image==cell_colour, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)
         thresh = cv2.resize(thresh, Parser.__cell_dims, interpolation=cv2.INTER_AREA)
 
-        if 0 not in thresh:
+        if np.count_nonzero(thresh==0) < 20:
             return None
         
-        hashed = average_hash(thresh, hash_size=16)
+        hashed = average_hash(thresh, hash_size=32)
                                         
         if training:
             return hashed
@@ -167,7 +173,7 @@ class Parser:
                     thresh = cv2.cvtColor(np.where(cropped==Cell.BLUE, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)
                     thresh = cv2.resize(thresh, Parser.__counter_dims, interpolation=cv2.INTER_AREA)
     
-                    hashed = average_hash(thresh, hash_size=32)
+                    hashed = average_hash(thresh, hash_size=64)
     
                     if training:
                         parsed.append(hashed)
@@ -176,9 +182,9 @@ class Parser:
                         hashes, labels = self.__counter_hashes
                         similarities = [np.sum(hashed != h) for h in hashes]
                         match = labels[np.argmin(similarities)]
-                        print(match)
-                        cv2.imshow('test', thresh)
-                        cv2.waitKey(0)
+                        #print(match)
+                        #cv2.imshow('test', thresh)
+                        #cv2.waitKey(0)
                         
                         parsed.append(match)
 
@@ -226,9 +232,25 @@ class Parser:
             row, col = nearest_cell.grid_coords
             grid.add_constraint(row, col, digit, angle)
 
-    def parse_clicked_cells(self, clicked_cells):
+    def parse_clicked_cells(self, left_click_cells, right_click_cells):
+        for cell in left_click_cells:
+            self.__window.click_cell(cell, 'left')
+          
+        time.sleep(0.1)
+            
         image = self.__window.screenshot()
-        for cell in clicked_cells:
+        for cell in left_click_cells:   
+            self.__parse_clicked_cell(image, cell)
+
+        for cell in right_click_cells:
+            self.__window.click_cell(cell, 'right')
+            
+        right_click_cells.sort(key=lambda cell: tuple(reversed(cell.grid_coords)))
+        
+        time.sleep(2)
+        
+        image = self.__window.screenshot()
+        for cell in right_click_cells:   
             self.__parse_clicked_cell(image, cell)
 
         _, remaining = self.parse_counters(image)
@@ -239,7 +261,9 @@ class Parser:
 
         x1, x2  = cx-w//2, cx+w//2
         y1, y2  = cy-h//2, cy+h//2
-        cropped = image[y1+10: y2-10, x1+10: x2-10]
+        
+        x_crop, y_crop = round(w*0.18), round(h*0.18)
+        cropped = image[y1+y_crop:y2-y_crop, x1+x_crop:x2-x_crop]
 
         if np.count_nonzero(cropped == Cell.BLACK) > 10:
             cell.colour = Cell.BLACK
