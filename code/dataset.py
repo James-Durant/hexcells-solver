@@ -29,7 +29,7 @@ class Generator:
         self.__reset_resolution()
 
         hashes, labels = [], []
-        for resolution in Generator.__RESOLUTIONS:
+        for resolution in [Generator.__RESOLUTIONS[0]]:
             Popen([Generator.__HEXCELLS_PATH], shell=True,
                   stdin=None, stdout=None, stderr=None, close_fds=True)
 
@@ -85,20 +85,47 @@ class Generator:
             labels = list(range(0, 19))
 
         else:
-            raise RuntimeError('invalid digit type')
+            if digit_type == 'column':
+                labels = ['1', '{1}', '2', '{2}', '3', '{3}', '4', '{7}', '7',
+                          '{4}', '{0}', '0', '5', '{8}', '{5}', '8', '-2-',
+                          '-3-', '-4-', '11', '-5-', '6', '{9}', '{11}', '9',
+                          '{6}', '-6-', '-7-', '-8-', '12', '{13}', '-9-', 
+                          '13', '{12}', '-10-', '-11-', '-12-', '{14}', '-13-',
+                          '14', '15', '{15}', '-14-', '16', '{16}', '-15-']
+    
+            elif digit_type == 'diagonal_normal':
+                labels = ['0', '0', '1', '16', '2', '3', '15','4', '5', '14', 
+                          '6', '7', '13', '8', '9', '12', '10', '11', '11', 
+                          '12', '13', '10', '14', '15', '9', '16', '8', '7', 
+                          '6', '5', '4', '3', '2', '1']
+                
+            elif digit_type == 'diagonal_consecutive':
+                labels = ['{0}', '{0}', '{1}', '{16}', '{2}', '{3}', '{15}',
+                          '{4}', '{5}', '{14}', '{6}', '{7}', '{13}', '{8}', 
+                          '{9}', '{12}', '{10}', '{11}', '{11}', '{12}', 
+                          '{13}', '{10}', '{14}', '{15}', '{9}', '{16}', '{8}', 
+                          '{7}', '{6}', '{5}', '{4}', '{3}', '{2}', '{1}']
+                
+            elif digit_type == 'diagonal_non-consecutive':
+                labels = []
+                
+            else:
+                raise RuntimeError('invalid digit type')
+                
+            parser = Parser(game_window, training=False)
+            hashes = parser.parse_grid(training=True)
             
         return hashes, labels
 
 if __name__ == "__main__":
     generator = Generator()
-    generator.make_dataset('black')
-    generator.make_dataset('blue')
-    generator.make_dataset('counter')
+    #generator.make_dataset('black')
+    #generator.make_dataset('blue')
+    #generator.make_dataset('counter')
+    generator.make_dataset('column')
 
 """
 def make_grid_normal_diag_dataset(parser, save_path):
-    if not os.path.exists(save_path):
-        os.mkdir(save_path)
 
     digits = ['0_left',   '0_right',  '1_left',   '16_right', '2_left',   '3_left',   '15_right',
               '4_left',   '5_left',   '14_right', '6_left',   '7_left',   '13_right', '8_left',
@@ -106,8 +133,7 @@ def make_grid_normal_diag_dataset(parser, save_path):
               '10_right', '14_left',  '15_left',  '9_right',  '16_left',  '8_right',  '7_right',
               '6_right',  '5_right',  '4_right',  '3_right',  '2_right',  '1_right']
 
-    save_paths = [save_path+'/grid_{}.png'.format(digit) for digit in digits]
-    parser.parse_grid(save_paths)
+
 
 def make_grid_consecutive_diag_dataset(parser, save_path):
     if not os.path.exists(save_path):

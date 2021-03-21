@@ -51,12 +51,12 @@ class Parser:
         with open('../resources/{}_hashes.pickle'.format(digit_type), 'rb') as file:
             return pickle.load(file)
 
-    def parse_grid(self):
+    def parse_grid(self, training=False):
         image = self.__window.screenshot()
 
         blue_cells = self.parse_cells(image, Cell.BLUE)
         black_cells = self.parse_cells(image, Cell.BLACK)
-        orange_cells = self.parse_cells(image, Cell.ORANGE)
+        orange_cells = self.parse_cells(image, Cell.ORANGE_OLD if training else Cell.ORANGE)
 
         cells = blue_cells + black_cells + orange_cells
 
@@ -71,8 +71,6 @@ class Parser:
         self.__hex_height = int(np.median(heights))
         
         x_spacing = self.__hex_width*1.085
-        
-        print(self.__hex_height)
         
         if self.__hex_height > 70:
             y_spacing = self.__hex_height*0.70
@@ -95,9 +93,9 @@ class Parser:
         _, remaining = self.parse_counters(image)
 
         scene = Grid(grid, cells, remaining)
-        #self.__parse_columns(image, scene)
+        parsed = self.__parse_columns(image, scene, training=training)
 
-        return scene
+        return parsed if training else scene
 
     def parse_cells(self, image, cell_colour, training=False):
         mask = cv2.inRange(image, cell_colour, cell_colour)
@@ -144,9 +142,9 @@ class Parser:
         
         similarities = [np.sum(hashed != h) for h in hashes]
         match = labels[np.argmin(similarities)]
-        #print(match)
-        #cv2.imshow('test', thresh)
-        #cv2.waitKey(0)
+        print(match)
+        cv2.imshow('test', thresh)
+        cv2.waitKey(0)
         
         return match
 
@@ -190,48 +188,6 @@ class Parser:
 
         return parsed
 
-    def __parse_columns(self, image, grid):
-        _, thresh = cv2.threshold(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 100, 255, cv2.THRESH_BINARY_INV)
-        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        rects = []
-        for contour in contours:
-            if cv2.matchShapes(contour, self.__hex_contour, 1, 0) > Parser.__hex_match_threshold:
-                x, y, w, h = cv2.boundingRect(contour)
-                rects += [(x,y,w,h), (x,y,w,h)]
-
-        bounding_boxes, _ = cv2.groupRectangles(rects, 1, 1.5)
-        for x, y, w, h in bounding_boxes:
-            box_coords = np.asarray([x + w//2, y + h//2])
-            nearest_cell = grid.nearest_cell(box_coords)
-            nearest_coords = nearest_cell.image_coords
-
-            delta_x = box_coords[0] - nearest_coords[0]
-            delta_y = nearest_coords[1] - box_coords[1]
-            theta = 90 - (180 / np.pi * np.arctan2(delta_y, delta_x))
-            angle = Parser.__angles[np.argmin(np.abs(Parser.__angles-theta))]
-
-            cropped = image[y-10: y+h+10, x-15: x+w+15]
-
-            cv2.imshow('test', cropped)
-            cv2.waitKey(0)
-
-            centre  = (w//2 + 15, h//2 + 10)
-            rot_mat = cv2.getRotationMatrix2D(centre, angle, 1.0)
-            rotated = cv2.warpAffine(cropped, rot_mat, cropped.shape[1::-1],
-                                     flags=cv2.INTER_LINEAR, borderValue=(255,255,255))
-
-            _, thresh = cv2.threshold(cv2.cvtColor(rotated, cv2.COLOR_BGR2GRAY), 200, 255, cv2.THRESH_BINARY)
-
-            lang = 'eng'
-            config = '--psm 6 -c tessedit_char_whitelist=0123456789{}-'
-
-            digit_str = pytesseract.image_to_string(thresh, lang=lang, config=config)
-            digit = digit_str.split('\n')[0]
-
-            row, col = nearest_cell.grid_coords
-            grid.add_constraint(row, col, digit, angle)
-
     def parse_clicked_cells(self, left_click_cells, right_click_cells):
         for cell in left_click_cells:
             self.__window.click_cell(cell, 'left')
@@ -247,7 +203,7 @@ class Parser:
             
         right_click_cells.sort(key=lambda cell: tuple(reversed(cell.grid_coords)))
         
-        time.sleep(2)
+        time.sleep(1.5)
         
         image = self.__window.screenshot()
         for cell in right_click_cells:   
@@ -273,3 +229,72 @@ class Parser:
             raise RuntimeError('cell must be blue or black after click')
 
         cell.digit = self.__parse_cell_digit(cropped, cell.colour)
+        
+    def __parse_columns(self, image, grid, training=False):
+        _, thresh = cv2.threshold(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 100, 255, cv2.THRESH_BINARY_INV)
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+
+        #Fix merging of rects
+            
+        rects = [cv2.boundingRect(contour) for contour in contours]
+        bounding_boxes = []
+        while rects:
+            x, y, w, h = rects.pop()
+            for 
+            
+        parsed = []
+           
+        for x, y, w, h in bounding_boxes:
+            cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255))
+        
+        cv2.imshow('test', image)
+        cv2.waitKey(0)
+        exit()
+        
+        for x, y, w, h in bounding_boxes:
+            box_coords = np.asarray([x + w//2, y + h//2])
+            nearest_cell = grid.nearest_cell(box_coords)
+            nearest_coords = nearest_cell.image_coords
+
+            delta_x = box_coords[0] - nearest_coords[0]
+            delta_y = nearest_coords[1] - box_coords[1]
+            theta = 90 - (180 / np.pi * np.arctan2(delta_y, delta_x))
+            angle = Parser.__angles[np.argmin(np.abs(Parser.__angles-theta))]
+
+            cropped = thresh[y-10: y+h+10, x-15: x+w+15]
+
+            centre  = (w//2 + 15, h//2 + 10)
+            rot_mat = cv2.getRotationMatrix2D(centre, angle, 1.0)
+            rotated = cv2.warpAffine(cropped, rot_mat, cropped.shape[1::-1],
+                                     flags=cv2.INTER_LINEAR, borderValue=(0, 0, 0))
+
+            digit = self.__parse_column_digit(255-rotated, training)
+            if training:
+                parsed.append(digit)
+            else:
+                row, col = nearest_cell.grid_coords
+                grid.add_constraint(row, col, digit, angle)
+        
+        return parsed
+            
+    def __parse_column_digit(self, image, training=False):
+        thresh = cv2.resize(image, (50, 50), interpolation=cv2.INTER_AREA)
+
+        cv2.imshow('test', thresh)
+        cv2.waitKey(0)
+
+        if np.count_nonzero(thresh==0) < 20:
+            return None
+        
+        hashed = average_hash(thresh, hash_size=32)
+                                        
+        if training:
+            return hashed
+
+        hashes, labels = self.__column_hashes
+        
+        similarities = [np.sum(hashed != h) for h in hashes]
+        match = labels[np.argmin(similarities)]
+        
+        return match
