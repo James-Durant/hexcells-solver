@@ -20,7 +20,7 @@ class Parser:
     __angles = np.asarray([-60, 0, 60])
     __cell_dims = (65, 60)
     __counter_dims = (200, 50)
-    __grid_dims = (50, 55)
+    __grid_dims = (60, 55)
 
     def __init__(self, window, load_counter_hex_digits=True, load_grid_digits=True):
         self.__window = window
@@ -33,14 +33,12 @@ class Parser:
           
         if load_grid_digits:
             grid_hashes, grid_labels = [], []
-            for digit_type in ['column', 'diag_normal', 'diag_consecutive', 'diag_non-consecutive']:
+            for digit_type in ['column']: #'diag_normal', 'diag_consecutive', 'diag_non-consecutive']:
                 hashes, labels = Parser.__load_hashes(digit_type)
-                
-                print(np.array(hashes).shape)
-                grid_hashes.append(np.array(hashes))
-                grid_labels.append(np.array(labels))
+                grid_hashes += hashes
+                grid_labels += labels
             
-            self.__grid_data = (np.concatenate(grid_hashes), np.concatenate(grid_labels))
+            self.__grid_data = (grid_hashes, grid_labels)
 
     @property
     def window(self):
@@ -327,7 +325,10 @@ class Parser:
         if np.count_nonzero(thresh==0) < 20:
             return None
         
-        hashed = average_hash(thresh, hash_size=32)
+        #cv2.imshow('test', thresh)
+        #cv2.waitKey(0)
+        
+        hashed = average_hash(thresh, hash_size=64)
                                         
         if training:
             return hashed
