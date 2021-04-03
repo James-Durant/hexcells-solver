@@ -29,7 +29,7 @@ class Generator:
         self.__reset_resolution()
 
         hashes, labels = [], []
-        for resolution in [Generator.__RESOLUTIONS[0]]:
+        for resolution in Generator.__RESOLUTIONS:
             Popen([Generator.__HEXCELLS_PATH], shell=True,
                   stdin=None, stdout=None, stderr=None, close_fds=True)
 

@@ -233,25 +233,35 @@ class Parser:
     def __parse_columns(self, image, grid, training=False):
         _, thresh = cv2.threshold(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 100, 255, cv2.THRESH_BINARY_INV)
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-
-        #Fix merging of rects
-            
         rects = [cv2.boundingRect(contour) for contour in contours]
+        
         bounding_boxes = []
         while rects:
-            x, y, w, h = rects.pop()
-            for 
+            x1, y1, w1, h1 = rects.pop()
+            to_merge = [(x1, y1, w1, h1)]
+            i = 0
+            while i < len(rects):
+                x2, y2, w2, h2 = rects[i]
+                if abs(x1-x2) < self.__hex_width and abs(y1-y2) < self.__hex_height*0.5:
+                    to_merge.append((x2, y2, w2, h2))
+                    del rects[i]
+                else:
+                    i += 1
             
-        parsed = []
+            to_merge = np.asarray(to_merge)
+            x = to_merge[:,0].min()
+            y = to_merge[:,1].min()
+            w = to_merge[:,0].max() - x + to_merge[np.argmax(to_merge[:,0])][2]
+            h = to_merge[:,3].max()
+            bounding_boxes.append((x, y, w, h))
            
         for x, y, w, h in bounding_boxes:
             cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255))
         
         cv2.imshow('test', image)
         cv2.waitKey(0)
-        exit()
         
+        parsed = []
         for x, y, w, h in bounding_boxes:
             box_coords = np.asarray([x + w//2, y + h//2])
             nearest_cell = grid.nearest_cell(box_coords)
@@ -262,7 +272,7 @@ class Parser:
             theta = 90 - (180 / np.pi * np.arctan2(delta_y, delta_x))
             angle = Parser.__angles[np.argmin(np.abs(Parser.__angles-theta))]
 
-            cropped = thresh[y-10: y+h+10, x-15: x+w+15]
+            cropped = thresh[y-5: y+h+5, x-5: x+w+5]
 
             centre  = (w//2 + 15, h//2 + 10)
             rot_mat = cv2.getRotationMatrix2D(centre, angle, 1.0)
@@ -279,7 +289,7 @@ class Parser:
         return parsed
             
     def __parse_column_digit(self, image, training=False):
-        thresh = cv2.resize(image, (50, 50), interpolation=cv2.INTER_AREA)
+        thresh = cv2.resize(image, (60, 50), interpolation=cv2.INTER_AREA)
 
         cv2.imshow('test', thresh)
         cv2.waitKey(0)
