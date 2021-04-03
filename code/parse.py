@@ -1,5 +1,5 @@
 import numpy as np
-import cv2, pickle, time
+import cv2, os, pickle, time
 
 from PIL import Image
 
@@ -20,15 +20,24 @@ class Parser:
     __angles = np.asarray([-60, 0, 60])
     __cell_dims = (65, 60)
     __counter_dims = (200, 50)
+    __grid_dims = (50, 55)
 
     def __init__(self, window, training=False):
         self.__window = window
         self.__hex_contour, self.__counter_contour = Parser.__load_masks()
         
         if not training:
-            self.__black_hashes = Parser.__load_hashes('black')
-            self.__blue_hashes = Parser.__load_hashes('blue')
-            self.__counter_hashes = Parser.__load_hashes('counter')
+            self.__black_data = Parser.__load_hashes('black')
+            self.__blue_data = Parser.__load_hashes('blue')
+            self.__counter_data = Parser.__load_hashes('counter')
+            
+            grid_hashes, grid_labels = [], []
+            for digit_type in ['counter', 'diag_normal', 'diag_consecutive', 'diag_non-consecutive']:
+                hashes, labels = Parser.__load_hashes(digit_type)
+                grid_hashes.append(hashes)
+                grid_labels.append(labels)
+            
+            self.__grid_data = (np.concatenate(grid_hashes), np.concatenate(grid_labels))
 
     @property
     def window(self):
@@ -48,7 +57,8 @@ class Parser:
 
     @staticmethod 
     def __load_hashes(digit_type):
-        with open('../resources/{}_hashes.pickle'.format(digit_type), 'rb') as file:
+        path = os.path.join('../resources', digit_type, 'hashes.pickle')
+        with open(path, 'rb') as file:
             return pickle.load(file)
 
     def parse_grid(self, training=False):
@@ -136,9 +146,9 @@ class Parser:
             return hashed
 
         if cell_colour == Cell.BLACK:
-            hashes, labels = self.__black_hashes
+            hashes, labels = self.__black_data
         elif cell_colour == Cell.BLUE:
-            hashes, labels = self.__blue_hashes
+            hashes, labels = self.__blue_data
         
         similarities = [np.sum(hashed != h) for h in hashes]
         match = labels[np.argmin(similarities)]
@@ -177,12 +187,12 @@ class Parser:
                         parsed.append(hashed)
                         
                     else:
-                        hashes, labels = self.__counter_hashes
+                        hashes, labels = self.__counter_data
                         similarities = [np.sum(hashed != h) for h in hashes]
                         match = labels[np.argmin(similarities)]
-                        #print(match)
-                        #cv2.imshow('test', thresh)
-                        #cv2.waitKey(0)
+                        print(match)
+                        cv2.imshow('test', thresh)
+                        cv2.waitKey(0)
                         
                         parsed.append(match)
 
@@ -291,7 +301,7 @@ class Parser:
             rotated = cv2.warpAffine(cropped, rot_mat, cropped.shape[1::-1],
                                      flags=cv2.INTER_LINEAR, borderValue=(0, 0, 0))
 
-            digit = self.__parse_column_digit(255-rotated, training)
+            digit = self.__parse_grid_digit(255-rotated, training)
             if training:
                 parsed.append(digit)
             else:
@@ -300,8 +310,8 @@ class Parser:
         
         return parsed
             
-    def __parse_column_digit(self, image, training=False):
-        thresh = cv2.resize(image, (50, 55), interpolation=cv2.INTER_AREA)
+    def __parse_grid_digit(self, image, training=False):
+        thresh = cv2.resize(image, Parser.__grid_dims, interpolation=cv2.INTER_AREA)
 
         #cv2.imshow('test', thresh)
         #cv2.waitKey(0)
@@ -314,7 +324,7 @@ class Parser:
         if training:
             return hashed
 
-        hashes, labels = self.__column_hashes
+        hashes, labels = self.__grid_data
         
         similarities = [np.sum(hashed != h) for h in hashes]
         match = labels[np.argmin(similarities)]

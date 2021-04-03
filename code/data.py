@@ -1,4 +1,4 @@
-import time, pickle
+import time, os, pickle
 
 from subprocess import Popen
 
@@ -26,6 +26,7 @@ class Generator:
         game_window.close()
 
     def make_dataset(self, digit_type):
+        save_path = os.path.join(self.__save_path, digit_type)
         self.__reset_resolution()
 
         hashes, labels = [], []
@@ -40,7 +41,7 @@ class Generator:
 
             time.sleep(1)
 
-            level_path = self.__save_path+'/{}_level.hexcells'.format(digit_type)
+            level_path = os.path.join(save_path, 'level.hexcells')
             game_window = GameWindow('Hexcells Infinite')
             game_window.load_custom_level(level_path)
             game_window.move_mouse()
@@ -53,7 +54,7 @@ class Generator:
 
             game_window.close()
         
-        with open('../resources/{}_hashes.pickle'.format(digit_type), 'wb') as file:
+        with open(os.path.join(save_path, 'hashes.pickle'), 'wb') as file:
             pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
 
     def __parse_digits(self, game_window, digit_type, resolution):
@@ -94,20 +95,20 @@ class Generator:
                           '{4}', '7', '{7}', '4', '{3}', '3', '{2}', '2',
                           '{1}', '1']
     
-            elif digit_type == 'diagonal_normal':
+            elif digit_type == 'diag_normal':
                 labels = ['16', '0', '0', '1', '2', '15', '3', '4', '14', '5', 
                           '6', '13', '7', '8', '12', '9', '10', '11', '11', 
                           '12', '10', '13', '14', '15', '9', '16', '8', '7', 
                           '6', '5', '4', '3', '2', '1']
                 
-            elif digit_type == 'diagonal_consecutive':
+            elif digit_type == 'diag_consecutive':
                 labels = ['{16}', '{0}', '{0}', '{1}', '{2}', '{15}', '{3}', 
                           '{4}', '{14}', '{5}',  '{6}', '{13}', '{7}',  '{8}', 
                           '{12}', '{9}',  '{10}', '{11}', '{11}', '{12}', 
                           '{13}', '{10}', '{14}', '{15}', '{9}', '{16}', '{8}', 
                           '{7}', '{6}', '{5}', '{4}', '{3}', '{2}', '{1}']
                 
-            elif digit_type == 'diagonal_non-consecutive':
+            elif digit_type == 'diag_non-consecutive':
                 labels = ['-16-', '-2-', '-3-', '-15-', '-4-', '-5-', '-14-',
                           '-6-', '-7-', '-13-', '-8-', '-9-', '-10-', '-12-',
                           '-11-', '-12-', '-11-', '-13-', '-14-', '-10-',
@@ -127,7 +128,7 @@ if __name__ == "__main__":
     #generator.make_dataset('black')
     #generator.make_dataset('blue')
     #generator.make_dataset('counter')
-    generator.make_dataset('column')
-    #generator.make_dataset('diagonal_normal')
-    #generator.make_dataset('diagonal_consecutive')
-    #generator.make_dataset('diagonal_non-consecutive')
+    #generator.make_dataset('column')
+    #generator.make_dataset('diag_normal')
+    #generator.make_dataset('diag_consecutive')
+    #generator.make_dataset('diag_non-consecutive')
