@@ -2,7 +2,7 @@ from pulp import GLPK_CMD, LpProblem, LpMinimize, LpVariable, lpSum, value
 from parse import Cell
 
 class Solver:
-    __GLPK_PATH = r'C:\Users\james\Documents\winglpk-4.65\glpk-4.65\w64\glpsol.exe'
+    __GLPK_PATH = '../resources/winglpk-4.65/glpk-4.65/w64/glpsol.exe'
     
     def __init__(self, parser):
         self.__parser = parser
@@ -122,7 +122,7 @@ class Solver:
     
     def __add_column_constraints(self):
         for constraint in self.__grid.constraints:
-            self.__problem += lpSum(self.get_var(cell) for cell in constraint.members) == constraint.size
+            self.__problem += lpSum(self.__get_var(cell) for cell in constraint.members) == constraint.size
             
             if constraint.hint == 'consecutive':
                 for span in range(constraint.size, len(constraint.members)):

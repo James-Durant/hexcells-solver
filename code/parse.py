@@ -22,20 +22,23 @@ class Parser:
     __counter_dims = (200, 50)
     __grid_dims = (50, 55)
 
-    def __init__(self, window, training=False):
+    def __init__(self, window, load_counter_hex_digits=True, load_grid_digits=True):
         self.__window = window
         self.__hex_contour, self.__counter_contour = Parser.__load_masks()
         
-        if not training:
+        if load_counter_hex_digits:
             self.__black_data = Parser.__load_hashes('black')
             self.__blue_data = Parser.__load_hashes('blue')
             self.__counter_data = Parser.__load_hashes('counter')
-            
+          
+        if load_grid_digits:
             grid_hashes, grid_labels = [], []
-            for digit_type in ['counter', 'diag_normal', 'diag_consecutive', 'diag_non-consecutive']:
+            for digit_type in ['column', 'diag_normal', 'diag_consecutive', 'diag_non-consecutive']:
                 hashes, labels = Parser.__load_hashes(digit_type)
-                grid_hashes.append(hashes)
-                grid_labels.append(labels)
+                
+                print(np.array(hashes).shape)
+                grid_hashes.append(np.array(hashes))
+                grid_labels.append(np.array(labels))
             
             self.__grid_data = (np.concatenate(grid_hashes), np.concatenate(grid_labels))
 
@@ -75,8 +78,8 @@ class Parser:
         xs = [cell.image_coords[0] for cell in cells]
         ys = [cell.image_coords[1] for cell in cells]
 
-        x_min, x_max = np.min(xs), np.max(xs)
-        y_min, y_max = np.min(ys), np.max(ys)
+        self.__x_min, self.__x_max = np.min(xs), np.max(xs)
+        self.__y_min, self.__y_max = np.min(ys), np.max(ys)
         self.__hex_width  = int(np.median(widths))
         self.__hex_height = int(np.median(heights))
         
@@ -87,16 +90,16 @@ class Parser:
         else:
             y_spacing = self.__hex_height*0.72
             
-        cols = int(round((x_max - x_min) / x_spacing) + 1)
-        rows = int(round((y_max - y_min) / y_spacing) + 1)
+        cols = int(round((self.__x_max - self.__x_min) / x_spacing) + 1)
+        rows = int(round((self.__y_max - self.__y_min) / y_spacing) + 1)
 
         grid = [[None]*cols for _ in range(rows)]
 
         for cell in cells:
             x, y = cell.image_coords
             
-            col = int(round((x - x_min) / x_spacing))
-            row = int(round((y - y_min) / y_spacing))
+            col = int(round((x - self.__x_min) / x_spacing))
+            row = int(round((y - self.__y_min) / y_spacing))
             cell.grid_coords = (row, col)
             grid[row][col] = cell
 
@@ -152,9 +155,9 @@ class Parser:
         
         similarities = [np.sum(hashed != h) for h in hashes]
         match = labels[np.argmin(similarities)]
-        print(match)
-        cv2.imshow('test', thresh)
-        cv2.waitKey(0)
+        #print(match)
+        #cv2.imshow('test', thresh)
+        #cv2.waitKey(0)
         
         return match
 
@@ -190,9 +193,10 @@ class Parser:
                         hashes, labels = self.__counter_data
                         similarities = [np.sum(hashed != h) for h in hashes]
                         match = labels[np.argmin(similarities)]
-                        print(match)
-                        cv2.imshow('test', thresh)
-                        cv2.waitKey(0)
+                        
+                        #print(match)
+                        #cv2.imshow('test', thresh)
+                        #cv2.waitKey(0)
                         
                         parsed.append(match)
 
@@ -240,8 +244,7 @@ class Parser:
 
         cell.digit = self.__parse_cell_digit(cropped, cell.colour)
         
-    def __merge_contours(self, contours):
-        rects = [cv2.boundingRect(contour) for contour in contours]
+    def __merge_rects(self, rects):
         rects.sort(key=lambda x: x[0])
         
         bounding_boxes = []
@@ -272,13 +275,21 @@ class Parser:
         _, thresh = cv2.threshold(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 100, 255, cv2.THRESH_BINARY_INV)
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        bounding_boxes = self.__merge_contours(contours)
+        rects = []
+        for contour in contours:
+            if cv2.contourArea(contour) < 1000:
+                rect = cv2.boundingRect(contour)
+                if (self.__x_min-2*self.__hex_width < rect[0] <  self.__x_max+2*self.__hex_width and
+                    self.__y_min-2*self.__hex_height < rect[1] < self.__y_max+self.__hex_height):
+                    rects.append(rect)
+                    
+        bounding_boxes = self.__merge_rects(rects)
 
-        for x, y, w, h in bounding_boxes:
-            cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255))
+        #for x, y, w, h in bounding_boxes:
+        #    cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255))
         
-        cv2.imshow('test', image)
-        cv2.waitKey(0)
+        #cv2.imshow('test', image)
+        #cv2.waitKey(0)
         
         parsed = []
         for x, y, w, h in bounding_boxes:
@@ -313,9 +324,6 @@ class Parser:
     def __parse_grid_digit(self, image, training=False):
         thresh = cv2.resize(image, Parser.__grid_dims, interpolation=cv2.INTER_AREA)
 
-        #cv2.imshow('test', thresh)
-        #cv2.waitKey(0)
-
         if np.count_nonzero(thresh==0) < 20:
             return None
         
@@ -328,5 +336,9 @@ class Parser:
         
         similarities = [np.sum(hashed != h) for h in hashes]
         match = labels[np.argmin(similarities)]
+        
+        print(match)
+        cv2.imshow('test', thresh)
+        cv2.waitKey(0)
         
         return match

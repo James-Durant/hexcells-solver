@@ -59,7 +59,7 @@ class Generator:
 
     def __parse_digits(self, game_window, digit_type, resolution):
         screenshot = game_window.screenshot()
-        parser = Parser(game_window, training=True)
+        parser = Parser(game_window, load_counter_hex_digits=False, load_grid_digits=False)
 
         hashes = []
         if digit_type == 'counter':
@@ -114,11 +114,10 @@ class Generator:
                           '-11-', '-12-', '-11-', '-13-', '-14-', '-10-',
                           '-15-', '-16-', '-9-', '-8-', '-7-', '-6-', '-5-',
                           '-4-', '-3-', '-2-']
-                
             else:
                 raise RuntimeError('invalid digit type')
                 
-            parser = Parser(game_window, training=False)
+            parser = Parser(game_window, load_counter_hex_digits=True, load_grid_digits=False)
             hashes = parser.parse_grid(training=True)
             
         return hashes, labels
@@ -128,7 +127,7 @@ if __name__ == "__main__":
     #generator.make_dataset('black')
     #generator.make_dataset('blue')
     #generator.make_dataset('counter')
-    #generator.make_dataset('column')
-    #generator.make_dataset('diag_normal')
-    #generator.make_dataset('diag_consecutive')
-    #generator.make_dataset('diag_non-consecutive')
+    generator.make_dataset('column')
+    generator.make_dataset('diag_normal')
+    generator.make_dataset('diag_consecutive')
+    generator.make_dataset('diag_non-consecutive')
