@@ -86,28 +86,33 @@ class Generator:
 
         else:
             if digit_type == 'column':
-                labels = ['1', '{1}', '2', '{2}', '3', '{3}', '4', '{7}', '7',
-                          '{4}', '{0}', '0', '5', '{8}', '{5}', '8', '-2-',
-                          '-3-', '-4-', '11', '-5-', '6', '{9}', '{11}', '9',
-                          '{6}', '-6-', '-7-', '-8-', '12', '{13}', '-9-', 
-                          '13', '{12}', '-10-', '-11-', '-12-', '{14}', '-13-',
-                          '14', '15', '{15}', '-14-', '16', '{16}', '-15-']
+                labels = ['{16}', '-15-', '16', '{15}', '-14-', '15', '14',
+                          '{14}', '-13-', '-12-', '-11-', '{12}', '-10-',
+                           '13', '{13}', '-9-', '12', '-8-', '-7-', '{6}', 
+                          '{11}', '-6-', '9', '{9}', '6', '-5-', '11', '-4-',
+                          '-3-', '{5}', '-2-', '8',  '{8}', '5', '0', '{0}',
+                          '{4}', '7', '{7}', '4', '{3}', '3', '{2}', '2',
+                          '{1}', '1']
     
             elif digit_type == 'diagonal_normal':
-                labels = ['0', '0', '1', '16', '2', '3', '15','4', '5', '14', 
-                          '6', '7', '13', '8', '9', '12', '10', '11', '11', 
-                          '12', '13', '10', '14', '15', '9', '16', '8', '7', 
+                labels = ['16', '0', '0', '1', '2', '15', '3', '4', '14', '5', 
+                          '6', '13', '7', '8', '12', '9', '10', '11', '11', 
+                          '12', '10', '13', '14', '15', '9', '16', '8', '7', 
                           '6', '5', '4', '3', '2', '1']
                 
             elif digit_type == 'diagonal_consecutive':
-                labels = ['{0}', '{0}', '{1}', '{16}', '{2}', '{3}', '{15}',
-                          '{4}', '{5}', '{14}', '{6}', '{7}', '{13}', '{8}', 
-                          '{9}', '{12}', '{10}', '{11}', '{11}', '{12}', 
+                labels = ['{16}', '{0}', '{0}', '{1}', '{2}', '{15}', '{3}', 
+                          '{4}', '{14}', '{5}',  '{6}', '{13}', '{7}',  '{8}', 
+                          '{12}', '{9}',  '{10}', '{11}', '{11}', '{12}', 
                           '{13}', '{10}', '{14}', '{15}', '{9}', '{16}', '{8}', 
                           '{7}', '{6}', '{5}', '{4}', '{3}', '{2}', '{1}']
                 
             elif digit_type == 'diagonal_non-consecutive':
-                labels = []
+                labels = ['-16-', '-2-', '-3-', '-15-', '-4-', '-5-', '-14-',
+                          '-6-', '-7-', '-13-', '-8-', '-9-', '-10-', '-12-',
+                          '-11-', '-12-', '-11-', '-13-', '-14-', '-10-',
+                          '-15-', '-16-', '-9-', '-8-', '-7-', '-6-', '-5-',
+                          '-4-', '-3-', '-2-']
                 
             else:
                 raise RuntimeError('invalid digit type')
@@ -123,28 +128,6 @@ if __name__ == "__main__":
     #generator.make_dataset('blue')
     #generator.make_dataset('counter')
     generator.make_dataset('column')
-
-"""
-def make_grid_normal_diag_dataset(parser, save_path):
-
-    digits = ['0_left',   '0_right',  '1_left',   '16_right', '2_left',   '3_left',   '15_right',
-              '4_left',   '5_left',   '14_right', '6_left',   '7_left',   '13_right', '8_left',
-              '9_left',   '12_right', '10_left',  '11_left',  '11_right', '12_left',  '13_left',
-              '10_right', '14_left',  '15_left',  '9_right',  '16_left',  '8_right',  '7_right',
-              '6_right',  '5_right',  '4_right',  '3_right',  '2_right',  '1_right']
-
-
-
-def make_grid_consecutive_diag_dataset(parser, save_path):
-    if not os.path.exists(save_path):
-        os.mkdir(save_path)
-
-    digits = ['{0}_left',   '{0}_right',  '{1}_left',   '{16}_right', '{2}_left',   '{3}_left',   '{15}_right',
-              '{4}_left',   '{5}_left',   '{14}_right', '{6}_left',   '{7}_left',   '{13}_right', '{8}_left',
-              '{9}_left',   '{12}_right', '{10}_left',  '{11}_left',  '{11}_right', '{12}_left',  '{13}_left',
-              '{10}_right', '{14}_left',  '{15}_left',  '{9}_right',  '{16}_left',  '{8}_right',  '{7}_right',
-              '{6}_right',  '{5}_right',  '{4}_right',  '{3}_right',  '{2}_right',  '{1}_right']
-
-    save_paths = [save_path+'/grid_{}.png'.format(digit) for digit in digits]
-    parser.parse_grid(save_paths)
-"""
+    #generator.make_dataset('diagonal_normal')
+    #generator.make_dataset('diagonal_consecutive')
+    #generator.make_dataset('diagonal_non-consecutive')

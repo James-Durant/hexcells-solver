@@ -230,20 +230,20 @@ class Parser:
 
         cell.digit = self.__parse_cell_digit(cropped, cell.colour)
         
-    def __parse_columns(self, image, grid, training=False):
-        _, thresh = cv2.threshold(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 100, 255, cv2.THRESH_BINARY_INV)
-        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    def __merge_contours(self, contours):
         rects = [cv2.boundingRect(contour) for contour in contours]
+        rects.sort(key=lambda x: x[0])
         
         bounding_boxes = []
         while rects:
-            x1, y1, w1, h1 = rects.pop()
-            to_merge = [(x1, y1, w1, h1)]
+            rect1 = rects.pop()
+            to_merge = [rect1]
             i = 0
             while i < len(rects):
-                x2, y2, w2, h2 = rects[i]
-                if abs(x1-x2) < self.__hex_width and abs(y1-y2) < self.__hex_height*0.5:
-                    to_merge.append((x2, y2, w2, h2))
+                rect2 = rects[i]
+                if (abs(rect1[0]-rect2[0]) < self.__hex_width*0.7 and
+                    abs(rect1[1]-rect2[1]) < self.__hex_height*0.7):
+                    to_merge.append(rect2)
                     del rects[i]
                 else:
                     i += 1
@@ -251,10 +251,19 @@ class Parser:
             to_merge = np.asarray(to_merge)
             x = to_merge[:,0].min()
             y = to_merge[:,1].min()
-            w = to_merge[:,0].max() - x + to_merge[np.argmax(to_merge[:,0])][2]
-            h = to_merge[:,3].max()
+            w = np.max(to_merge[:,0] + to_merge[:,2]) - x
+            h = np.max(to_merge[:,1] + to_merge[:,3]) - y
+            
             bounding_boxes.append((x, y, w, h))
-           
+            
+        return bounding_boxes
+        
+    def __parse_columns(self, image, grid, training=False):
+        _, thresh = cv2.threshold(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 100, 255, cv2.THRESH_BINARY_INV)
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        bounding_boxes = self.__merge_contours(contours)
+
         for x, y, w, h in bounding_boxes:
             cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255))
         
@@ -271,10 +280,13 @@ class Parser:
             delta_y = nearest_coords[1] - box_coords[1]
             theta = 90 - (180 / np.pi * np.arctan2(delta_y, delta_x))
             angle = Parser.__angles[np.argmin(np.abs(Parser.__angles-theta))]
-
-            cropped = thresh[y-5: y+h+5, x-5: x+w+5]
-
-            centre  = (w//2 + 15, h//2 + 10)
+            
+            x_pad = round(self.__hex_width*0.18)
+            y_pad = round(self.__hex_height*0.1)
+            
+            cropped = thresh[y-y_pad: y+h+y_pad, x-x_pad: x+w+x_pad]
+            centre = (w//2 + x_pad, h//2 + y_pad)
+            
             rot_mat = cv2.getRotationMatrix2D(centre, angle, 1.0)
             rotated = cv2.warpAffine(cropped, rot_mat, cropped.shape[1::-1],
                                      flags=cv2.INTER_LINEAR, borderValue=(0, 0, 0))
@@ -289,10 +301,10 @@ class Parser:
         return parsed
             
     def __parse_column_digit(self, image, training=False):
-        thresh = cv2.resize(image, (60, 50), interpolation=cv2.INTER_AREA)
+        thresh = cv2.resize(image, (50, 55), interpolation=cv2.INTER_AREA)
 
-        cv2.imshow('test', thresh)
-        cv2.waitKey(0)
+        #cv2.imshow('test', thresh)
+        #cv2.waitKey(0)
 
         if np.count_nonzero(thresh==0) < 20:
             return None
