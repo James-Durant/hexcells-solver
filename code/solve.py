@@ -25,7 +25,7 @@ class Solver:
                 
             self.__grid.remaining = self.__parser.parse_clicked_cells(left_click_cells, right_click_cells)
     
-        time.sleep(1.5)
+        time.sleep(2.5)
         next_button, menu_button = self.__parser.parse_level_end()
 
         if solve_all and next_button is not None:

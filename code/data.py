@@ -37,6 +37,12 @@ class Generator:
                 for i, hint in enumerate(['normal', 'consecutive', 'non-consecutive']):
                     level_path = os.path.join(self.__save_path, digit_type, '{0}_{1}_level.hexcells'.format(hint, part))
                     self.__make_data(digit_type+'_{0}_{1}'.format(hint, part), save_path, level_path, part=='1' and i==0)
+        
+        elif digit_type == 'black':
+            for part in ['1']: #'2']:
+                level_path = os.path.join(self.__save_path, digit_type, '{0}_level.hexcells'.format(part))
+                self.__make_data(digit_type+'_'+part, save_path, level_path, part=='1')
+        
         else:
             level_path = os.path.join(self.__save_path, digit_type, 'level.hexcells')
             self.__make_data(digit_type, save_path, level_path)
@@ -96,10 +102,14 @@ class Generator:
 
             hashes.append(mistakes_hash)
 
-        elif digit_type == 'black':
+        elif digit_type == 'black_1':
             hashes = parser.parse_cells(screenshot, Cell.BLACK, training=True)
             labels = ['{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '1', '2', '3', 
                       '4', '5', '6', '?', '-2-', '-3-', '-4-', '{0}', '0']
+            
+        elif digit_type == 'black_2':
+            hashes = parser.parse_cells(screenshot, Cell.BLACK, training=True)
+            labels = ['{3}']*22 + ['{5}']*16
 
         elif digit_type == 'blue':
             hashes = parser.parse_cells(screenshot, Cell.BLUE, training=True)
@@ -156,4 +166,4 @@ if __name__ == "__main__":
     generator.make_dataset('blue')
     #generator.make_dataset('counter')
     #generator.make_dataset('column')
-    generator.make_dataset('diagonal') 
+    #generator.make_dataset('diagonal') 

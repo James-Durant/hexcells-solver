@@ -34,8 +34,8 @@ class Window:
         return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
     
     def move_mouse(self):
-        x1, y1, _, _ = self._get_position()
-        pyautogui.moveTo(x1, y1)
+        x, y, w, h = self._get_position()
+        pyautogui.moveTo(x+w, y+h)
     
     def click(self, coords, button='left'):
         x, y, _, _ = self._get_position()
