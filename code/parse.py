@@ -5,7 +5,7 @@ from PIL import Image
 
 from grid import Grid, Cell
 
-def average_hash(image, hash_size=16):
+def average_hash(image, hash_size=64):
     image = Image.fromarray(image).convert("L").resize((hash_size, hash_size), Image.ANTIALIAS)
     pixels = np.array(image.getdata()).reshape((hash_size, hash_size))
     diff = pixels > pixels.mean()
@@ -20,7 +20,8 @@ class Parser:
     __angles = np.asarray([-60, 0, 60])
     __cell_dims = (65, 60)
     __counter_dims = (200, 50)
-    __grid_dims = (60, 55)
+    __column_dims = (60, 55)
+    __diagonal_dims = (45, 35)
 
     def __init__(self, window, load_counter_hex_digits=True, load_grid_digits=True):
         self.__window = window
@@ -143,7 +144,7 @@ class Parser:
         if np.count_nonzero(thresh==0) < 20:
             return None
         
-        hashed = average_hash(thresh, hash_size=64)
+        hashed = average_hash(thresh, hash_size=32)
                                         
         if training:
             return hashed
@@ -187,7 +188,7 @@ class Parser:
                     thresh = cv2.cvtColor(np.where(cropped==Cell.BLUE, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)
                     thresh = cv2.resize(thresh, Parser.__counter_dims, interpolation=cv2.INTER_AREA)
     
-                    hashed = average_hash(thresh, hash_size=64)
+                    hashed = average_hash(thresh)
     
                     if training:
                         parsed.append(hashed)
@@ -257,7 +258,7 @@ class Parser:
             i = 0
             while i < len(rects):
                 rect2 = rects[i]
-                if (abs(rect1[0]-rect2[0]) < self.__hex_width*0.7 and
+                if (abs(rect1[0]-rect2[0]) < self.__hex_width*0.58 and
                     abs(rect1[1]-rect2[1]) < self.__hex_height*0.7):
                     to_merge.append(rect2)
                     del rects[i]
@@ -290,11 +291,12 @@ class Parser:
                     
         bounding_boxes = self.__merge_rects(rects)
 
-        #for x, y, w, h in bounding_boxes:
-        #    cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255))
+        for x, y, w, h in bounding_boxes:
+            cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255))
         
-        #cv2.imshow('test', image)
-        #cv2.waitKey(0)
+        cv2.imshow('test', image)
+        while cv2.waitKey(0) != 27:
+            pass
         
         parsed = []
         for x, y, w, h in bounding_boxes:
@@ -311,16 +313,8 @@ class Parser:
             y_pad = round(self.__hex_height*0.1)
             
             cropped = thresh[y-y_pad: y+h+y_pad, x-x_pad: x+w+x_pad]
-            centre = (w//2 + x_pad, h//2 + y_pad)
             
-            if angle == 0:
-                digit = self.__parse_grid_digit(255-cropped, self.__column_data, training)
-            else:
-                rot_mat = cv2.getRotationMatrix2D(centre, angle, 1.0)
-                rotated = cv2.warpAffine(cropped, rot_mat, cropped.shape[1::-1],
-                                         flags=cv2.INTER_LINEAR, borderValue=(0, 0, 0))
-                
-                digit = self.__parse_grid_digit(255-rotated, self.__diagonal_data, training)
+            digit = self.__parse_grid_digit(255-cropped, angle, training)
             
             if training:
                 parsed.append(digit)
@@ -330,26 +324,30 @@ class Parser:
         
         return parsed
             
-    def __parse_grid_digit(self, image, data, training=False):
-        thresh = cv2.resize(image, Parser.__grid_dims, interpolation=cv2.INTER_AREA)
+    def __parse_grid_digit(self, image, angle, training=False):
+        dims = Parser.__column_dims if angle == 0 else Parser.__diagonal_dims
+            
+        thresh = cv2.resize(image, dims, interpolation=cv2.INTER_AREA)
+
+        cv2.imshow('test', thresh)
+        cv2.waitKey(0)
 
         if np.count_nonzero(thresh==0) < 20:
             return None
         
-        hashed = average_hash(thresh, hash_size=64)
-                        
+        hashed = average_hash(thresh)
+            
         if training:
             return hashed
-
-        hashes, labels = data
+        
+        hashes, labels = self.__column_data if angle == 0 else self.__diagonal_data
         
         similarities = [np.sum(hashed != h) for h in hashes]
         match = labels[np.argmin(similarities)]
         
         best_matches = np.array(labels)[np.argsort(similarities)[:5]]
-        print(best_matches)
-        
         print(match)
+        
         cv2.imshow('test', thresh)
         cv2.waitKey(0)
         

@@ -33,7 +33,7 @@ class Generator:
                 self.__make_data(digit_type+'_'+hint, save_path, level_path, i==0)
         
         elif digit_type == 'diagonal':
-            for part in ['1', '2']:
+            for part in ['1']:#, '2']:
                 for i, hint in enumerate(['normal', 'consecutive', 'non-consecutive']):
                     level_path = os.path.join(self.__save_path, digit_type, '{0}_{1}_level.hexcells'.format(hint, part))
                     self.__make_data(digit_type+'_{0}_{1}'.format(hint, part), save_path, level_path, part=='1' and i==0)
@@ -45,7 +45,7 @@ class Generator:
         self.__reset_resolution()
 
         hashes, labels = [], []
-        for resolution in Generator.__RESOLUTIONS:
+        for resolution in [Generator.__RESOLUTIONS[0]]:
             Popen([Generator.__HEXCELLS_PATH], shell=True,
                   stdin=None, stdout=None, stderr=None, close_fds=True)
 
@@ -144,10 +144,10 @@ class Generator:
                           '-24-', '-25-', '-26-', '-22-', '-23-']
             else:
                 raise RuntimeError('invalid digit type')
-                
+               
             parser = Parser(game_window, load_counter_hex_digits=True, load_grid_digits=False)
             hashes = parser.parse_grid(training=True)
-
+        
         return hashes, labels
 
 if __name__ == "__main__":
@@ -156,4 +156,4 @@ if __name__ == "__main__":
     #generator.make_dataset('blue')
     #generator.make_dataset('counter')
     #generator.make_dataset('column')
-    #generator.make_dataset('diagonal') 
+    generator.make_dataset('diagonal') 
