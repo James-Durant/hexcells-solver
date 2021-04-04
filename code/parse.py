@@ -30,15 +30,17 @@ class Parser:
             self.__black_data = Parser.__load_hashes('black')
             self.__blue_data = Parser.__load_hashes('blue')
             self.__counter_data = Parser.__load_hashes('counter')
+        else:
+            self.__black_data = None
+            self.__blue_data = None
+            self.__counter_data = None
           
         if load_grid_digits:
-            grid_hashes, grid_labels = [], []
-            for digit_type in ['column']: #'diag_normal', 'diag_consecutive', 'diag_non-consecutive']:
-                hashes, labels = Parser.__load_hashes(digit_type)
-                grid_hashes += hashes
-                grid_labels += labels
-            
-            self.__grid_data = (grid_hashes, grid_labels)
+            self.__column_data = Parser.__load_hashes('column')
+            self.__diagonal_data = Parser.__load_hashes('diagonal')
+        else:
+            self.__column_data = None
+            self.__diagonal_data = None
 
     @property
     def window(self):
@@ -141,7 +143,7 @@ class Parser:
         if np.count_nonzero(thresh==0) < 20:
             return None
         
-        hashed = average_hash(thresh, hash_size=32)
+        hashed = average_hash(thresh, hash_size=64)
                                         
         if training:
             return hashed
@@ -151,8 +153,11 @@ class Parser:
         elif cell_colour == Cell.BLUE:
             hashes, labels = self.__blue_data
         
+        # Vectorise this better
         similarities = [np.sum(hashed != h) for h in hashes]
-        match = labels[np.argmin(similarities)]
+        best_matches = np.array(labels)[np.argsort(similarities)[:5]].tolist()
+        match = max(set(best_matches), key=best_matches.count)
+        
         #print(match)
         #cv2.imshow('test', thresh)
         #cv2.waitKey(0)
@@ -308,11 +313,15 @@ class Parser:
             cropped = thresh[y-y_pad: y+h+y_pad, x-x_pad: x+w+x_pad]
             centre = (w//2 + x_pad, h//2 + y_pad)
             
-            rot_mat = cv2.getRotationMatrix2D(centre, angle, 1.0)
-            rotated = cv2.warpAffine(cropped, rot_mat, cropped.shape[1::-1],
-                                     flags=cv2.INTER_LINEAR, borderValue=(0, 0, 0))
-
-            digit = self.__parse_grid_digit(255-rotated, training)
+            if angle == 0:
+                digit = self.__parse_grid_digit(255-cropped, self.__column_data, training)
+            else:
+                rot_mat = cv2.getRotationMatrix2D(centre, angle, 1.0)
+                rotated = cv2.warpAffine(cropped, rot_mat, cropped.shape[1::-1],
+                                         flags=cv2.INTER_LINEAR, borderValue=(0, 0, 0))
+                
+                digit = self.__parse_grid_digit(255-rotated, self.__diagonal_data, training)
+            
             if training:
                 parsed.append(digit)
             else:
@@ -321,24 +330,24 @@ class Parser:
         
         return parsed
             
-    def __parse_grid_digit(self, image, training=False):
+    def __parse_grid_digit(self, image, data, training=False):
         thresh = cv2.resize(image, Parser.__grid_dims, interpolation=cv2.INTER_AREA)
 
         if np.count_nonzero(thresh==0) < 20:
             return None
         
-        #cv2.imshow('test', thresh)
-        #cv2.waitKey(0)
-        
         hashed = average_hash(thresh, hash_size=64)
-                                        
+                        
         if training:
             return hashed
 
-        hashes, labels = self.__grid_data
+        hashes, labels = data
         
         similarities = [np.sum(hashed != h) for h in hashes]
         match = labels[np.argmin(similarities)]
+        
+        best_matches = np.array(labels)[np.argsort(similarities)[:5]]
+        print(best_matches)
         
         print(match)
         cv2.imshow('test', thresh)

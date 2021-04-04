@@ -38,7 +38,7 @@ class Generator:
                     level_path = os.path.join(self.__save_path, digit_type, '{0}_{1}_level.hexcells'.format(hint, part))
                     self.__make_data(digit_type+'_{0}_{1}'.format(hint, part), save_path, level_path, part=='1' and i==0)
         else:
-            level_path = os.path.join(self.__save_path, digit_type, 'level.pickle')
+            level_path = os.path.join(self.__save_path, digit_type, 'level.hexcells')
             self.__make_data(digit_type, save_path, level_path)
         
     def __make_data(self, digit_type, hash_path, level_path, delete_existing=True): 
@@ -120,9 +120,9 @@ class Generator:
                 
             elif digit_type == 'diagonal_normal_2':
                 labels = ['24', '25', '28', '27', '26', '23', '22', '21',
-                          '20', '19', '18', '17', '16', '16', '18', '19',
-                          '21', '20', '22', '24', '23', '25', '26', '28',
-                          '27', '19']             
+                          '20', '19', '18', '17', '16', '16', '17', '18',
+                          '19', '20', '23', '21', '24', '26', '27', '25',
+                          '22']             
                 
             elif digit_type == 'diagonal_consecutive_1':
                 labels = ['{'+str(i)+'}' for i in range(1, 16)] + ['{0}', '{0}'] + ['{'+str(i)+'}' for i in range(15, 0, -1)]
@@ -130,19 +130,18 @@ class Generator:
             elif digit_type == 'diagonal_consecutive_2':
                 labels = ['{24}', '{25}', '{28}', '{27}', '{26}', '{23}',
                           '{22}', '{21}', '{20}', '{19}', '{18}', '{17}',
-                          '{16}', '{16}', '{18}', '{19}', '{21}', '{20}',
-                          '{22}', '{24}', '{23}', '{25}', '{26}', '{28}',
-                          '{27}', '{17}']               
+                          '{16}', '{16}', '{17}', '{18}', '{19}', '{20}',
+                          '{23}', '{21}', '{24}', '{26}', '{27}', '{25}',
+                          '{22}']               
                 
             elif digit_type == 'diagonal_non-consecutive_1':
                 labels = ['-'+str(i)+'-' for i in range(2, 16)] + ['-'+str(i)+'-' for i in range(15, 0, -1)]
                 
             elif digit_type == 'diagonal_non-consecutive_2':
                 labels = ['-23-', '-24-', '-27-', '-26-', '-25-', '-22-', 
-                          '-21-', '-20-', '-19-', '-18-', '-17-', '-17-', 
-                          '-18-', '-19-', '-20-', '-21-', '-22-', '-24-',
-                          '-25-', '-27-', '-26-', '-23-']
-                
+                          '-21-', '-20-', '-19-', '-18-', '-17-', '-16-', 
+                          '-16-', '-17-', '-18-', '-19-', '-20-', '-21-',
+                          '-24-', '-25-', '-26-', '-22-', '-23-']
             else:
                 raise RuntimeError('invalid digit type')
                 
@@ -156,5 +155,5 @@ if __name__ == "__main__":
     #generator.make_dataset('black')
     #generator.make_dataset('blue')
     #generator.make_dataset('counter')
-    generator.make_dataset('column')
+    #generator.make_dataset('column')
     #generator.make_dataset('diagonal') 
