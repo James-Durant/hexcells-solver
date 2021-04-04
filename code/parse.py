@@ -3,7 +3,7 @@ import cv2, os, pickle, time
 
 from PIL import Image
 
-from grid import Grid, Cell
+from grid import Grid, Cell 
 
 def average_hash(image, hash_size=64):
     image = Image.fromarray(image).convert("L").resize((hash_size, hash_size), Image.ANTIALIAS)
@@ -64,6 +64,30 @@ class Parser:
         path = os.path.join('../resources', digit_type, 'hashes.pickle')
         with open(path, 'rb') as file:
             return pickle.load(file)
+
+    def parse_level_end(self):
+        image = self.__window.screenshot()
+        
+        mask = cv2.inRange(image, (255, 255, 255), (255, 255, 255))
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        bounding_boxes = [cv2.boundingRect(contour) for contour in contours]
+        bounding_boxes.sort(key=lambda x: (x[1], x[0]), reverse=True)
+        
+        if len(contours) == 6:
+            next_button = (bounding_boxes[0][0] + bounding_boxes[0][2] // 2,
+                           bounding_boxes[0][1] + bounding_boxes[0][3] // 2)
+            
+            menu_button = (bounding_boxes[1][0] + bounding_boxes[1][2] // 2,
+                           bounding_boxes[1][1] + bounding_boxes[1][3] // 2)
+        
+            return next_button, menu_button
+        
+        else:
+            menu_button = (bounding_boxes[0][0] + bounding_boxes[0][2] // 2,
+                           bounding_boxes[0][1] + bounding_boxes[0][3] // 2)
+            
+            return None, menu_button
 
     def parse_grid(self, training=False):
         image = self.__window.screenshot()
@@ -144,7 +168,7 @@ class Parser:
         if np.count_nonzero(thresh==0) < 20:
             return None
         
-        hashed = average_hash(thresh)
+        hashed = average_hash(thresh, hash_size=128)
                                         
         if training:
             return hashed

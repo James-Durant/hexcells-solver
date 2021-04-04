@@ -37,6 +37,12 @@ class Window:
         x1, y1, _, _ = self._get_position()
         pyautogui.moveTo(x1, y1)
     
+    def click(self, coords, button='left'):
+        x, y, _, _ = self._get_position()
+        x += coords[0]
+        y += coords[1]
+        pyautogui.click(x=x, y=y, button=button)
+    
     def close(self):
         win32gui.PostMessage(self.__hwnd, win32con.WM_CLOSE, 0, 0)
     
