@@ -144,7 +144,7 @@ class Parser:
         if np.count_nonzero(thresh==0) < 20:
             return None
         
-        hashed = average_hash(thresh, hash_size=32)
+        hashed = average_hash(thresh)
                                         
         if training:
             return hashed
@@ -159,7 +159,7 @@ class Parser:
         best_matches = np.array(labels)[np.argsort(similarities)[:5]].tolist()
         match = max(set(best_matches), key=best_matches.count)
         
-        #print(match)
+        #print(match, best_matches)
         #cv2.imshow('test', thresh)
         #cv2.waitKey(0)
         
@@ -291,12 +291,11 @@ class Parser:
                     
         bounding_boxes = self.__merge_rects(rects)
 
-        for x, y, w, h in bounding_boxes:
-            cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255))
+        #for x, y, w, h in bounding_boxes:
+        #    cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255))
         
-        cv2.imshow('test', image)
-        while cv2.waitKey(0) != 27:
-            pass
+        #cv2.imshow('test', image)
+        #cv2.waitKey(0)
         
         parsed = []
         for x, y, w, h in bounding_boxes:
@@ -329,8 +328,8 @@ class Parser:
             
         thresh = cv2.resize(image, dims, interpolation=cv2.INTER_AREA)
 
-        cv2.imshow('test', thresh)
-        cv2.waitKey(0)
+        #cv2.imshow('test', thresh)
+        #cv2.waitKey(0)
 
         if np.count_nonzero(thresh==0) < 20:
             return None
@@ -346,9 +345,9 @@ class Parser:
         match = labels[np.argmin(similarities)]
         
         best_matches = np.array(labels)[np.argsort(similarities)[:5]]
-        print(match)
+        #print(match)
         
-        cv2.imshow('test', thresh)
-        cv2.waitKey(0)
+        #cv2.imshow('test', thresh)
+        #cv2.waitKey(0)
         
         return match

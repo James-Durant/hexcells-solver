@@ -33,7 +33,7 @@ class Generator:
                 self.__make_data(digit_type+'_'+hint, save_path, level_path, i==0)
         
         elif digit_type == 'diagonal':
-            for part in ['1']:#, '2']:
+            for part in ['1', '2']:
                 for i, hint in enumerate(['normal', 'consecutive', 'non-consecutive']):
                     level_path = os.path.join(self.__save_path, digit_type, '{0}_{1}_level.hexcells'.format(hint, part))
                     self.__make_data(digit_type+'_{0}_{1}'.format(hint, part), save_path, level_path, part=='1' and i==0)
@@ -45,7 +45,7 @@ class Generator:
         self.__reset_resolution()
 
         hashes, labels = [], []
-        for resolution in [Generator.__RESOLUTIONS[0]]:
+        for resolution in Generator.__RESOLUTIONS:
             Popen([Generator.__HEXCELLS_PATH], shell=True,
                   stdin=None, stdout=None, stderr=None, close_fds=True)
 
@@ -103,7 +103,7 @@ class Generator:
 
         elif digit_type == 'blue':
             hashes = parser.parse_cells(screenshot, Cell.BLUE, training=True)
-            labels = list(range(0, 19))
+            labels = [str(i) for i in range(0, 19)]
 
         else:
             if digit_type == 'column_normal':
@@ -135,7 +135,7 @@ class Generator:
                           '{22}']               
                 
             elif digit_type == 'diagonal_non-consecutive_1':
-                labels = ['-'+str(i)+'-' for i in range(2, 16)] + ['-'+str(i)+'-' for i in range(15, 0, -1)]
+                labels = ['-'+str(i)+'-' for i in range(2, 16)] + ['-'+str(i)+'-' for i in range(15, 1, -1)]
                 
             elif digit_type == 'diagonal_non-consecutive_2':
                 labels = ['-23-', '-24-', '-27-', '-26-', '-25-', '-22-', 
@@ -144,7 +144,7 @@ class Generator:
                           '-24-', '-25-', '-26-', '-22-', '-23-']
             else:
                 raise RuntimeError('invalid digit type')
-               
+                
             parser = Parser(game_window, load_counter_hex_digits=True, load_grid_digits=False)
             hashes = parser.parse_grid(training=True)
         
