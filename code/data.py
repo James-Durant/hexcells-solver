@@ -45,7 +45,7 @@ class Generator:
         self.__reset_resolution()
 
         hashes, labels = [], []
-        for resolution in [Generator.__RESOLUTIONS[0]]:
+        for resolution in Generator.__RESOLUTIONS:
             Popen([Generator.__HEXCELLS_PATH], shell=True,
                   stdin=None, stdout=None, stderr=None, close_fds=True)
 
@@ -148,7 +148,7 @@ class Generator:
                 
             parser = Parser(game_window, load_counter_hex_digits=True, load_grid_digits=False)
             hashes = parser.parse_grid(training=True)
-        print(labels)
+
         return hashes, labels
 
 if __name__ == "__main__":
@@ -156,5 +156,5 @@ if __name__ == "__main__":
     #generator.make_dataset('black')
     #generator.make_dataset('blue')
     #generator.make_dataset('counter')
-    #generator.make_dataset('column')
-    generator.make_dataset('diagonal') 
+    generator.make_dataset('column')
+    #generator.make_dataset('diagonal') 

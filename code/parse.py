@@ -276,10 +276,12 @@ class Parser:
         rects = []
         for contour in contours:
             if cv2.contourArea(contour) < 1000:
-                rect = cv2.boundingRect(contour)
-                if (self.__x_min-2*self.__hex_width < rect[0] <  self.__x_max+2*self.__hex_width and
-                    self.__y_min-2*self.__hex_height < rect[1] < self.__y_max+self.__hex_height):
-                    rects.append(rect)
+                x, y, w, h = cv2.boundingRect(contour)
+                coords = np.asarray([x+w//2, y+h//2])
+                if (self.__x_min-2*self.__hex_width < x <  self.__x_max+2*self.__hex_width and
+                    self.__y_min-2*self.__hex_height < y < self.__y_max+self.__hex_height and 
+                    np.linalg.norm(coords-grid.nearest_cell(coords).image_coords) < 150):
+                    rects.append((x, y, w, h))
                     
         bounding_boxes = self.__merge_rects(rects)
 
