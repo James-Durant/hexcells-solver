@@ -5,7 +5,7 @@ from PIL import Image
 
 from grid import Grid, Cell 
 
-def average_hash(image, hash_size=32):
+def average_hash(image, hash_size=64):
     image = Image.fromarray(image).convert("L").resize((hash_size, hash_size), Image.ANTIALIAS)
     pixels = np.array(image.getdata()).reshape((hash_size, hash_size))
     diff = pixels > pixels.mean()
@@ -18,10 +18,8 @@ class Parser:
     __counter_match_threshold = 0.1
     __area_threshold = 550
     __angles = np.asarray([-60, 0, 60])
-    __cell_dims = (65, 60)
+    __digit_dims = (40, 35)
     __counter_dims = (200, 50)
-    __column_dims = (60, 55)
-    __diagonal_dims = (45, 35)
 
     def __init__(self, window, load_counter_hex_digits=True, load_grid_digits=True):
         self.__window = window
@@ -163,12 +161,12 @@ class Parser:
             return None
 
         thresh = cv2.cvtColor(np.where(image==cell_colour, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)
-        thresh = cv2.resize(thresh, Parser.__cell_dims, interpolation=cv2.INTER_AREA)
+        thresh = cv2.resize(thresh, Parser.__digit_dims, interpolation=cv2.INTER_AREA)
 
         if np.count_nonzero(thresh==0) < 20:
             return None
         
-        hashed = average_hash(thresh, hash_size=256)
+        hashed = average_hash(thresh)
                                
         if training:
             return hashed
@@ -212,7 +210,7 @@ class Parser:
                     thresh = cv2.cvtColor(np.where(cropped==Cell.BLUE, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)
                     thresh = cv2.resize(thresh, Parser.__counter_dims, interpolation=cv2.INTER_AREA)
     
-                    hashed = average_hash(thresh, hash_size=64)
+                    hashed = average_hash(thresh)
     
                     if training:
                         parsed.append(hashed)
@@ -275,6 +273,7 @@ class Parser:
     def __merge_rects(self, rects):
         rects.sort(key=lambda x: x[0])
         
+        print(self.__hex_width)
         width_factor = 0.5 if self.__hex_width > 80 else 0.58
         
         bounding_boxes = []
@@ -284,7 +283,7 @@ class Parser:
             i = 0
             while i < len(rects):
                 rect2 = rects[i]
-                if (abs(rect1[0]-rect2[0]) < self.__hex_width*width_factor and
+                if (abs(rect1[0]+rect1[2]-rect2[0]) < self.__hex_width*width_factor and
                     abs(rect1[1]-rect2[1]) < self.__hex_height*0.7):
                     to_merge.append(rect2)
                     del rects[i]
@@ -317,11 +316,11 @@ class Parser:
                     
         bounding_boxes = self.__merge_rects(rects)
 
-        #for x, y, w, h in bounding_boxes:
-        #    cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255))
+        for x, y, w, h in bounding_boxes:
+            cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255))
         
-        #cv2.imshow('test', image)
-        #cv2.waitKey(0)
+        cv2.imshow('test', image)
+        cv2.waitKey(0)
         
         parsed = []
         for x, y, w, h in bounding_boxes:
@@ -349,18 +348,16 @@ class Parser:
         
         return parsed
             
-    def __parse_grid_digit(self, image, angle, training=False):
-        dims = Parser.__column_dims if angle == 0 else Parser.__diagonal_dims
-            
-        thresh = cv2.resize(image, dims, interpolation=cv2.INTER_AREA)
+    def __parse_grid_digit(self, image, angle, training=False):  
+        thresh = cv2.resize(image, Parser.__digit_dims, interpolation=cv2.INTER_AREA)
 
-        #cv2.imshow('test', thresh)
-        #cv2.waitKey(0)
+        cv2.imshow('test', thresh)
+        cv2.waitKey(0)
 
         if np.count_nonzero(thresh==0) < 20:
             return None
         
-        hashed = average_hash(thresh, hash_size=32)
+        hashed = average_hash(thresh)
             
         if training:
             return hashed
@@ -372,7 +369,7 @@ class Parser:
         
         best_matches = np.array(labels)[np.argsort(similarities)[:5]]
         
-        #print(match)
+        #print(match, best_matches)
         #cv2.imshow('test', thresh)
         #cv2.waitKey(0)
         

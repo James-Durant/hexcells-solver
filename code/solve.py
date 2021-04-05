@@ -36,7 +36,7 @@ class Solver:
             self.__parser.window.click(menu_button)
     
     def __setup_problem(self):
-        #print(self.__grid)
+        print(self.__grid)
         self.__unknown = self.__grid.unknown_cells()
         self.__known = self.__grid.known_cells()
         
