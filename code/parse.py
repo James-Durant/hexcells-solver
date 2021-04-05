@@ -368,11 +368,10 @@ class Parser:
         hashes, labels = self.__column_data if angle == 0 else self.__diagonal_data
         
         similarities = [np.sum(hashed != h) for h in hashes]
-        match = labels[np.argmin(similarities)]
+        best_matches = np.array(labels)[np.argsort(similarities)[:3]].tolist()
+        match = max(set(best_matches), key=best_matches.count)
         
-        #best_matches = np.array(labels)[np.argsort(similarities)[:5]]
-        
-        #print(match) #best_matches)
+        #print(match, best_matches)
         #cv2.imshow('test', thresh)
         #cv2.waitKey(0)
         
