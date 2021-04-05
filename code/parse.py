@@ -1,14 +1,10 @@
 import numpy as np
 import cv2, os, pickle, time
 
-from PIL import Image
-
 from grid import Grid, Cell 
 
-def average_hash(image, hash_size=64):
-    image = Image.fromarray(image).convert("L").resize((hash_size, hash_size), Image.ANTIALIAS)
-    pixels = np.array(image.getdata()).reshape((hash_size, hash_size))
-    diff = pixels > pixels.mean()
+def average_hash(image):
+    diff = image > image.mean()
     return diff.flatten()
 
 class Parser:
@@ -18,7 +14,7 @@ class Parser:
     __counter_match_threshold = 0.1
     __area_threshold = 550
     __angles = np.asarray([-60, 0, 60])
-    __digit_dims = (40, 35)
+    __digit_dims = (45, 30)
     __counter_dims = (200, 50)
 
     def __init__(self, window, load_counter_hex_digits=True, load_grid_digits=True):
@@ -176,15 +172,27 @@ class Parser:
         elif cell_colour == Cell.BLUE:
             hashes, labels = self.__blue_data
         
-        # Vectorise this better
         similarities = [np.sum(hashed != h) for h in hashes]
         best_matches = np.array(labels)[np.argsort(similarities)[:3]].tolist()
         match = max(set(best_matches), key=best_matches.count)
         
+        temp = thresh.copy()
+        if match[0] == '{' and match[-1] == '}':
+            w, h = temp.shape[1], temp.shape[0]
+            for i in range(h):
+                for j in range(w):
+                    if j < 15 or j > w-15:
+                        temp[i][j] = 255
+                        
+            hashed = average_hash(temp)       
+            similarities = [np.sum(hashed != h) for h in hashes]
+            digit = labels[np.argmin(similarities)]
+            match = '{' + digit +'}'
+
         #print(match, best_matches)
         #cv2.imshow('test', thresh)
         #cv2.waitKey(0)
-        
+
         return match
 
     def parse_counters(self, image, training=False):
@@ -273,9 +281,6 @@ class Parser:
     def __merge_rects(self, rects):
         rects.sort(key=lambda x: x[0])
         
-        print(self.__hex_width)
-        width_factor = 0.5 if self.__hex_width > 80 else 0.58
-        
         bounding_boxes = []
         while rects:
             rect1 = rects.pop()
@@ -283,7 +288,7 @@ class Parser:
             i = 0
             while i < len(rects):
                 rect2 = rects[i]
-                if (abs(rect1[0]+rect1[2]-rect2[0]) < self.__hex_width*width_factor and
+                if (abs(rect1[0]+rect1[2]-rect2[0]) < self.__hex_width*0.75 and
                     abs(rect1[1]-rect2[1]) < self.__hex_height*0.7):
                     to_merge.append(rect2)
                     del rects[i]
@@ -316,11 +321,12 @@ class Parser:
                     
         bounding_boxes = self.__merge_rects(rects)
 
-        for x, y, w, h in bounding_boxes:
-            cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255))
+        #for x, y, w, h in bounding_boxes:
+        #    cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255))
         
-        cv2.imshow('test', image)
-        cv2.waitKey(0)
+        #cv2.imshow('test', image)
+        #while cv2.waitKey(0) != 27:
+        #    pass
         
         parsed = []
         for x, y, w, h in bounding_boxes:
@@ -351,9 +357,6 @@ class Parser:
     def __parse_grid_digit(self, image, angle, training=False):  
         thresh = cv2.resize(image, Parser.__digit_dims, interpolation=cv2.INTER_AREA)
 
-        cv2.imshow('test', thresh)
-        cv2.waitKey(0)
-
         if np.count_nonzero(thresh==0) < 20:
             return None
         
@@ -367,9 +370,9 @@ class Parser:
         similarities = [np.sum(hashed != h) for h in hashes]
         match = labels[np.argmin(similarities)]
         
-        best_matches = np.array(labels)[np.argsort(similarities)[:5]]
+        #best_matches = np.array(labels)[np.argsort(similarities)[:5]]
         
-        #print(match, best_matches)
+        #print(match) #best_matches)
         #cv2.imshow('test', thresh)
         #cv2.waitKey(0)
         

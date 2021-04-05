@@ -155,5 +155,5 @@ if __name__ == "__main__":
     generator.make_dataset('black')
     generator.make_dataset('blue')
     #generator.make_dataset('counter')
-    generator.make_dataset('column')
-    generator.make_dataset('diagonal') 
+    #generator.make_dataset('column')
+    #generator.make_dataset('diagonal') 
