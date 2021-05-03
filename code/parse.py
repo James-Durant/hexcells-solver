@@ -156,8 +156,9 @@ class Parser:
         if cell_colour == Cell.ORANGE or cell_colour == Cell.ORANGE_OLD:
             return None
         
-        thresh = cv2.cvtColor(np.where(image==cell_colour, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)    
-
+        thresh = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)   
+        thresh = np.where(thresh > 140, 0, 255).astype(np.uint8)
+        
         if np.count_nonzero(thresh==0) < 20:
             return None
         
@@ -232,16 +233,17 @@ class Parser:
         for cell in left_click_cells:
             self.__window.click_cell(cell, 'left')
           
-        time.sleep(0.1)
-            
+        time.sleep(0.1) 
         image = self.__window.screenshot()
+        
         for cell in left_click_cells:   
             self.__parse_clicked_cell(image, cell)
+
+        right_click_cells.sort(key=lambda cell: cell.grid_coords, reverse=True)
 
         for cell in right_click_cells:
             self.__window.click_cell(cell, 'right')
             
-        right_click_cells.sort(key=lambda cell: tuple(reversed(cell.grid_coords)))
         
         time.sleep(1.5)
         
@@ -308,7 +310,7 @@ class Parser:
                 coords = np.asarray([x+w//2, y+h//2])
                 if (self.__x_min-2*self.__hex_width < x <  self.__x_max+2*self.__hex_width and
                     self.__y_min-2*self.__hex_height < y < self.__y_max+self.__hex_height and 
-                    np.linalg.norm(coords-grid.nearest_cell(coords).image_coords) < 150):
+                    np.linalg.norm(coords-grid.nearest_cell(coords).image_coords) < 140):
                     rects.append((x, y, w, h))
                     
         bounding_boxes = self.__merge_rects(rects)
@@ -347,11 +349,12 @@ class Parser:
     def __parse_grid_digit(self, thresh, angle, training=False):  
         if np.count_nonzero(thresh==0) < 20:
             return None
+
+        thresh = self.__resize(thresh)
         
         if angle in [-120, 120]:
             thresh = cv2.flip(cv2.flip(thresh, 1), 0)
-
-        thresh = self.__resize(thresh)
+        
         hashed = average_hash(thresh)
 
         if training:
@@ -377,8 +380,8 @@ class Parser:
             similarities = [np.sum(hashed != h) for h in hashes]
             digit = labels[np.argmin(similarities)]
             match = '{' + digit +'}'
-        
-        #print(match)
+    
+        #print(match, best_matches)
         #cv2.imshow('test', thresh)
         #cv2.waitKey(0)
         
