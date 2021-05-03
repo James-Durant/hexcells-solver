@@ -244,7 +244,6 @@ class Parser:
         for cell in right_click_cells:
             self.__window.click_cell(cell, 'right')
             
-        
         time.sleep(1.5)
         
         image = self.__window.screenshot()
