@@ -150,7 +150,7 @@ class Generator:
         
         return hashes, labels
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     generator = Generator()
     generator.make_dataset('black')
     generator.make_dataset('blue')

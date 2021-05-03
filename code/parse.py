@@ -155,12 +155,17 @@ class Parser:
     def __parse_cell_digit(self, image, cell_colour, training=False):
         if cell_colour == Cell.ORANGE or cell_colour == Cell.ORANGE_OLD:
             return None
-
-        thresh = cv2.cvtColor(np.where(image==cell_colour, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)
-        thresh = cv2.resize(thresh, Parser.__digit_dims, interpolation=cv2.INTER_AREA)
+        
+        thresh = cv2.cvtColor(np.where(image==cell_colour, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)    
 
         if np.count_nonzero(thresh==0) < 20:
             return None
+        
+        coords = np.argwhere(thresh==0)
+        x0, y0 = coords.min(axis=0)
+        x1, y1 = coords.max(axis=0) + 1 
+
+        thresh = cv2.resize(thresh[x0:x1, y0:y1], (53, 45), interpolation=cv2.INTER_AREA)
         
         hashed = average_hash(thresh)
                                
@@ -176,23 +181,10 @@ class Parser:
         best_matches = np.array(labels)[np.argsort(similarities)[:3]].tolist()
         match = max(set(best_matches), key=best_matches.count)
         
-        temp = thresh.copy()
-        if match[0] == '{' and match[-1] == '}':
-            w, h = temp.shape[1], temp.shape[0]
-            for i in range(h):
-                for j in range(w):
-                    if j < 15 or j > w-15:
-                        temp[i][j] = 255
-                        
-            hashed = average_hash(temp)       
-            similarities = [np.sum(hashed != h) for h in hashes]
-            digit = labels[np.argmin(similarities)]
-            match = '{' + digit +'}'
-
         #print(match, best_matches)
         #cv2.imshow('test', thresh)
         #cv2.waitKey(0)
-
+        
         return match
 
     def parse_counters(self, image, training=False):
@@ -341,12 +333,7 @@ class Parser:
                 theta = theta-360
             
             angle = Parser.__angles[np.argmin(np.abs(Parser.__angles-theta))]
-            
-            x_pad = round(self.__hex_width*0.18)
-            y_pad = round(self.__hex_height*0.1)
-            
-            cropped = thresh[y-y_pad: y+h+y_pad, x-x_pad: x+w+x_pad]
-            
+            cropped = thresh[y: y+h, x: x+w]
             digit = self.__parse_grid_digit(255-cropped, angle, training)
             
             if training:
@@ -357,28 +344,26 @@ class Parser:
         
         return parsed
             
-    def __parse_grid_digit(self, image, angle, training=False):  
-        thresh = cv2.resize(image, Parser.__digit_dims, interpolation=cv2.INTER_AREA)
-    
+    def __parse_grid_digit(self, thresh, angle, training=False):  
         if np.count_nonzero(thresh==0) < 20:
             return None
         
         if angle in [-120, 120]:
-            centre = tuple(np.array(thresh.shape[1::-1]) / 2)
-            rot_mat = cv2.getRotationMatrix2D(centre, 180-angle, 1.0)
-            thresh = cv2.warpAffine(thresh, rot_mat, thresh.shape[1::-1], borderValue=(255,255,255))
+            thresh = cv2.flip(cv2.flip(thresh, 1), 0)
         
+        thresh = cv2.resize(thresh, (22,32), interpolation=cv2.INTER_AREA)
         hashed = average_hash(thresh)
-            
+        
         if training:
             return hashed
         
         hashes, labels = self.__column_data if angle == 0 else self.__diagonal_data
         
         similarities = [np.sum(hashed != h) for h in hashes]
-        match = labels[np.argmin(similarities)]
+        best_matches = np.array(labels)[np.argsort(similarities)[:3]].tolist()
+        match = max(set(best_matches), key=best_matches.count)
         
-        #print(match)
+        #print(match, best_matches)
         #cv2.imshow('test', thresh)
         #cv2.waitKey(0)
         
