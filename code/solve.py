@@ -19,6 +19,8 @@ class Solver:
             if len(left_click_cells)+len(right_click_cells)-len(self.__unknown) == 0:
                 for cell in left_click_cells:
                     self.__parser.window.click_cell(cell, 'left')
+                    
+                right_click_cells.sort(key=lambda cell: cell.grid_coords[0], reverse=True)
                 for cell in right_click_cells:
                     self.__parser.window.click_cell(cell, 'right')
                 break

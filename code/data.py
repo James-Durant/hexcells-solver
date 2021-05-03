@@ -7,8 +7,7 @@ from parse import Parser
 from grid import Cell
 
 class Generator:
-    __RESOLUTIONS =  ['2048x1152', '1920x1200', '1920x1080', '1680x1050',
-                      '1600x1200', '1600x900',  '1280x720',  '1152x864']
+    __RESOLUTIONS =  ['2048x1152', '1920x1200', '1920x1080', '1680x1050', '1600x1200', '1600x900']
     __HEXCELLS_PATH = r'C:\Program Files (x86)\Steam\steamapps\content\app_304410\depot_304411\Hexcells Infinite.exe'
 
     def __init__(self, save_path='../resources'):
@@ -119,20 +118,18 @@ class Generator:
                 labels = [str(i) for i in range(1, 16)] + ['0', '0'] + [str(i) for i in range(15, 0, -1)]
                 
             elif digit_type == 'diagonal_normal_2':
-                labels = ['24', '25', '28', '27', '26', '23', '22', '21',
-                          '20', '19', '18', '17', '16', '16', '17', '18',
-                          '19', '20', '23', '21', '24', '26', '27', '25',
-                          '22']             
+                labels = ['24', '25', '27', '26', '23', '22', '21', '20',
+                          '19', '18', '17', '16', '16', '17', '18', '19',
+                          '20', '23', '21', '24', '26', '27', '25', '22']             
                 
             elif digit_type == 'diagonal_consecutive_1':
                 labels = ['{'+str(i)+'}' for i in range(1, 16)] + ['{0}', '{0}'] + ['{'+str(i)+'}' for i in range(15, 0, -1)]
                 
             elif digit_type == 'diagonal_consecutive_2':
-                labels = ['{24}', '{25}', '{28}', '{27}', '{26}', '{23}',
-                          '{22}', '{21}', '{20}', '{19}', '{18}', '{17}',
-                          '{16}', '{16}', '{17}', '{18}', '{19}', '{20}',
-                          '{23}', '{21}', '{24}', '{26}', '{27}', '{25}',
-                          '{22}']               
+                labels = ['{24}', '{25}', '{27}', '{26}', '{23}', '{22}',
+                          '{21}', '{20}', '{19}', '{18}', '{17}', '{16}',
+                          '{16}', '{17}', '{18}', '{19}', '{20}', '{23}',
+                          '{21}', '{24}', '{26}', '{27}', '{25}', '{22}']               
                 
             elif digit_type == 'diagonal_non-consecutive_1':
                 labels = ['-'+str(i)+'-' for i in range(2, 16)] + ['-'+str(i)+'-' for i in range(15, 1, -1)]
@@ -152,8 +149,8 @@ class Generator:
 
 if __name__ == '__main__':
     generator = Generator()
-    generator.make_dataset('black')
-    generator.make_dataset('blue')
+    #generator.make_dataset('black')
+    #generator.make_dataset('blue')
     #generator.make_dataset('counter')
-    #generator.make_dataset('column')
-    #generator.make_dataset('diagonal') 
+    generator.make_dataset('column')
+    generator.make_dataset('diagonal') 
