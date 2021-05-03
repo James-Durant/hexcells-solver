@@ -13,7 +13,7 @@ class Parser:
     __hex_match_threshold = 0.05
     __counter_match_threshold = 0.1
     __area_threshold = 550
-    __angles = np.asarray([-60, 0, 60])
+    __angles = np.asarray([-120, -60, 0, 60, 120])
     __digit_dims = (45, 30)
     __counter_dims = (200, 50)
 
@@ -337,6 +337,9 @@ class Parser:
             delta_x = box_coords[0] - nearest_coords[0]
             delta_y = nearest_coords[1] - box_coords[1]
             theta = 90 - (180 / np.pi * np.arctan2(delta_y, delta_x))
+            if theta > 180:
+                theta = theta-360
+            
             angle = Parser.__angles[np.argmin(np.abs(Parser.__angles-theta))]
             
             x_pad = round(self.__hex_width*0.18)
@@ -356,9 +359,14 @@ class Parser:
             
     def __parse_grid_digit(self, image, angle, training=False):  
         thresh = cv2.resize(image, Parser.__digit_dims, interpolation=cv2.INTER_AREA)
-
+    
         if np.count_nonzero(thresh==0) < 20:
             return None
+        
+        if angle in [-120, 120]:
+            centre = tuple(np.array(thresh.shape[1::-1]) / 2)
+            rot_mat = cv2.getRotationMatrix2D(centre, 180-angle, 1.0)
+            thresh = cv2.warpAffine(thresh, rot_mat, thresh.shape[1::-1], borderValue=(255,255,255))
         
         hashed = average_hash(thresh)
             
@@ -368,10 +376,9 @@ class Parser:
         hashes, labels = self.__column_data if angle == 0 else self.__diagonal_data
         
         similarities = [np.sum(hashed != h) for h in hashes]
-        best_matches = np.array(labels)[np.argsort(similarities)[:3]].tolist()
-        match = max(set(best_matches), key=best_matches.count)
+        match = labels[np.argmin(similarities)]
         
-        #print(match, best_matches)
+        #print(match)
         #cv2.imshow('test', thresh)
         #cv2.waitKey(0)
         

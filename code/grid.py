@@ -85,16 +85,27 @@ class Grid:
             raise RuntimeError('grid constraint parsed incorrectly')    
         
         cells = []
-        while 0 <= row < self.__rows and 0<= col < self.__cols:
+        while 0 <= row < self.__rows and 0 <= col < self.__cols:
             cell = self[(row, col)]
             if cell != None:
                 cells.append(cell)
-            row += 1
             
-            if angle == -60:
+            if angle == 0:
+                row += 1
+            elif angle == -60:
+                row += 1
                 col += 1
             elif angle == 60:
+                row += 1
                 col -= 1
+            elif angle == -120:
+                row -= 1
+                col += 1
+            elif angle == 120:
+                row -= 1
+                col -= 1
+            else:
+                raise RuntimeError('invalid grid constraint angle')
 
         self.__constraints.append(Constraint(size, hint, cells))
     
