@@ -9,7 +9,7 @@ class Solver:
     def __init__(self, parser):
         self.__parser = parser
 
-    def solve(self, solve_all=True):
+    def solve(self, continuous=False):
         self.__parser.window.move_mouse()
         self.__grid = self.__parser.parse_grid()
         
@@ -30,10 +30,10 @@ class Solver:
         time.sleep(2)
         next_button, menu_button = self.__parser.parse_level_end()
 
-        if solve_all and next_button is not None:
+        if continuous and next_button is not None:
             self.__parser.window.click(next_button)
             time.sleep(1.6)
-            self.solve()
+            self.solve(continuous=True)
         else:
             self.__parser.window.click(menu_button)
     
