@@ -53,17 +53,17 @@ class Generator:
             config_window = ConfigWindow()
             config_window.start_game()
 
-            time.sleep(1)
+            time.sleep(1.5)
 
             menu = Navigator()
             
-            if digit_type != 'slots':
-                if digit_type == 'levels':
-                    menu.load_save_slot(1)
-                else:
-                    menu.load_custom_level(level_path)
-                    
-                time.sleep(2.5)
+            if digit_type == 'level':
+                menu.load_save_slot(1)
+            else:
+                menu.load_custom_level(level_path)
+            
+            menu.window.move_mouse()
+            time.sleep(2.5)
 
             hashes_res, labels_res = self.__get_hashes(menu.window, digit_type, resolution)
             hashes += hashes_res
@@ -81,21 +81,16 @@ class Generator:
             pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
 
     def __get_hashes(self, window, digit_type, resolution):
-        if digit_type in ['slot', 'level']:
+        if digit_type == 'level':
             parser = MenuParser(window)
+            labels = ['3-3', '3-2', '2-3', '2-2', '3-4', '3-1',
+                      '2-4', '2-1', '3-5', '3-6', '2-5', '2-6',
+                      '4-3', '4-2', '1-3', '1-2', '4-4', '4-1',
+                      '1-4', '1-1', '4-5', '4-6', '1-5', '1-6',
+                      '5-3', '5-2', '6-3', '6-2', '5-4', '5-1',
+                      '6-4', '6-1', '5-5', '5-6', '6-5', '6-6']
             
-            if digit_type == 'slot':
-                labels = ['1', '2', '3', 'inf']
-                
-            elif digit_type == 'level':
-                labels = ['3-3', '3-2', '2-3', '2-2', '3-4', '3-1',
-                          '2-4', '2-1', '3-5', '3-6', '2-5', '2-6',
-                          '4-3', '4-2', '1-3', '1-2', '4-4', '4-1',
-                          '1-4', '1-1', '4-5', '4-6', '1-5', '1-6',
-                          '5-3', '5-2', '6-3', '6-2', '5-4', '5-1',
-                          '6-4', '6-1', '5-5', '5-6', '6-5', '6-6']
-            
-            hashes = parser.parse(training=True)
+            hashes = parser.parse_levels(training=True)
             
         elif digit_type in ['black', 'blue', 'counter']:
             screenshot = window.screenshot()
@@ -167,12 +162,14 @@ class Generator:
             parser = GameParser(window)
             hashes = parser.parse_grid(training=True)
         
+        print(len(hashes), len(labels))
         return hashes, labels
 
 if __name__ == '__main__':
     generator = Generator()
-    generator.make_dataset('black')
-    generator.make_dataset('blue')
+    generator.make_dataset('level')
+    #generator.make_dataset('black')
+    #generator.make_dataset('blue')
     #generator.make_dataset('counter')
     #generator.make_dataset('column')
     #generator.make_dataset('diagonal') 

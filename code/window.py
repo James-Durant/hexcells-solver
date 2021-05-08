@@ -32,6 +32,9 @@ class Window:
         image = pyautogui.screenshot(region=(x1, y1, x2, y2))
         return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
     
+    def press_key(self, key):
+        pyautogui.press(key)
+        
     def click(self, coords, button='left'):
         x, y, _, _ = self._get_position()
         x += coords[0]

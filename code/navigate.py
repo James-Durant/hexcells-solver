@@ -8,11 +8,20 @@ class Navigator:
     def __init__(self):
         self.__window = get_window()
         self.__menu_parser = MenuParser(self.__window)
-        self.__menu_parser.parse()
+        
+        #self.__menu_parser.parse_levels()
 
     @property
     def window(self):
         return self.__window
+
+    def load_save_slot(self, slot, training=False):
+        slots, generator = self.__menu_parser.parse_slots(training)
+        
+        if slot in [1,2,3]:
+            self.__window.click(slots[slot-1])
+        else:
+            raise RuntimeError('invalid save slot given')
 
     def __solve(self, continuous):
         game_parser = GameParser(self.__window)
@@ -56,6 +65,9 @@ class Navigator:
             time.sleep(1.5)
             self.__solve(continuous=True)
             time.sleep(2)
+     
+    def back(self):
+        self.__window.press_key('esc')
         
     def close_game(self):
         self.__window.close()
@@ -72,5 +84,3 @@ class Navigator:
         self.__window.to_foreground()
         for i in range(5):
             self.__window.click((x, y))
-        
-        self.__window.move_mouse()
