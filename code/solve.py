@@ -1,5 +1,3 @@
-import time
-
 from pulp import GLPK_CMD, LpProblem, LpMinimize, LpVariable, lpSum, value
 from parse import Cell
 
@@ -9,36 +7,20 @@ class Solver:
     def __init__(self, parser):
         self.__parser = parser
 
-    def solve(self, continuous=False):
-        self.__parser.window.move_mouse()
+    def solve(self):
         self.__grid = self.__parser.parse_grid()
         
         while True:
             self.__setup_problem()
             left_click_cells, right_click_cells = self.__solve_single_step()
             if len(left_click_cells)+len(right_click_cells)-len(self.__unknown) == 0:
-                for cell in left_click_cells:
-                    self.__parser.window.click_cell(cell, 'left')
-
-                for cell in right_click_cells:
-                    self.__parser.window.click_cell(cell, 'right')
+                self.__parser.click_cells(left_click_cells, 'left')
+                self.__parser.click_cells(right_click_cells, 'right')
                 break
                 
-            self.__grid.remaining = self.__parser.parse_clicked_cells(left_click_cells, right_click_cells)
-    
-        self.__parser.window.move_mouse()
-        time.sleep(2)
-        next_button, menu_button = self.__parser.parse_level_end()
-
-        if continuous and next_button is not None:
-            self.__parser.window.click(next_button)
-            time.sleep(1.6)
-            self.solve(continuous=True)
-        else:
-            self.__parser.window.click(menu_button)
+            self.__grid.remaining = self.__parser.parse_clicked(left_click_cells, right_click_cells)
     
     def __setup_problem(self):
-        #print(self.__grid)
         self.__unknown = self.__grid.unknown_cells()
         self.__known = self.__grid.known_cells()
         

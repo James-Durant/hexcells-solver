@@ -2,8 +2,9 @@ import time, os, pickle
 
 from subprocess import Popen
 
-from window import ConfigWindow, GameWindow
-from parse import Parser
+from navigate import Navigator
+from window import ConfigWindow
+from parse import MenuParser, GameParser
 from grid import Cell
 
 class Generator:
@@ -14,15 +15,14 @@ class Generator:
         self.__save_path = save_path
 
     def __reset_resolution(self):
-        Popen([Generator.__HEXCELLS_PATH], shell=True,
-               stdin=None, stdout=None, stderr=None, close_fds=True)
+        Popen([Generator.__HEXCELLS_PATH], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
 
         time.sleep(1)
         config_window = ConfigWindow()
         config_window.reset_resolution()
 
-        game_window = GameWindow('Hexcells Infinite')
-        game_window.close()
+        menu = Navigator()
+        menu.close_game()
 
     def make_dataset(self, digit_type):
         save_path = os.path.join(self.__save_path, digit_type, 'hashes.pickle')
@@ -51,21 +51,25 @@ class Generator:
             time.sleep(1)
 
             config_window = ConfigWindow()
-            config_window.load_game()
+            config_window.start_game()
 
             time.sleep(1)
 
-            game_window = GameWindow('Hexcells Infinite')
-            game_window.load_custom_level(level_path)
-            game_window.move_mouse()
+            menu = Navigator()
+            
+            if digit_type != 'slots':
+                if digit_type == 'levels':
+                    menu.load_save_slot(1)
+                else:
+                    menu.load_custom_level(level_path)
+                    
+                time.sleep(2.5)
 
-            time.sleep(2.5)
-
-            hashes_res, labels_res = self.__parse_digits(game_window, digit_type, resolution)
+            hashes_res, labels_res = self.__get_hashes(menu.window, digit_type, resolution)
             hashes += hashes_res
             labels += labels_res
 
-            game_window.close()
+            menu.close_game()
         
         if not delete_existing and os.path.exists(hash_path):
             with open(hash_path, 'rb') as file:
@@ -76,33 +80,51 @@ class Generator:
         with open(hash_path, 'wb') as file:
             pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def __parse_digits(self, game_window, digit_type, resolution):
-        screenshot = game_window.screenshot()
-        parser = Parser(game_window, load_counter_hex_digits=False, load_grid_digits=False)
-
-        hashes = []
-        if digit_type == 'counter':
-            remaining = 478
-            labels = list(range(remaining, -1, -1))
-            for cell in parser.parse_cells(screenshot, Cell.ORANGE_OLD):
-                mistakes_hash, remaining_hash = parser.parse_counters(screenshot, training=True)
-
-                hashes.append(remaining_hash)
-
-                game_window.click_cell(cell, 'left')
-                remaining -= 1
-                screenshot = game_window.screenshot()
-
-            hashes.append(mistakes_hash)
-
-        elif digit_type == 'black':
-            hashes = parser.parse_cells(screenshot, Cell.BLACK, training=True)
-            labels = ['{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '1', '2', '3', 
-                      '4', '5', '6', '?', '-2-', '-3-', '-4-', '{0}', '0']
-
-        elif digit_type == 'blue':
-            hashes = parser.parse_cells(screenshot, Cell.BLUE, training=True)
-            labels = [str(i) for i in range(0, 19)]
+    def __get_hashes(self, window, digit_type, resolution):
+        if digit_type in ['slot', 'level']:
+            parser = MenuParser(window)
+            
+            if digit_type == 'slot':
+                labels = ['1', '2', '3', 'inf']
+                
+            elif digit_type == 'level':
+                labels = ['3-3', '3-2', '2-3', '2-2', '3-4', '3-1',
+                          '2-4', '2-1', '3-5', '3-6', '2-5', '2-6',
+                          '4-3', '4-2', '1-3', '1-2', '4-4', '4-1',
+                          '1-4', '1-1', '4-5', '4-6', '1-5', '1-6',
+                          '5-3', '5-2', '6-3', '6-2', '5-4', '5-1',
+                          '6-4', '6-1', '5-5', '5-6', '6-5', '6-6']
+            
+            hashes = parser.parse(training=True)
+            
+        elif digit_type in ['black', 'blue', 'counter']:
+            screenshot = window.screenshot()
+            parser = GameParser(window)
+    
+            if digit_type == 'counter':
+                remaining = 478
+                labels = list(range(remaining, -1, -1))
+                
+                hashes = []
+                for cell in parser.parse_cells(screenshot, Cell.ORANGE_OLD):
+                    mistakes_hash, remaining_hash = parser.parse_counters(screenshot, training=True)
+    
+                    hashes.append(remaining_hash)
+    
+                    window.click_cell(cell, 'left')
+                    remaining -= 1
+                    screenshot = window.screenshot()
+    
+                hashes.append(mistakes_hash)
+    
+            elif digit_type == 'black':
+                hashes = parser.parse_cells(screenshot, Cell.BLACK, training=True)
+                labels = ['{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '1', '2', '3', 
+                          '4', '5', '6', '?', '-2-', '-3-', '-4-', '{0}', '0']
+    
+            elif digit_type == 'blue':
+                hashes = parser.parse_cells(screenshot, Cell.BLUE, training=True)
+                labels = [str(i) for i in range(0, 19)]
 
         else:
             if digit_type == 'column_normal':
@@ -142,7 +164,7 @@ class Generator:
             else:
                 raise RuntimeError('invalid digit type')
                 
-            parser = Parser(game_window, load_counter_hex_digits=True, load_grid_digits=False)
+            parser = GameParser(window)
             hashes = parser.parse_grid(training=True)
         
         return hashes, labels

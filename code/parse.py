@@ -8,57 +8,65 @@ def average_hash(image):
     return diff.flatten()
 
 class Parser:
-    __hex_mask_path = '../resources/hex_mask.png'
-    __counter_mask_path = '../resources/counter_mask.png'
-    __hex_match_threshold = 0.05
-    __counter_match_threshold = 0.1
-    __area_threshold = 550
-    __angles = np.asarray([-120, -60, 0, 60, 120])
-    __digit_dims = (45, 30)
-    __counter_dims = (200, 50)
-
-    def __init__(self, window, load_counter_hex_digits=True, load_grid_digits=True):
-        self.__window = window
-        self.__hex_contour, self.__counter_contour = Parser.__load_masks()
-        
-        if load_counter_hex_digits:
-            self.__black_data = Parser.__load_hashes('black')
-            self.__blue_data = Parser.__load_hashes('blue')
-            self.__counter_data = Parser.__load_hashes('counter')
-        else:
-            self.__black_data = None
-            self.__blue_data = None
-            self.__counter_data = None
-          
-        if load_grid_digits:
-            self.__column_data = Parser.__load_hashes('column')
-            self.__diagonal_data = Parser.__load_hashes('diagonal')
-        else:
-            self.__column_data = None
-            self.__diagonal_data = None
-
-    @property
-    def window(self):
-        return self.__window
-
-    @staticmethod
-    def __load_masks():
-        hex_image = cv2.imread(Parser.__hex_mask_path)
-        hex_mask  = cv2.inRange(hex_image, Cell.ORANGE , Cell.ORANGE)
-        hex_contour, _ = cv2.findContours(hex_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        counter_image = cv2.imread(Parser.__counter_mask_path)
-        counter_mask  = cv2.inRange(counter_image, Cell.BLUE, Cell.BLUE)
-        counter_contour, _ = cv2.findContours(counter_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        return hex_contour[0], counter_contour[0]
-
     @staticmethod 
-    def __load_hashes(digit_type):
+    def _load_hashes(digit_type):
         path = os.path.join('../resources', digit_type, 'hashes.pickle')
-        with open(path, 'rb') as file:
-            return pickle.load(file)
+        try:
+            with open(path, 'rb') as file:
+                return pickle.load(file)
+        except FileNotFoundError:
+            return None
+    
+class MenuParser(Parser):
+    def __init__(self, window):
+        self.__window = window
+        self.__slot_data = Parser._load_hashes('slot')
+        self.__level_data = Parser._load_hashes('level')
+      
+    def parse_levels(self, training=False):
+        image = self.__window.screenshot()
+        grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        
+        _, thresh = cv2.threshold(grey, 220, 255, cv2.THRESH_BINARY_INV)
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        areas = [cv2.contourArea(contour) for contour in contours]
+        median_area = np.median(areas)
+    
+        boxes = [cv2.boundingRect(contour) for contour, area in list(zip(contours, areas))
+                 if 0.98*median_area < area < 1.02*median_area]
+        
+        boxes.sort(key=lambda x: x[:2], reverse=True)
+        
+        levels = {}
+        for i, contour in enumerate(contours):
+            if 0.98*median_area < areas[i] < 1.02*median_area:
+                x, y, w, h = cv2.boundingRect(contour)
 
+                cropped = grey[y:y+h, x:x+w]
+                cropped = np.where(cropped > 240, 0, 255).astype(np.uint8)
+        
+                coords = np.argwhere(cropped==0)
+                x0, y0 = coords.min(axis=0)
+                x1, y1 = coords.max(axis=0) + 1 
+
+                cropped = cv2.resize(cropped[x0:x1, y0:y1], (53, 45), interpolation=cv2.INTER_AREA)
+        
+                hashed = average_hash(cropped)
+                               
+                if training:
+                    return hashed
+
+                hashes, labels = self.__level_data
+        
+                similarities = [np.sum(hashed != h) for h in hashes]
+                best_matches = np.array(labels)[np.argsort(similarities)[:3]].tolist()
+                match = max(set(best_matches), key=best_matches.count)
+                
+                levels[match] = (x,y)
+
+        return levels
+            
     def parse_level_end(self):
         image = self.__window.screenshot()
         
@@ -81,7 +89,39 @@ class Parser:
             menu_button = (bounding_boxes[0][0] + bounding_boxes[0][2] // 2,
                            bounding_boxes[0][1] + bounding_boxes[0][3] // 2)
             
-            return None, menu_button
+        return None, menu_button
+    
+class GameParser(Parser):
+    __hex_mask_path = '../resources/hex_mask.png'
+    __counter_mask_path = '../resources/counter_mask.png'
+    __hex_match_threshold = 0.05
+    __counter_match_threshold = 0.1
+    __area_threshold = 550
+    __angles = np.asarray([-120, -60, 0, 60, 120])
+    __digit_dims = (45, 30)
+    __counter_dims = (200, 50)
+
+    def __init__(self, window, load_counter_hashes=True, load_grid_hashes=True):
+        self.__window = window
+        self.__hex_contour, self.__counter_contour = GameParser.__load_masks()
+        
+        self.__black_data = Parser._load_hashes('black')
+        self.__blue_data = Parser._load_hashes('blue')
+        self.__counter_data = Parser._load_hashes('counter')
+        self.__column_data = Parser._load_hashes('column')
+        self.__diagonal_data = Parser._load_hashes('diagonal')
+
+    @staticmethod
+    def __load_masks():
+        hex_image = cv2.imread(GameParser.__hex_mask_path)
+        hex_mask  = cv2.inRange(hex_image, Cell.ORANGE , Cell.ORANGE)
+        hex_contour, _ = cv2.findContours(hex_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        counter_image = cv2.imread(GameParser.__counter_mask_path)
+        counter_mask  = cv2.inRange(counter_image, Cell.BLUE, Cell.BLUE)
+        counter_contour, _ = cv2.findContours(counter_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        return hex_contour[0], counter_contour[0]
 
     def parse_grid(self, training=False):
         image = self.__window.screenshot()
@@ -135,8 +175,8 @@ class Parser:
 
         cells = []
         for contour in contours:
-            if (cv2.contourArea(contour) > Parser.__area_threshold and
-                cv2.matchShapes(contour, self.__hex_contour, 1, 0) < Parser.__hex_match_threshold):
+            if (cv2.contourArea(contour) > GameParser.__area_threshold and
+                cv2.matchShapes(contour, self.__hex_contour, 1, 0) < GameParser.__hex_match_threshold):
                 x, y, w, h = cv2.boundingRect(contour)
                 
                 x_crop, y_crop = round(w*0.18), round(h*0.18)
@@ -195,8 +235,8 @@ class Parser:
         i = 0
         parsed = [0]
         for contour in contours:
-            if (cv2.contourArea(contour) > Parser.__area_threshold and
-                cv2.matchShapes(contour, self.__counter_contour, 1, 0) < Parser.__counter_match_threshold):
+            if (cv2.contourArea(contour) > GameParser.__area_threshold and
+                cv2.matchShapes(contour, self.__counter_contour, 1, 0) < GameParser.__counter_match_threshold):
                 
                 i += 1
                 if i > 2:
@@ -209,7 +249,7 @@ class Parser:
 
                     cropped = image[y: y+h, x: x+w]
                     thresh = cv2.cvtColor(np.where(cropped==Cell.BLUE, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)
-                    thresh = cv2.resize(thresh, Parser.__counter_dims, interpolation=cv2.INTER_AREA)
+                    thresh = cv2.resize(thresh, GameParser.__counter_dims, interpolation=cv2.INTER_AREA)
     
                     hashed = average_hash(thresh)
     
@@ -229,47 +269,45 @@ class Parser:
 
         return parsed
 
-    def parse_clicked_cells(self, left_click_cells, right_click_cells):
-        for cell in left_click_cells:
-            self.__window.click_cell(cell, 'left')
+    def parse_clicked(self, left_click_cells, right_click_cells):
+        self.click_cells(left_click_cells, 'left')
           
         time.sleep(0.1) 
         image = self.__window.screenshot()
-        
-        for cell in left_click_cells:   
-            self.__parse_clicked_cell(image, cell)
+        self.__parse_clicked_cells(image, left_click_cells)
 
         right_click_cells.sort(key=lambda cell: cell.grid_coords, reverse=True)
-
-        for cell in right_click_cells:
-            self.__window.click_cell(cell, 'right')
+        self.click_cells(right_click_cells, 'right')
             
         time.sleep(1.5)
-        
         image = self.__window.screenshot()
-        for cell in right_click_cells:   
-            self.__parse_clicked_cell(image, cell)
+        self.__parse_clicked_cells(image, right_click_cells)
 
         _, remaining = self.parse_counters(image)
         return remaining
 
-    def __parse_clicked_cell(self, image, cell):
-        cx, cy, w, h = *cell.image_coords, self.__hex_width, self.__hex_height
+    def click_cells(self, cells, button):
+        for cell in cells:
+            self.__window.click_cell(cell, button)
 
-        x1, x2  = cx-w//2, cx+w//2
-        y1, y2  = cy-h//2, cy+h//2
-        
-        x_crop, y_crop = round(w*0.18), round(h*0.18)
-        cropped = image[y1+y_crop:y2-y_crop, x1+x_crop:x2-x_crop]
-
-        if np.count_nonzero(cropped == Cell.BLACK) > 10:
-            cell.colour = Cell.BLACK
-        elif np.count_nonzero(cropped == Cell.BLUE) > 10:
-            cell.colour = Cell.BLUE
-        else:
-            raise RuntimeError('cell must be blue or black after click')
-
-        cell.digit = self.__parse_cell_digit(cropped, cell.colour)
+    def __parse_clicked_cells(self, image, cells):
+        for cell in cells:
+            cx, cy, w, h = *cell.image_coords, self.__hex_width, self.__hex_height
+    
+            x1, x2  = cx-w//2, cx+w//2
+            y1, y2  = cy-h//2, cy+h//2
+            
+            x_crop, y_crop = round(w*0.18), round(h*0.18)
+            cropped = image[y1+y_crop:y2-y_crop, x1+x_crop:x2-x_crop]
+    
+            if np.count_nonzero(cropped == Cell.BLACK) > 10:
+                cell.colour = Cell.BLACK
+            elif np.count_nonzero(cropped == Cell.BLUE) > 10:
+                cell.colour = Cell.BLUE
+            else:
+                raise RuntimeError('cell must be blue or black after click')
+    
+            cell.digit = self.__parse_cell_digit(cropped, cell.colour)
         
     def __merge_rects(self, rects):
         rects.sort(key=lambda x: x[0])
@@ -333,7 +371,7 @@ class Parser:
             if theta > 180:
                 theta = theta-360
             
-            angle = Parser.__angles[np.argmin(np.abs(Parser.__angles-theta))]
+            angle = GameParser.__angles[np.argmin(np.abs(GameParser.__angles-theta))]
             cropped = thresh[y: y+h, x: x+w]
             digit = self.__parse_grid_digit(255-cropped, angle, training)
             
