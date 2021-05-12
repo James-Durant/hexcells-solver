@@ -9,7 +9,7 @@ class Navigator:
         self.__window = get_window()
         self.__menu_parser = MenuParser(self.__window)
         
-        #self.__menu_parser.parse_levels()
+        self.__menu_parser.parse_levels()
 
     @property
     def window(self):
@@ -20,6 +20,7 @@ class Navigator:
         
         if slot in [1,2,3]:
             self.__window.click(slots[slot-1])
+            time.sleep(1)
         else:
             raise RuntimeError('invalid save slot given')
 
@@ -40,8 +41,9 @@ class Navigator:
             self.__window.click(menu_button)
 
     def solve_level(self, level):
+        levels = self.__menu_parser.parse_levels()
         try:
-            coords = self.__levels[level]
+            coords = levels[level]
         except KeyError:
             raise RuntimeError('invalid level given')
             
@@ -49,19 +51,21 @@ class Navigator:
         self.__window.move_mouse()
         
         time.sleep(1.5)
-        self.__solve()
+        self.__solve(continuous=False)
 
     def solve_world(self, world):
+        levels = self.__menu_parser.parse_levels()
         if world not in ['1', '2', '3', '4', '5', '6']:
             raise RuntimeError('world must be between 1-6 (inclusive)')
         
-        self.__window.click(self.__levels[world+'-1'])
+        self.__window.click(levels[world+'-1'])
         time.sleep(1.5)
         self.__solve(continuous=True)
 
     def solve_game(self):
+        levels = self.__menu_parser.parse_levels()
         for world in ['1', '2', '3', '4', '5', '6']:
-            self.__window.click(self.__levels[world+'-6'])
+            self.__window.click(levels[world+'-6'])
             time.sleep(1.5)
             self.__solve(continuous=True)
             time.sleep(2)

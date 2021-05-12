@@ -71,7 +71,7 @@ class Generator:
 
             menu.close_game()
         
-        if not delete_existing and os.path.exists(hash_path):
+        if not delete_existing:
             with open(hash_path, 'rb') as file:
                 existing_hashes, existing_labels = pickle.load(file)
                 hashes += existing_hashes
@@ -162,7 +162,7 @@ class Generator:
             parser = GameParser(window)
             hashes = parser.parse_grid(training=True)
         
-        print(len(hashes), len(labels))
+        assert len(hashes) == len(labels)
         return hashes, labels
 
 if __name__ == '__main__':

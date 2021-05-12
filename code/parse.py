@@ -21,8 +21,6 @@ class MenuParser(Parser):
     def __init__(self, window):
         self.__window = window
         self.__level_data = Parser._load_hashes('level')
-        
-        self.parse_levels(training=True)
       
     def parse_slots(self, training=False):
         image = self.__window.screenshot()
@@ -60,15 +58,19 @@ class MenuParser(Parser):
         image = self.__window.screenshot()
         grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        mask = 255-cv2.inRange(image, (220,220,220), (255,255,255))
+        if training:
+            mask = 255-cv2.inRange(image, (220,220,220), (255,255,255))
+        else:
+            mask = cv2.inRange(image, (240,240,240), (255,255,255))
+        
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         
-        cv2.imshow('test', mask)
-        cv2.waitKey(0)
+        #cv2.imshow('test', mask)
+        #cv2.waitKey(0)
         
-        image = cv2.drawContours(image, contours, -1, (0,255,0), 3)
-        cv2.imshow('test', image)
-        cv2.waitKey(0)
+        #image = cv2.drawContours(image, contours, -1, (0,255,0), 3)
+        #cv2.imshow('test', image)
+        #cv2.waitKey(0)
         
         areas = [cv2.contourArea(contour) for contour in contours]
         median_area = np.median(areas)
@@ -78,13 +80,12 @@ class MenuParser(Parser):
         
         boxes.sort(key=lambda x: x[:2], reverse=True)
         
-        for x, y, w, h in boxes:
-            image = cv2.rectangle(image, (x,y), (x+w,y+h), (0,255,0), 1)
-        cv2.imshow('test', image)
-        cv2.waitKey(0)
+        #for x, y, w, h in boxes:
+        #    image = cv2.rectangle(image, (x,y), (x+w,y+h), (0,255,0), 1)
+        #cv2.imshow('test', image)
+        #cv2.waitKey(0)
         
-        levels = {}
-        hashes = []
+        levels, training_hashes = {}, []
         for x, y, w, h in boxes:
             x_crop, y_crop = round(w*0.25), round(h*0.3)
             cropped = grey[y+y_crop:y+h-y_crop, x+x_crop:x+w-x_crop]
@@ -99,23 +100,24 @@ class MenuParser(Parser):
 
             cropped = cv2.resize(cropped[x0:x1, y0:y1], (52, 27), interpolation=cv2.INTER_AREA)
     
-            cv2.imshow('test', cropped)
-            cv2.waitKey(0)
-    
             hashed = average_hash(cropped)
                            
             if training:
-                hashes.append(hashed)
+                training_hashes.append(hashed)
 
-            #hashes, labels = self.__level_data
+            hashes, labels = self.__level_data
     
-            #similarities = [np.sum(hashed != h) for h in hashes]
-            #best_matches = np.array(labels)[np.argsort(similarities)[:3]].tolist()
-            #match = max(set(best_matches), key=best_matches.count)
+            similarities = [np.sum(hashed != h) for h in hashes]
+            best_matches = np.array(labels)[np.argsort(similarities)[:3]].tolist()
+            match = max(set(best_matches), key=best_matches.count)
             
-            #levels[match] = (x,y)
+            levels[match] = (x+w//2, y+h//2)
+            
+            #print(match, best_matches)
+            #cv2.imshow('test', cropped)
+            #cv2.waitKey(0)
 
-        return hashes if training else levels
+        return training_hashes if training else levels
             
     def parse_level_end(self):
         image = self.__window.screenshot()
