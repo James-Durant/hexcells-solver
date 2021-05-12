@@ -15,8 +15,8 @@ class Navigator:
     def window(self):
         return self.__window
 
-    def load_save_slot(self, slot, training=False):
-        slots, generator = self.__menu_parser.parse_slots(training)
+    def save_slot(self, slot, training=False):
+        slots, _ = self.__menu_parser.parse_slots(training)
         
         if slot in [1,2,3]:
             self.__window.click(slots[slot-1])
@@ -24,19 +24,37 @@ class Navigator:
         else:
             raise RuntimeError('invalid save slot given')
 
-    def __solve(self, continuous):
+    def puzzle_generator(self):
+        if self.__window.title != 'Hexcells Infinite':
+            raise RuntimeError('Only Hexcells Infinite has puzzle generator')
+        
+        _, generator = self.__menu_parser.parse_slots()
+        self.__window.click(generator)
+        
+        while True:
+            time.sleep(1)
+            play, random = self.__menu_parser.parse_generator()
+            self.__window.click(random)
+            self.__window.click(play)
+        
+            time.sleep(1.75)
+            self.solve(False)
+
+    def solve(self, continuous):
+        self.__window.move_mouse()
+        
         game_parser = GameParser(self.__window)
         solver = Solver(game_parser)
         solver.solve()
         
         self.__window.move_mouse()
-        time.sleep(2)
+        time.sleep(1.2)
         next_button, menu_button = self.__menu_parser.parse_level_end()
 
         if continuous and next_button is not None:
             self.__window.click(next_button)
             time.sleep(1.6)
-            self.__solve()
+            self.solve()
         else:
             self.__window.click(menu_button)
 
@@ -48,10 +66,9 @@ class Navigator:
             raise RuntimeError('invalid level given')
             
         self.__window.click(coords)
-        self.__window.move_mouse()
         
         time.sleep(1.5)
-        self.__solve(continuous=False)
+        self.solve(continuous=False)
 
     def solve_world(self, world):
         levels = self.__menu_parser.parse_levels()
@@ -60,14 +77,14 @@ class Navigator:
         
         self.__window.click(levels[world+'-1'])
         time.sleep(1.5)
-        self.__solve(continuous=True)
+        self.solve(continuous=True)
 
     def solve_game(self):
         levels = self.__menu_parser.parse_levels()
         for world in ['1', '2', '3', '4', '5', '6']:
             self.__window.click(levels[world+'-6'])
             time.sleep(1.5)
-            self.__solve(continuous=True)
+            self.solve(continuous=True)
             time.sleep(2)
      
     def back(self):

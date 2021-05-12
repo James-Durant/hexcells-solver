@@ -10,7 +10,11 @@ class Window:
             
         x1, y1, x2, y2 = self._get_position()
         self.__resolution = '{0}x{1}'.format(x2-x1, y2-y1)
-        
+      
+    @property
+    def title(self):
+        return self.__title
+      
     @property
     def resolution(self):
         return self.__resolution

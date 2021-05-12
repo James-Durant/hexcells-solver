@@ -53,7 +53,24 @@ class MenuParser(Parser):
             
         slots.sort(key=lambda x: x[0])
         return slots, generator        
-      
+   
+    def parse_generator(self):
+        image = self.__window.screenshot()
+        
+        mask = cv2.inRange(image, (240,240,240), (255,255,255))
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        boxes = [cv2.boundingRect(contour) for contour in contours]
+        boxes.sort(key=lambda x: x[1], reverse=True)
+        x, y, w, h = boxes.pop(0)
+        play = (x+w//2, y+h//2)
+        
+        boxes.sort(key=lambda x: x[0])
+        x, y, w, h = boxes.pop(0)
+        random = (x+w//2, y+h//2)
+        
+        return play, random
+   
     def parse_levels(self, training=False):
         image = self.__window.screenshot()
         grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -322,21 +339,25 @@ class GameParser(Parser):
         return parsed
 
     def parse_clicked(self, left_click_cells, right_click_cells):
-        self.click_cells(left_click_cells, 'left')
+        if left_click_cells:
+            self.click_cells(left_click_cells, 'left')
           
-        time.sleep(0.1) 
-        image = self.__window.screenshot()
-        self.__parse_clicked_cells(image, left_click_cells)
+            time.sleep(0.1) 
+            image = self.__window.screenshot()
+            self.__parse_clicked_cells(image, left_click_cells)
 
-        right_click_cells.sort(key=lambda cell: cell.grid_coords, reverse=True)
-        self.click_cells(right_click_cells, 'right')
+        if right_click_cells:
+            right_click_cells.sort(key=lambda cell: cell.grid_coords, reverse=True)
+            self.click_cells(right_click_cells, 'right')
             
-        time.sleep(1.5)
-        image = self.__window.screenshot()
-        self.__parse_clicked_cells(image, right_click_cells)
+            max_row = max(right_click_cells, key=lambda cell: cell.grid_coords[0]).grid_coords[0]
+            
+            time.sleep(0.1*max_row)
+            image = self.__window.screenshot()
+            self.__parse_clicked_cells(image, right_click_cells)
 
-        _, remaining = self.parse_counters(image)
-        return remaining
+            _, remaining = self.parse_counters(image)
+            return remaining
 
     def click_cells(self, cells, button):
         for cell in cells:

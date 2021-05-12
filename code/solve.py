@@ -17,8 +17,10 @@ class Solver:
                 self.__parser.click_cells(left_click_cells, 'left')
                 self.__parser.click_cells(right_click_cells, 'right')
                 break
-                
-            self.__grid.remaining = self.__parser.parse_clicked(left_click_cells, right_click_cells)
+            
+            remaining = self.__parser.parse_clicked(left_click_cells, right_click_cells)
+            if remaining is not None:
+                self.__grid.remaining = remaining
     
     def __setup_problem(self):
         self.__unknown = self.__grid.unknown_cells()
