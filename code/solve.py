@@ -23,6 +23,7 @@ class Solver:
                 self.__grid.remaining = remaining
     
     def __setup_problem(self):
+        #print(self.__grid)
         self.__unknown = self.__grid.unknown_cells()
         self.__known = self.__grid.known_cells()
         
@@ -38,7 +39,7 @@ class Solver:
         self.__add_column_constraints()
         self.__add_cell_constraints()
         
-        temp = LpVariable('spam', 0, 1, 'binary')
+        temp = LpVariable('temp', 0, 1, 'binary')
         self.__problem += (temp == 1)
         self.__problem.setObjective(temp)
         self.__problem.solve(self.__solver)
@@ -67,7 +68,7 @@ class Solver:
             
             true_new, false_new = self.__get_true_false_classes()
 
-            true_class  &= true_new
+            true_class &= true_new
             false_class &= false_new
             
         raise RuntimeError('solver failed to finish puzzle')
@@ -137,7 +138,11 @@ class Solver:
             if cell.digit != None and cell.digit != '?':       
                 neighbours = self.__grid.neighbours(cell)
                 self.__problem += lpSum(self.__get_var(neighbour) for neighbour in neighbours) == cell.digit
-                if cell.hint != 'normal' and 2 <= cell.digit <= 4:
+                if cell.hint != 'normal': #and 2 <= cell.digit <= 4:
+                    if cell.colour == Cell.BLUE:
+                        print(cell.digit, cell.grid_coords)
+                        neighbours = self.__grid.outer_neighbours(cell)
+                    
                     m = neighbours + neighbours
                     
                     if cell.hint == 'consecutive':
@@ -145,6 +150,8 @@ class Solver:
                             cond  = self.__get_var(m[i])
                             cond -= self.__get_var(m[i-1])
                             cond -= self.__get_var(m[i+1])
+                            
+                            print(cond)
                                 
                             self.__problem += cond <= 0
                             self.__problem += cond >= -1
@@ -153,7 +160,7 @@ class Solver:
                         for i in range(len(neighbours)):
                             if all(m[i+j+1] != None for j in range(cell.digit-1)):
                                 self.__problem += lpSum(self.__get_var(m[i+j]) for j in range(cell.digit)) <= cell.digit-1
-   
+                    print()
     def __get_var(self, cell):
         if cell is None or cell.colour == Cell.BLACK:
             return 0
@@ -161,8 +168,7 @@ class Solver:
             return 1
         if self.__rep_of[cell] is cell:
             return self.__variables[cell]
-        else:
-            return 0
+        return 0
    
     def __get_true_false_classes(self):
         true_set, false_set = set(), set()

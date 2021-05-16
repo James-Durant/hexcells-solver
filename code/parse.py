@@ -211,13 +211,16 @@ class GameParser(Parser):
         self.__hex_width  = int(np.median(widths))
         self.__hex_height = int(np.median(heights))
         
-        x_spacing = self.__hex_width*1.085
-        
+        if self.__hex_width > 70:
+            x_spacing = self.__hex_width*1.085
+        else:
+            x_spacing = self.__hex_width*1.105
+            
         if self.__hex_height > 70:
             y_spacing = self.__hex_height*0.70
         else:
             y_spacing = self.__hex_height*0.72
-            
+        
         cols = int(round((self.__x_max - self.__x_min) / x_spacing) + 1)
         rows = int(round((self.__y_max - self.__y_min) / y_spacing) + 1)
 
@@ -253,7 +256,8 @@ class GameParser(Parser):
 
                 parsed = self.__parse_cell_digit(cropped, cell_colour, training)
                 if training:
-                    cells.append(parsed)
+                    if parsed is not None:
+                        cells.append(parsed)
                 else:
                     centre = (x + w//2, y + h//2)
                     cell = Cell(centre, w, h, cell_colour, parsed)
@@ -276,6 +280,9 @@ class GameParser(Parser):
         x1, y1 = coords.max(axis=0) + 1 
 
         thresh = cv2.resize(thresh[x0:x1, y0:y1], (53, 45), interpolation=cv2.INTER_AREA)
+        
+        #cv2.imshow('test', thresh)
+        #cv2.waitKey(0)
         
         hashed = average_hash(thresh)
                                

@@ -9,13 +9,14 @@ from grid import Cell
 
 class Generator:
     __RESOLUTIONS =  ['2048x1152', '1920x1200', '1920x1080', '1680x1050', '1600x1200', '1600x900']
-    __HEXCELLS_PATH = r'C:\Program Files (x86)\Steam\steamapps\content\app_304410\depot_304411\Hexcells Infinite.exe'
+    __PLUS_PATH =  r'C:\Program Files (x86)\Steam\steamapps\common\Hexcells Plus\Hexcells Plus.exe'
+    __INFINITE_OLD_PATH = r'C:\Program Files (x86)\Steam\steamapps\content\app_304410\depot_304411\Hexcells Infinite.exe'
 
     def __init__(self, save_path='../resources'):
         self.__save_path = save_path
 
     def __reset_resolution(self):
-        Popen([Generator.__HEXCELLS_PATH], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
+        Popen([Generator.__INFINITE_OLD_PATH], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
 
         time.sleep(1)
         config_window = ConfigWindow()
@@ -29,23 +30,56 @@ class Generator:
         if digit_type == 'column':
             for i, hint in enumerate(['normal', 'consecutive', 'non-consecutive']):
                 level_path = os.path.join(self.__save_path, digit_type, '{}_level.hexcells'.format(hint))
-                self.__make_data(digit_type+'_'+hint, save_path, level_path, i==0)
+                self.__make_data_infinite(digit_type+'_'+hint, save_path, level_path, i==0)
         
         elif digit_type == 'diagonal':
             for part in ['1', '2']:
                 for i, hint in enumerate(['normal', 'consecutive', 'non-consecutive']):
                     level_path = os.path.join(self.__save_path, digit_type, '{0}_{1}_level.hexcells'.format(hint, part))
-                    self.__make_data(digit_type+'_{0}_{1}'.format(hint, part), save_path, level_path, part=='1' and i==0)
+                    self.__make_data_infinite(digit_type+'_{0}_{1}'.format(hint, part), save_path, level_path, part=='1' and i==0)
+        
+        elif digit_type == 'blue':
+            level_path = os.path.join(self.__save_path, digit_type, 'level.hexcells')
+            #self.__make_data_infinite(digit_type, save_path, level_path)
+            self.__make_data_blue_special(save_path)
+                    
         else:
             level_path = os.path.join(self.__save_path, digit_type, 'level.hexcells')
-            self.__make_data(digit_type, save_path, level_path)
+            self.__make_data_infinite(digit_type, save_path, level_path)
         
-    def __make_data(self, digit_type, hash_path, level_path, delete_existing=True): 
+    def __make_data_blue_special(self, hash_path):
+        Popen([Generator.__PLUS_PATH], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
+        time.sleep(4)
+
+        menu = Navigator()
+        menu.save_slot(1)
+        menu.load_level('4-6')
+        menu.window.move_mouse()
+
+        screenshot = menu.window.screenshot()
+        parser = GameParser(menu.window)
+        
+        hashes = parser.parse_cells(screenshot, Cell.BLUE, training=True)
+        labels = ['{5}', '-2-', '5', '4', '2', '4', '5', '{4}', '{2}', '5', '3', '10', '10']
+
+        assert len(hashes) == len(labels)
+
+        menu.close_game()
+        
+        with open(hash_path, 'rb') as file:
+            existing_hashes, existing_labels = pickle.load(file)
+            hashes += existing_hashes
+            labels += existing_labels
+
+        with open(hash_path, 'wb') as file:
+            pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
+        
+    def __make_data_infinite(self, digit_type, hash_path, level_path, delete_existing=True): 
         self.__reset_resolution()
 
         hashes, labels = [], []
         for resolution in Generator.__RESOLUTIONS:
-            Popen([Generator.__HEXCELLS_PATH], shell=True,
+            Popen([Generator.__INFINITE_OLD_PATH], shell=True,
                   stdin=None, stdout=None, stderr=None, close_fds=True)
 
             time.sleep(1)
@@ -167,9 +201,9 @@ class Generator:
 
 if __name__ == '__main__':
     generator = Generator()
-    generator.make_dataset('level')
+    #generator.make_dataset('level')
     #generator.make_dataset('black')
-    #generator.make_dataset('blue')
+    generator.make_dataset('blue')
     #generator.make_dataset('counter')
     #generator.make_dataset('column')
     #generator.make_dataset('diagonal') 

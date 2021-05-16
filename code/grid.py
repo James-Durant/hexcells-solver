@@ -19,14 +19,12 @@ class Constraint:
         return self.__members
 
 class Grid:
-    __FLOWER_DELTAS = [( 0, -2), ( 0, -4), ( 1, -3),
-                       ( 1, -1), ( 2, -2), ( 2,  0),
-                       ( 1,  1), ( 2,  2), ( 1,  3),
-                       ( 0,  2), ( 0,  4), (-1,  3),
-                       (-1,  1), (-2,  2), (-2,  0),
-                       (-1, -1), (-2, -2), (-1, -3)]
+    __DIRECT = [(0, -2), (1, -1), (1, 1), (0, 2), (-1, 1), (-1, -1)]
     
-    __DIRECT_DELTAS = __FLOWER_DELTAS[::3]
+    __OUTER = [(0, -4), (1,-3), (2,-2), (2, 0), (2, 2), (1, 3), (0, 4),
+               (-1, 3), (-2, 2), (-2, 0), (-2,-2), (-1,-3)]
+    
+    __FLOWER = __DIRECT + __OUTER
     
     def __init__(self, grid, cells, remaining):
         self.__grid = grid
@@ -118,11 +116,15 @@ class Grid:
     def neighbours(self, cell):
         deltas = []
         if cell.colour == Cell.BLACK and cell.digit != '?':
-            deltas = Grid.__DIRECT_DELTAS
+            deltas = Grid.__DIRECT
         elif cell.colour == Cell.BLUE and cell.digit != None:
-            deltas = Grid.__FLOWER_DELTAS
+            deltas = Grid.__FLOWER
         return self.__find_neighbours(cell, deltas)
-        
+
+    def outer_neighbours(self, cell):
+        assert cell.colour == Cell.BLUE
+        return self.__find_neighbours(cell, Grid.__OUTER)         
+
     def __find_neighbours(self, cell, deltas):
         row, col = cell.grid_coords
         return [self[row+d_row, col+d_col] for d_col, d_row in deltas]
@@ -153,8 +155,8 @@ class Grid:
         return return_str
 
 class Cell:
-    BLUE   = (235, 164, 5)
-    BLACK  = (62, 62, 62)
+    BLUE = (235, 164, 5)
+    BLACK = (62, 62, 62)
     ORANGE = (41, 177, 255) 
     ORANGE_OLD = (41, 175, 255) 
     
@@ -211,16 +213,29 @@ class Cell:
         if self.__colour == Cell.BLUE:
             if digit == None:
                 self.__digit = None
-            else:
-                try:
-                    self.__digit = int(digit)
-                except ValueError:
-                    raise RuntimeError('blue cell digit parsed incorrectly')       
+                return
+            
+            if digit[0] == '{' and digit[-1] == '}':
+                if len(digit) == 2:
+                    raise RuntimeError('consecutive blue cell missing digit')
+                self.__hint = 'consecutive'
+                digit = digit[1:-1]
+                
+            elif digit[0] == '-' and digit[-1] == '-':
+                if len(digit) == 2:
+                    raise RuntimeError('non-consecutive blue cell missing digit')
+                self.__hint = 'non-consecutive'
+                digit = digit[1:-1]
+
+            try:
+                self.__digit = int(digit)
+            except ValueError:
+                raise RuntimeError('blue cell digit parsed incorrectly')         
             
         elif self.__colour == Cell.BLACK:
             if digit == None:
                 raise RuntimeError('OCR missed black cell digit')
-            if digit == '?':
+            elif digit == '?':
                 self.__digit = '?'
             else:
                 if digit[0] == '{' and digit[-1] == '}':

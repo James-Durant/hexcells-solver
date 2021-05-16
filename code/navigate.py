@@ -58,7 +58,7 @@ class Navigator:
         else:
             self.__window.click(menu_button)
 
-    def solve_level(self, level):
+    def load_level(self, level):
         levels = self.__menu_parser.parse_levels()
         try:
             coords = levels[level]
@@ -66,8 +66,10 @@ class Navigator:
             raise RuntimeError('invalid level given')
             
         self.__window.click(coords)
-        
         time.sleep(1.5)
+        
+    def solve_level(self, level):
+        self.load_level(level)
         self.solve(continuous=False)
 
     def solve_world(self, world):
