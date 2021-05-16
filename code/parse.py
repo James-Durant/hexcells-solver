@@ -349,6 +349,7 @@ class GameParser(Parser):
         return parsed
 
     def parse_clicked(self, grid, left_click_cells, right_click_cells):
+        left_click_cells.sort(key=lambda cell: cell.grid_coords, reverse=True)
         if left_click_cells:
             self.click_cells(left_click_cells, 'left')
           

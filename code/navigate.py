@@ -39,8 +39,6 @@ class Navigator:
             self.solve(False)
 
     def solve(self, continuous):
-        self.__window.move_mouse()
-        
         game_parser = GameParser(self.__window)
         solver = Solver(game_parser)
         solver.solve()
@@ -51,6 +49,7 @@ class Navigator:
 
         if continuous and next_button is not None:
             self.__window.click(next_button)
+            self.__window.move_mouse()
             time.sleep(1.6)
             self.solve(continuous)
         else:
@@ -64,6 +63,7 @@ class Navigator:
             raise RuntimeError('invalid level given')
             
         self.__window.click(coords)
+        self.__window.move_mouse()
         time.sleep(1.5)
         
     def solve_level(self, level):
@@ -76,13 +76,14 @@ class Navigator:
             raise RuntimeError('world must be between 1-6 (inclusive)')
         
         self.__window.click(levels[world+'-1'])
+        self.__window.move_mouse()
         time.sleep(1.5)
         self.solve(continuous=True)
 
     def solve_game(self):
         for world in ['1', '2', '3', '4', '5', '6']:
             self.solve_world(world)
-            time.sleep(4)
+            time.sleep(2)
      
     def back(self):
         self.__window.press_key('esc')
