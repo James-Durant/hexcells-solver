@@ -8,8 +8,6 @@ class Navigator:
     def __init__(self):
         self.__window = get_window()
         self.__menu_parser = MenuParser(self.__window)
-        
-        self.__menu_parser.parse_levels()
 
     @property
     def window(self):
@@ -54,7 +52,7 @@ class Navigator:
         if continuous and next_button is not None:
             self.__window.click(next_button)
             time.sleep(1.6)
-            self.solve()
+            self.solve(continuous)
         else:
             self.__window.click(menu_button)
 
@@ -82,12 +80,9 @@ class Navigator:
         self.solve(continuous=True)
 
     def solve_game(self):
-        levels = self.__menu_parser.parse_levels()
         for world in ['1', '2', '3', '4', '5', '6']:
-            self.__window.click(levels[world+'-6'])
-            time.sleep(1.5)
-            self.solve(continuous=True)
-            time.sleep(2)
+            self.solve_world(world)
+            time.sleep(4)
      
     def back(self):
         self.__window.press_key('esc')

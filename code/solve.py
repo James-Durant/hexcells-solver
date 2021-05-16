@@ -138,20 +138,44 @@ class Solver:
                 neighbours = self.__grid.neighbours(cell)
                 self.__problem += lpSum(self.__get_var(neighbour) for neighbour in neighbours) == cell.digit
                 
-                if cell.hint != 'normal':
+                if (cell.hint != 'normal' and
+                   (cell.colour == Cell.BLACK and 2 <= cell.digit <= 4) or
+                   (cell.colour == Cell.BLUE and 2 <= cell.digit <= 10)):
+                    
                     if cell.colour == Cell.BLUE:
                         neighbours = self.__grid.outer_neighbours(cell)
                 
                     n = len(neighbours)
                     if cell.hint == 'consecutive':
                         for i in range(n):
-                            for j in range(cell.digit, n//2+1):
-                                self.__problem += lpSum([self.__get_var(neighbours[i]), self.__get_var(neighbours[(i+j)%n])]) <= 1
-                            
+                            for j in range(i+1, n):
+                                if self.__dist(neighbours, i, j) in range(cell.digit, n):
+                                    self.__problem += lpSum([self.__get_var(neighbours[i]), self.__get_var(neighbours[j])]) <= 1
+
                     if cell.hint == 'non-consecutive':
                         for i in range(n):
                             if all(neighbours[(i+j+1)%n] != None for j in range(cell.digit-1)):
                                 self.__problem += lpSum(self.__get_var(neighbours[(i+j)%n]) for j in range(cell.digit)) <= cell.digit-1
+                        
+    def __dist(self, neighbours, i, j):
+        dist1 = 0
+        for k in range(i+1, j+1):
+            if neighbours[k] != None:
+                dist1 += 1
+            else:
+                dist1 = float('inf')
+                break
+        
+        dist2 = 0
+        n = len(neighbours)
+        for k in range(i-1, j-n-1, -1):
+            if neighbours[k%n] != None:
+                dist2 += 1
+            else:
+                dist2 = float('inf')
+                break
+            
+        return min(dist1, dist2)
 
     def __get_var(self, cell):
         if cell is None or cell.colour == Cell.BLACK:

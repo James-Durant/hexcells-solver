@@ -78,7 +78,7 @@ class MenuParser(Parser):
         if training:
             mask = 255-cv2.inRange(image, (220,220,220), (255,255,255))
         else:
-            mask = cv2.inRange(image, (240,240,240), (255,255,255))
+            mask = cv2.inRange(image, (245,245,245), (255,255,255))
         
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         
@@ -214,7 +214,7 @@ class GameParser(Parser):
         if self.__hex_width > 70:
             x_spacing = self.__hex_width*1.085
         else:
-            x_spacing = self.__hex_width*1.105
+            x_spacing = self.__hex_width*1.098
             
         if self.__hex_height > 70:
             y_spacing = self.__hex_height*0.70
@@ -224,7 +224,8 @@ class GameParser(Parser):
         cols = int(round((self.__x_max - self.__x_min) / x_spacing) + 1)
         rows = int(round((self.__y_max - self.__y_min) / y_spacing) + 1)
         
-        print(rows, cols)
+        #print(self.__hex_width, (self.__x_max - self.__x_min) / x_spacing)
+        #print(self.__hex_height, (self.__y_max - self.__y_min) / y_spacing)
 
         grid = [[None]*cols for _ in range(rows)]
 
@@ -361,7 +362,7 @@ class GameParser(Parser):
             
             min_row = min(right_click_cells, key=lambda cell: cell.grid_coords[0]).grid_coords[0]
             
-            time.sleep(0.15*(grid.rows-min_row))
+            time.sleep(max(1.5, 0.12*(grid.rows-min_row)))
             image = self.__window.screenshot()
             self.__parse_clicked_cells(image, right_click_cells)
 
