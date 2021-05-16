@@ -223,6 +223,8 @@ class GameParser(Parser):
         
         cols = int(round((self.__x_max - self.__x_min) / x_spacing) + 1)
         rows = int(round((self.__y_max - self.__y_min) / y_spacing) + 1)
+        
+        print(rows, cols)
 
         grid = [[None]*cols for _ in range(rows)]
 
@@ -345,7 +347,7 @@ class GameParser(Parser):
 
         return parsed
 
-    def parse_clicked(self, left_click_cells, right_click_cells):
+    def parse_clicked(self, grid, left_click_cells, right_click_cells):
         if left_click_cells:
             self.click_cells(left_click_cells, 'left')
           
@@ -357,9 +359,9 @@ class GameParser(Parser):
             right_click_cells.sort(key=lambda cell: cell.grid_coords, reverse=True)
             self.click_cells(right_click_cells, 'right')
             
-            max_row = max(right_click_cells, key=lambda cell: cell.grid_coords[0]).grid_coords[0]
+            min_row = min(right_click_cells, key=lambda cell: cell.grid_coords[0]).grid_coords[0]
             
-            time.sleep(0.1*max_row)
+            time.sleep(0.15*(grid.rows-min_row))
             image = self.__window.screenshot()
             self.__parse_clicked_cells(image, right_click_cells)
 

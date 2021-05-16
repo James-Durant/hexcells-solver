@@ -100,10 +100,10 @@ class Navigator:
             level = file.read()
         pyperclip.copy(level)
         
-        x1, y1, x2, y2 = self._get_position()
+        x1, y1, x2, y2 = self.__window._get_position()
         x = round((x1+x2)*0.92)
         y = round((y1+y2)*0.97)
         
         self.__window.to_foreground()
         for i in range(5):
-            self.__window.click((x, y))
+            self.__window.click((x-x1, y-y1))

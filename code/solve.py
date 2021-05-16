@@ -18,7 +18,7 @@ class Solver:
                 self.__parser.click_cells(right_click_cells, 'right')
                 break
             
-            remaining = self.__parser.parse_clicked(left_click_cells, right_click_cells)
+            remaining = self.__parser.parse_clicked(self.__grid, left_click_cells, right_click_cells)
             if remaining is not None:
                 self.__grid.remaining = remaining
     
@@ -102,9 +102,8 @@ class Solver:
                 self.__rep_of[cell1] = cell1
         
         for cell in self.__constraints:
-            for constraint in self.__constraints[cell]:
-                if constraint.hint != 'normal':
-                    self.__rep_of[cell] = cell
+            if any(constraint.hint != 'normal' for constraint in self.__constraints[cell]):
+                self.__rep_of[cell] = cell
     
     def __get_classes(self):
         self.__classes = {}
@@ -138,29 +137,22 @@ class Solver:
             if cell.digit != None and cell.digit != '?':       
                 neighbours = self.__grid.neighbours(cell)
                 self.__problem += lpSum(self.__get_var(neighbour) for neighbour in neighbours) == cell.digit
-                if cell.hint != 'normal': #and 2 <= cell.digit <= 4:
+                
+                if cell.hint != 'normal':
                     if cell.colour == Cell.BLUE:
-                        print(cell.digit, cell.grid_coords)
                         neighbours = self.__grid.outer_neighbours(cell)
-                    
-                    m = neighbours + neighbours
-                    
+                
+                    n = len(neighbours)
                     if cell.hint == 'consecutive':
-                        for i in range(len(neighbours)):
-                            cond  = self.__get_var(m[i])
-                            cond -= self.__get_var(m[i-1])
-                            cond -= self.__get_var(m[i+1])
+                        for i in range(n):
+                            for j in range(cell.digit, n//2+1):
+                                self.__problem += lpSum([self.__get_var(neighbours[i]), self.__get_var(neighbours[(i+j)%n])]) <= 1
                             
-                            print(cond)
-                                
-                            self.__problem += cond <= 0
-                            self.__problem += cond >= -1
-                            
-                    elif cell.hint == 'non-consecutive':
-                        for i in range(len(neighbours)):
-                            if all(m[i+j+1] != None for j in range(cell.digit-1)):
-                                self.__problem += lpSum(self.__get_var(m[i+j]) for j in range(cell.digit)) <= cell.digit-1
-                    print()
+                    if cell.hint == 'non-consecutive':
+                        for i in range(n):
+                            if all(neighbours[(i+j+1)%n] != None for j in range(cell.digit-1)):
+                                self.__problem += lpSum(self.__get_var(neighbours[(i+j)%n]) for j in range(cell.digit)) <= cell.digit-1
+
     def __get_var(self, cell):
         if cell is None or cell.colour == Cell.BLACK:
             return 0

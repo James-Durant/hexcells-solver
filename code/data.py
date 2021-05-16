@@ -9,14 +9,13 @@ from grid import Cell
 
 class Generator:
     __RESOLUTIONS =  ['2048x1152', '1920x1200', '1920x1080', '1680x1050', '1600x1200', '1600x900']
-    __PLUS_PATH =  r'C:\Program Files (x86)\Steam\steamapps\common\Hexcells Plus\Hexcells Plus.exe'
-    __INFINITE_OLD_PATH = r'C:\Program Files (x86)\Steam\steamapps\content\app_304410\depot_304411\Hexcells Infinite.exe'
+    __HEXCELLS_PATH = r'C:\Program Files (x86)\Steam\steamapps\content\app_304410\depot_304411\Hexcells Infinite.exe'
 
     def __init__(self, save_path='../resources'):
         self.__save_path = save_path
 
     def __reset_resolution(self):
-        Popen([Generator.__INFINITE_OLD_PATH], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
+        Popen([Generator.__HEXCELLS_PATH], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
 
         time.sleep(1)
         config_window = ConfigWindow()
@@ -37,35 +36,29 @@ class Generator:
                 for i, hint in enumerate(['normal', 'consecutive', 'non-consecutive']):
                     level_path = os.path.join(self.__save_path, digit_type, '{0}_{1}_level.hexcells'.format(hint, part))
                     self.__make_data_infinite(digit_type+'_{0}_{1}'.format(hint, part), save_path, level_path, part=='1' and i==0)
-        
-        elif digit_type == 'blue':
-            level_path = os.path.join(self.__save_path, digit_type, 'level.hexcells')
-            #self.__make_data_infinite(digit_type, save_path, level_path)
-            self.__make_data_blue_special(save_path)
                     
         else:
             level_path = os.path.join(self.__save_path, digit_type, 'level.hexcells')
             self.__make_data_infinite(digit_type, save_path, level_path)
         
-    def __make_data_blue_special(self, hash_path):
-        Popen([Generator.__PLUS_PATH], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
-        time.sleep(4)
-
-        menu = Navigator()
-        menu.save_slot(1)
-        menu.load_level('4-6')
-        menu.window.move_mouse()
-
-        screenshot = menu.window.screenshot()
-        parser = GameParser(menu.window)
+    def make_dataset_blue_special(self):
+        game = Navigator()
         
-        hashes = parser.parse_cells(screenshot, Cell.BLUE, training=True)
-        labels = ['{5}', '-2-', '5', '4', '2', '4', '5', '{4}', '{2}', '5', '3', '10', '10']
+        hashes, labels = [], []
+        for i in range(6):
+            screenshot = game.window.screenshot()
+            parser = GameParser(game.window)
+            
+            hashes += parser.parse_cells(screenshot, Cell.BLUE, training=True)
+            labels += ['{5}', '-2-', '5', '4', '2', '4', '5', '{4}', '{2}', '5', '3', '10', '10']
+    
+            assert len(hashes) == len(labels)
+            print(i)
+            time.sleep(3)
 
-        assert len(hashes) == len(labels)
-
-        menu.close_game()
-        
+        game.close_game()
+    
+        hash_path = os.path.join(self.__save_path, 'blue', 'hashes.pickle')
         with open(hash_path, 'rb') as file:
             existing_hashes, existing_labels = pickle.load(file)
             hashes += existing_hashes
@@ -79,7 +72,7 @@ class Generator:
 
         hashes, labels = [], []
         for resolution in Generator.__RESOLUTIONS:
-            Popen([Generator.__INFINITE_OLD_PATH], shell=True,
+            Popen([Generator.__HEXCELLS_PATH], shell=True,
                   stdin=None, stdout=None, stderr=None, close_fds=True)
 
             time.sleep(1)
@@ -203,7 +196,8 @@ if __name__ == '__main__':
     generator = Generator()
     #generator.make_dataset('level')
     #generator.make_dataset('black')
-    generator.make_dataset('blue')
+    #generator.make_dataset('blue')
+    generator.make_dataset_blue_special()
     #generator.make_dataset('counter')
     #generator.make_dataset('column')
     #generator.make_dataset('diagonal') 
