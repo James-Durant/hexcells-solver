@@ -139,18 +139,24 @@ class Solver:
                 self.__problem += lpSum(self.__get_var(neighbour) for neighbour in neighbours) == cell.digit
                 
                 if (cell.hint != 'normal' and
-                   (cell.colour == Cell.BLACK and 2 <= cell.digit <= 4) or
-                   (cell.colour == Cell.BLUE and 2 <= cell.digit <= 10)):
+                   ((cell.colour == Cell.BLACK and 2 <= cell.digit <= 4) or
+                   (cell.colour == Cell.BLUE and 2 <= cell.digit <= 10))):
                     
                     if cell.colour == Cell.BLUE:
                         neighbours = self.__grid.outer_neighbours(cell)
                 
                     n = len(neighbours)
                     if cell.hint == 'consecutive':
-                        for i in range(n):
-                            for j in range(i+1, n):
-                                if self.__dist(neighbours, i, j) in range(cell.digit, n):
-                                    self.__problem += lpSum([self.__get_var(neighbours[i]), self.__get_var(neighbours[j])]) <= 1
+                        if cell.colour == Cell.BLUE:
+                            for i in range(n):
+                                for j in range(i+1, n):
+                                    if self.__dist(neighbours, i, j) in range(cell.digit, n):
+                                        self.__problem += lpSum([self.__get_var(neighbours[i]), self.__get_var(neighbours[j])]) <= 1
+                        
+                        elif cell.colour == Cell.BLACK:    
+                            for i in range(n):
+                                cond = self.__get_var(neighbours[i]) - self.__get_var(neighbours[(i+1)%n]) - self.__get_var(neighbours[(i-1)%n])
+                                self.__problem += -1 <= cond <= 0
 
                     if cell.hint == 'non-consecutive':
                         for i in range(n):

@@ -273,7 +273,7 @@ class GameParser(Parser):
             return None
         
         thresh = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)   
-        thresh = np.where(thresh > 140, 0, 255).astype(np.uint8)
+        thresh = np.where(thresh > 200, 0, 255).astype(np.uint8)
         
         if np.count_nonzero(thresh==0) < 20:
             return None
@@ -353,7 +353,7 @@ class GameParser(Parser):
         if left_click_cells:
             self.click_cells(left_click_cells, 'left')
           
-            time.sleep(0.1) 
+            time.sleep(0.2) 
             image = self.__window.screenshot()
             self.__parse_clicked_cells(image, left_click_cells)
 
@@ -367,8 +367,8 @@ class GameParser(Parser):
             image = self.__window.screenshot()
             self.__parse_clicked_cells(image, right_click_cells)
 
-            _, remaining = self.parse_counters(image)
-            return remaining
+        _, remaining = self.parse_counters(image)
+        return remaining
 
     def click_cells(self, cells, button):
         for cell in cells:
@@ -389,6 +389,8 @@ class GameParser(Parser):
             elif np.count_nonzero(cropped == Cell.BLUE) > 10:
                 cell.colour = Cell.BLUE
             else:
+                cv2.imshow('test', cropped)
+                cv2.waitKey(0)
                 raise RuntimeError('cell must be blue or black after click')
     
             cell.digit = self.__parse_cell_digit(cropped, cell.colour)
@@ -471,7 +473,12 @@ class GameParser(Parser):
         if np.count_nonzero(thresh==0) < 20:
             return None
 
-        thresh = self.__resize(thresh)
+        coords = np.argwhere(thresh==0)
+        x0, y0 = coords.min(axis=0)
+        x1, y1 = coords.max(axis=0) + 1
+
+        thresh = self.__resize(thresh[x0:x1, y0:y1])
+        thresh = cv2.blur(thresh, (2, 2))
         
         if angle in [-120, 120]:
             thresh = cv2.flip(cv2.flip(thresh, 1), 0)
@@ -502,9 +509,9 @@ class GameParser(Parser):
             digit = labels[np.argmin(similarities)]
             match = '{' + digit +'}'
     
-        #print(match, best_matches)
-        #cv2.imshow('test', thresh)
-        #cv2.waitKey(0)
+        print(match, best_matches)
+        cv2.imshow('test', thresh)
+        cv2.waitKey(0)
         
         return match
     
