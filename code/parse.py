@@ -273,20 +273,12 @@ class GameParser(Parser):
             return None
         
         thresh = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)   
-        thresh = np.where(thresh > 200, 0, 255).astype(np.uint8)
+        thresh = np.where(thresh > 220, 0, 255).astype(np.uint8)
         
         if np.count_nonzero(thresh==0) < 20:
             return None
         
-        coords = np.argwhere(thresh==0)
-        x0, y0 = coords.min(axis=0)
-        x1, y1 = coords.max(axis=0) + 1 
-
-        thresh = cv2.resize(thresh[x0:x1, y0:y1], (53, 45), interpolation=cv2.INTER_AREA)
-        
-        #cv2.imshow('test', thresh)
-        #cv2.waitKey(0)
-        
+        thresh = GameParser.__process_image(thresh)
         hashed = average_hash(thresh)
                                
         if training:
@@ -294,17 +286,16 @@ class GameParser(Parser):
 
         if cell_colour == Cell.BLACK:
             hashes, labels = self.__black_data
+            
         elif cell_colour == Cell.BLUE:
             hashes, labels = self.__blue_data
         
-        similarities = [np.sum(hashed != h) for h in hashes]
-        best_matches = np.array(labels)[np.argsort(similarities)[:3]].tolist()
-        match = max(set(best_matches), key=best_matches.count)
+        match = GameParser.__find_match(hashes, labels, hashed)
     
-        #print(match, best_matches)
+        #print(match)
         #cv2.imshow('test', thresh)
         #cv2.waitKey(0)
-        
+    
         return match
 
     def parse_counters(self, image, training=False):
@@ -389,8 +380,6 @@ class GameParser(Parser):
             elif np.count_nonzero(cropped == Cell.BLUE) > 10:
                 cell.colour = Cell.BLUE
             else:
-                cv2.imshow('test', cropped)
-                cv2.waitKey(0)
                 raise RuntimeError('cell must be blue or black after click')
     
             cell.digit = self.__parse_cell_digit(cropped, cell.colour)
@@ -423,7 +412,7 @@ class GameParser(Parser):
         return bounding_boxes
         
     def __parse_columns(self, image, grid, training=False):
-        _, thresh = cv2.threshold(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 150, 255, cv2.THRESH_BINARY_INV)
+        _, thresh = cv2.threshold(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 120, 255, cv2.THRESH_BINARY_INV)
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         rects = []
@@ -473,12 +462,7 @@ class GameParser(Parser):
         if np.count_nonzero(thresh==0) < 20:
             return None
 
-        coords = np.argwhere(thresh==0)
-        x0, y0 = coords.min(axis=0)
-        x1, y1 = coords.max(axis=0) + 1
-
-        thresh = self.__resize(thresh[x0:x1, y0:y1])
-        thresh = cv2.blur(thresh, (2, 2))
+        thresh = GameParser.__process_image(thresh)
         
         if angle in [-120, 120]:
             thresh = cv2.flip(cv2.flip(thresh, 1), 0)
@@ -489,43 +473,29 @@ class GameParser(Parser):
             return hashed
         
         hashes, labels = self.__column_data if angle == 0 else self.__diagonal_data
+        match = GameParser.__find_match(hashes, labels, hashed)
         
+        #print(match)
+        #cv2.imshow('test', thresh)
+        #cv2.waitKey(0)
+        
+        return match
+
+    @staticmethod
+    def __process_image(image):
+        coords = np.argwhere(image==0)
+        x0, x1 = coords[:,0].min(), coords[:,0].max()
+        y0, y1 = coords[:,1].min(), coords[:,1].max()
+
+        image = cv2.resize(image[x0:x1+1, y0:y1+1], (53, 45), interpolation=cv2.INTER_AREA)
+        image = cv2.medianBlur(image, 3)
+        
+        return image
+    
+    @staticmethod
+    def __find_match(hashes, labels, hashed):
         similarities = [np.sum(hashed != h) for h in hashes]
         best_matches = np.array(labels)[np.argsort(similarities)[:3]].tolist()
         match = max(set(best_matches), key=best_matches.count)
-        
-        if angle == 0 and match[0] == '{' and match[-1] == '}':
-            temp = thresh.copy()
-            temp[:, :13] = 255
-            temp[:, -13:] = 255
-                        
-            coords = np.argwhere(temp==0)
-            x0, y0 = coords.min(axis=0)
-            x1, y1 = coords.max(axis=0) + 1 
-            temp = self.__resize(temp[x0:x1, y0:y1])
-            
-            hashed = average_hash(temp)       
-            similarities = [np.sum(hashed != h) for h in hashes]
-            digit = labels[np.argmin(similarities)]
-            match = '{' + digit +'}'
-    
-        print(match, best_matches)
-        cv2.imshow('test', thresh)
-        cv2.waitKey(0)
-        
+        #print(match, best_matches)
         return match
-    
-    def __resize(self, image, desired_size=40):
-        old_size = image.shape[:2] # old_size is in (height, width) format
-
-        ratio = desired_size / max(old_size)
-        new_size = tuple([int(x*ratio) for x in old_size])
-
-        image = cv2.resize(image, (new_size[1], new_size[0]))
-
-        delta_w = desired_size - new_size[1]
-        delta_h = desired_size - new_size[0]
-        top, bottom = delta_h//2, delta_h-(delta_h//2)
-        left, right = delta_w//2, delta_w-(delta_w//2)
-
-        return cv2.copyMakeBorder(image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(255, 255, 255))

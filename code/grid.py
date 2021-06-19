@@ -62,7 +62,6 @@ class Grid:
     @property
     def cells(self):
         return self.__cells
-    
     def nearest_cell(self, query_coords):
         nearest = np.argmin(np.sum((self.__cell_image_coords - query_coords)**2, axis=1))
         return self.__cells[nearest]
@@ -119,15 +118,24 @@ class Grid:
             deltas = Grid.__DIRECT
         elif cell.colour == Cell.BLUE and cell.digit != None:
             deltas = Grid.__FLOWER
+            
         return self.__find_neighbours(cell, deltas)
 
+    def direct_neighbours(self, cell):
+        return self.__find_neighbours(cell, Grid.__DIRECT)      
+
     def outer_neighbours(self, cell):
-        assert cell.colour == Cell.BLUE
         return self.__find_neighbours(cell, Grid.__OUTER)         
+
+    def flower_neighbours(self, cell):
+        return self.__find_neighbours(cell, Grid.__FLOWER)      
 
     def __find_neighbours(self, cell, deltas):
         row, col = cell.grid_coords
         return [self[row+d_row, col+d_col] for d_col, d_row in deltas]
+    
+    def get_column(self, col):
+        return [self.__grid[i][col] for i in range(self.__rows) if self.__grid[i][col] is not None]
     
     def __getitem__(self, key):
         row, col = key

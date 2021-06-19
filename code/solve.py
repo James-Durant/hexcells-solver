@@ -7,11 +7,11 @@ class Solver:
     def __init__(self, parser):
         self.__parser = parser
 
-    def solve(self):
+    def solve(self, level=None, game=None):
         self.__grid = self.__parser.parse_grid()
         
         while True:
-            self.__setup_problem()
+            self.__setup_problem(level, game)
             left_click_cells, right_click_cells = self.__solve_single_step()
             if len(left_click_cells)+len(right_click_cells)-len(self.__unknown) == 0:
                 self.__parser.click_cells(left_click_cells, 'left')
@@ -22,8 +22,8 @@ class Solver:
             if remaining is not None:
                 self.__grid.remaining = remaining
     
-    def __setup_problem(self):
-        #print(self.__grid)
+    def __setup_problem(self, level, game):
+        print(self.__grid)
         self.__unknown = self.__grid.unknown_cells()
         self.__known = self.__grid.known_cells()
         
@@ -39,10 +39,31 @@ class Solver:
         self.__add_column_constraints()
         self.__add_cell_constraints()
         
+        if level == '6-6' and game == 'Hexcells Plus':
+            self.__add_plus_end_level_constraints()
+        
+        elif level == '6-6' and game == 'Hexcells Infinite':
+            self.__add_infinite_end_level_constraints()
+        
         temp = LpVariable('temp', 0, 1, 'binary')
         self.__problem += (temp == 1)
         self.__problem.setObjective(temp)
         self.__problem.solve(self.__solver)
+        
+        for var in self.__problem.variables():
+            print(var.name, var.varValue)
+    
+    def __add_infinite_end_level_constraints(self):
+        for col in range(self.__grid.cols):
+            column = self.__grid.get_column(col)
+            x = LpVariable('x_'+str(col), 0, (len(column)-1)//2, 'Integer')
+            self.__problem += lpSum(self.__get_var(cell) for cell in column) == 2*x+1
+            
+        #inner_1 = self.__grid.flower_neighbours(self.__grid[8, 4])
+        #inner_2 = self.__grid.flower_neighbours(self.__grid[8, 12])
+            
+        #self.__problem += lpSum(self.__get_var(cell) for cell in inner_1) == 7
+        #self.__problem += lpSum(self.__get_var(cell) for cell in inner_2) == 7
     
     def __solve_single_step(self):   
         left_click_cells, right_click_cells = [], []
