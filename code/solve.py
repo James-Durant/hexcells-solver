@@ -23,7 +23,7 @@ class Solver:
                 self.__grid.remaining = remaining
     
     def __setup_problem(self, level, game):
-        print(self.__grid)
+        #print(self.__grid)
         self.__unknown = self.__grid.unknown_cells()
         self.__known = self.__grid.known_cells()
         
@@ -68,14 +68,30 @@ class Solver:
         self.__problem += lpSum(self.__get_var(cell) for cell in inner_2) == 7
     
     def __add_plus_end_level_constraints(self):
-        matching = self.__grid.get_column(5) + self.__grid.get_column(12)
-        self.__problem += lpSum(self.__get_var(cell) for cell in matching) == 5
+        letters = [[0, 1, 2],
+                   [5],
+                   [8, 9, 10, 11, 12],
+                   [15],
+                   [18, 19, 20],
+                   [23, 24, 25, 26]]
         
-        first_last = []
-        for col in [0,1,2,-1,-2,-3,-4]:
-            first_last += self.__grid.get_column(col)
+        for i, letter in enumerate(letters):
+            cells = []
+            for col in letter:
+                cells.extend([self.__get_var(cell) for cell in self.__grid.get_column(col)])
+                
+            letters[i] = cells
         
-        self.__problem += lpSum(self.__get_var(cell) for cell in first_last) == 16
+        self.__problem += lpSum(letters[1]+letters[3]) == 5
+        self.__problem += lpSum(letters[0]+letters[5]) == 16
+
+        xs = []
+        for i, letter in enumerate(letters):
+            x = LpVariable('x_'+str(i), 0, 1, 'Integer')
+            self.__problem += lpSum(letter) <= x*len(letter)
+            xs.append(x)
+            
+        self.__problem += lpSum(xs) == len(letters)-1
     
     def __solve_single_step(self):   
         left_click_cells, right_click_cells = [], []
