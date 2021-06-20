@@ -166,7 +166,7 @@ class GameParser(Parser):
     __hex_match_threshold = 0.05
     __counter_match_threshold = 0.1
     __area_threshold = 550
-    __angles = np.asarray([-120, -60, 0, 60, 120])
+    __angles = np.asarray([0, 60, 90, 150, 240, 270, 300, 360])
     __digit_dims = (45, 30)
     __counter_dims = (200, 50)
 
@@ -442,11 +442,9 @@ class GameParser(Parser):
 
             delta_x = box_coords[0] - nearest_coords[0]
             delta_y = nearest_coords[1] - box_coords[1]
-            theta = 90 - (180 / np.pi * np.arctan2(delta_y, delta_x))
-            if theta > 180:
-                theta = theta-360
-            
+            theta = (90 - np.degrees(np.arctan2(delta_y, delta_x))) % 360
             angle = GameParser.__angles[np.argmin(np.abs(GameParser.__angles-theta))]
+
             cropped = thresh[y: y+h, x: x+w]
             digit = self.__parse_grid_digit(255-cropped, angle, training)
             
@@ -464,15 +462,24 @@ class GameParser(Parser):
 
         thresh = GameParser.__process_image(thresh)
         
-        if angle in [-120, 120]:
+        if angle in [150, 240]:
             thresh = cv2.flip(cv2.flip(thresh, 1), 0)
+            
+        elif angle in [90, 270]:
+            centre = tuple(np.array(thresh.shape[1::-1]) / 2)
+            rotation_matrix = cv2.getRotationMatrix2D(centre, angle, 1.0)
+            thresh = cv2.warpAffine(thresh, rotation_matrix, thresh.shape[1::-1], flags=cv2.INTER_LINEAR)
         
         hashed = average_hash(thresh)
 
         if training:
             return hashed
         
-        hashes, labels = self.__column_data if angle == 0 else self.__diagonal_data
+        if angle in [0, 90, 270, 360]:
+            hashes, labels = self.__column_data
+        else:
+            hashes, labels = self.__diagonal_data
+        
         match = GameParser.__find_match(hashes, labels, hashed)
         
         #print(match)

@@ -87,20 +87,31 @@ class Grid:
             if cell != None:
                 cells.append(cell)
             
-            if angle == 0:
+            if angle == 0 or angle == 360:
                 row += 1
-            elif angle == -60:
-                row += 1
-                col += 1
+                
             elif angle == 60:
                 row += 1
                 col -= 1
-            elif angle == -120:
+                
+            elif angle == 90:
+                col -= 1
+              
+            elif angle == 150:
+                row -= 1
+                col -= 1 
+              
+            elif angle == 240:
                 row -= 1
                 col += 1
-            elif angle == 120:
-                row -= 1
-                col -= 1
+                
+            elif angle == 270:
+                col += 1
+            
+            elif angle == 300:
+                row += 1
+                col += 1
+                
             else:
                 raise RuntimeError('invalid grid constraint angle')
 

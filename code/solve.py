@@ -28,7 +28,7 @@ class Solver:
         self.__known = self.__grid.known_cells()
         
         self.__get_constraints()
-        self.__get_reps()
+        self.__get_reps(level)
         self.__get_classes()
         self.__get_variables()
         
@@ -50,20 +50,32 @@ class Solver:
         self.__problem.setObjective(temp)
         self.__problem.solve(self.__solver)
         
-        for var in self.__problem.variables():
-            print(var.name, var.varValue)
-    
+        #for var in self.__problem.variables():
+        #    print(var.name, var.varValue)
+
     def __add_infinite_end_level_constraints(self):
         for col in range(self.__grid.cols):
             column = self.__grid.get_column(col)
             x = LpVariable('x_'+str(col), 0, (len(column)-1)//2, 'Integer')
             self.__problem += lpSum(self.__get_var(cell) for cell in column) == 2*x+1
             
-        #inner_1 = self.__grid.flower_neighbours(self.__grid[8, 4])
-        #inner_2 = self.__grid.flower_neighbours(self.__grid[8, 12])
+        centre_1, centre_2 = self.__grid[8, 4], self.__grid[8, 12] 
+        
+        inner_1 = self.__grid.flower_neighbours(centre_1) + [centre_1]
+        inner_2 = self.__grid.flower_neighbours(centre_2) + [centre_2]
             
-        #self.__problem += lpSum(self.__get_var(cell) for cell in inner_1) == 7
-        #self.__problem += lpSum(self.__get_var(cell) for cell in inner_2) == 7
+        self.__problem += lpSum(self.__get_var(cell) for cell in inner_1) == 7
+        self.__problem += lpSum(self.__get_var(cell) for cell in inner_2) == 7
+    
+    def __add_plus_end_level_constraints(self):
+        matching = self.__grid.get_column(5) + self.__grid.get_column(12)
+        self.__problem += lpSum(self.__get_var(cell) for cell in matching) == 5
+        
+        first_last = []
+        for col in [0,1,2,-1,-2,-3,-4]:
+            first_last += self.__grid.get_column(col)
+        
+        self.__problem += lpSum(self.__get_var(cell) for cell in first_last) == 16
     
     def __solve_single_step(self):   
         left_click_cells, right_click_cells = [], []
@@ -112,7 +124,13 @@ class Solver:
                 except:
                     self.__constraints[cell] = set([constraint])
     
-    def __get_reps(self):
+    def __get_reps(self, level):
+        self.__rep_of = {}
+        if level == '6-6':
+            for cell in self.__unknown:
+                self.__rep_of[cell] = cell
+            return
+        
         self.__rep_of = {}
         for cell1 in self.__unknown:
             if cell1 in self.__constraints:
