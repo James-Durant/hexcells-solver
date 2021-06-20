@@ -160,6 +160,17 @@ class MenuParser(Parser):
             
         return None, menu_button
     
+    def wait_until_loaded(self):
+        while True:
+            image = self.__window.screenshot()
+            mask = cv2.inRange(image, Cell.ORANGE, Cell.ORANGE)
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if contours:
+                break
+            time.sleep(0.25)
+            
+        time.sleep(0.5)
+    
 class GameParser(Parser):
     __hex_mask_path = '../resources/hex_mask.png'
     __counter_mask_path = '../resources/counter_mask.png'
@@ -213,8 +224,10 @@ class GameParser(Parser):
         
         if self.__hex_width > 70:
             x_spacing = self.__hex_width*1.085
-        else:
+        elif 54 <= self.__hex_width <= 70:
             x_spacing = self.__hex_width*1.098
+        else:
+            x_spacing = self.__hex_width*1.105
             
         if self.__hex_height > 70:
             y_spacing = self.__hex_height*0.70

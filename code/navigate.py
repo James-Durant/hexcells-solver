@@ -35,7 +35,8 @@ class Navigator:
             self.__window.click(random)
             self.__window.click(play)
         
-            time.sleep(1.75)
+            self.__window.move_mouse()
+            self.__menu_parser.wait_until_loaded()
             self.solve(False)
 
     def solve(self, continuous, level=None):
