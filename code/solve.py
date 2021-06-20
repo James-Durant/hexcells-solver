@@ -23,7 +23,7 @@ class Solver:
                 self.__grid.remaining = remaining
     
     def __setup_problem(self, level, game):
-        #print(self.__grid)
+        print(self.__grid)
         self.__unknown = self.__grid.unknown_cells()
         self.__known = self.__grid.known_cells()
         
@@ -46,7 +46,7 @@ class Solver:
             self.__add_infinite_end_level_constraints()
         
         temp = LpVariable('temp', 0, 1, 'binary')
-        self.__problem += (temp == 1)
+        self.__problem += temp == 1
         self.__problem.setObjective(temp)
         self.__problem.solve(self.__solver)
         

@@ -97,7 +97,7 @@ class Grid:
             elif angle == 90:
                 col -= 1
               
-            elif angle == 150:
+            elif angle == 120:
                 row -= 1
                 col -= 1 
               

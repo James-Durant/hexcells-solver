@@ -163,10 +163,10 @@ class MenuParser(Parser):
 class GameParser(Parser):
     __hex_mask_path = '../resources/hex_mask.png'
     __counter_mask_path = '../resources/counter_mask.png'
-    __hex_match_threshold = 0.05
+    __hex_match_threshold = 0.08
     __counter_match_threshold = 0.1
     __area_threshold = 550
-    __angles = np.asarray([0, 60, 90, 150, 240, 270, 300, 360])
+    __angles = np.asarray([0, 60, 90, 120, 240, 270, 300, 360])
     __digit_dims = (45, 30)
     __counter_dims = (200, 50)
 
@@ -292,6 +292,19 @@ class GameParser(Parser):
         
         match = GameParser.__find_match(hashes, labels, hashed)
     
+        if match[0] == '{' and match[-1] == '}':
+            temp = thresh.copy()
+            temp[:, :15] = 255
+            temp[:, -15:] = 255
+            
+            temp = GameParser.__process_image(temp)
+            
+            #cv2.imshow('test', temp)
+            #cv2.waitKey(0)
+            
+            digit = GameParser.__find_match(hashes, labels, average_hash(temp))
+            match = '{' + digit +'}'
+    
         #print(match)
         #cv2.imshow('test', thresh)
         #cv2.waitKey(0)
@@ -362,6 +375,7 @@ class GameParser(Parser):
         return remaining
 
     def click_cells(self, cells, button):
+        cells.sort(key=lambda cell: cell.grid_coords, reverse=True)
         for cell in cells:
             self.__window.click_cell(cell, button)
 
@@ -462,13 +476,14 @@ class GameParser(Parser):
 
         thresh = GameParser.__process_image(thresh)
         
-        if angle in [150, 240]:
+        if angle in [120, 240]:
             thresh = cv2.flip(cv2.flip(thresh, 1), 0)
             
         elif angle in [90, 270]:
             centre = tuple(np.array(thresh.shape[1::-1]) / 2)
             rotation_matrix = cv2.getRotationMatrix2D(centre, angle, 1.0)
-            thresh = cv2.warpAffine(thresh, rotation_matrix, thresh.shape[1::-1], flags=cv2.INTER_LINEAR)
+            thresh = cv2.warpAffine(thresh, rotation_matrix, thresh.shape[1::-1],
+                                    flags=cv2.INTER_LINEAR, borderValue=(255, 255, 255))
         
         hashed = average_hash(thresh)
 
