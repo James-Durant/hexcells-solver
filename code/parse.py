@@ -167,7 +167,7 @@ class MenuParser(Parser):
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             if contours:
                 break
-            time.sleep(0.25)
+            time.sleep(0.1)
             
         time.sleep(0.5)
     
