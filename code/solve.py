@@ -23,7 +23,7 @@ class Solver:
                 self.__grid.remaining = remaining
     
     def __setup_problem(self, level, game):
-        print(self.__grid)
+        #print(self.__grid)
         self.__unknown = self.__grid.unknown_cells()
         self.__known = self.__grid.known_cells()
         

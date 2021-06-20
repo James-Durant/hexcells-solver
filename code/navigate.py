@@ -51,8 +51,10 @@ class Navigator:
             self.__window.click(next_button)
             self.__window.move_mouse()
             time.sleep(1.6)
+            
+            if level is not None:
+                level = level[:-1] + str(int(level[-1])+1)
             self.solve(continuous, level)
-            level = level[:-1]+str(int(level[-1])+1)
         else:
             self.__window.click(menu_button)
 

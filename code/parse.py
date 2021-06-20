@@ -497,6 +497,26 @@ class GameParser(Parser):
         
         match = GameParser.__find_match(hashes, labels, hashed)
         
+        if match[0] == '{' and match[-1] == '}' and match[1] in ['3', '5', '8']:
+            temp = thresh.copy()
+            
+            if angle in [0, 360]:
+                temp[:, :15] = 255
+                temp[:, -15:] = 255
+            else:
+                centre = tuple(np.array(temp.shape[1::-1]) / 2)
+                rotation_matrix = cv2.getRotationMatrix2D(centre, angle, 1.0)
+                temp = cv2.warpAffine(temp, rotation_matrix, temp.shape[1::-1],
+                                      flags=cv2.INTER_LINEAR, borderValue=(255, 255, 255))
+        
+            temp = GameParser.__process_image(temp)
+
+            hashes, labels = self.__column_data
+            match = GameParser.__find_match(hashes, labels, average_hash(temp))
+            
+            if angle in [0, 360]:
+                match = '{' + match + '}'
+        
         #print(match)
         #cv2.imshow('test', thresh)
         #cv2.waitKey(0)
@@ -517,7 +537,4 @@ class GameParser(Parser):
     @staticmethod
     def __find_match(hashes, labels, hashed):
         similarities = [np.sum(hashed != h) for h in hashes]
-        best_matches = np.array(labels)[np.argsort(similarities)[:3]].tolist()
-        match = max(set(best_matches), key=best_matches.count)
-        #print(match, best_matches)
-        return match
+        return labels[np.argmin(similarities)]
