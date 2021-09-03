@@ -8,11 +8,16 @@ class Navigator:
     def __init__(self):
         self.__window = get_window()
         self.__menu_parser = MenuParser(self.__window)
+        self.__status = 'Menu Screen'
 
     @property
     def window(self):
         return self.__window
-
+    
+    @property
+    def status(self):
+        return self.__status
+    
     def save_slot(self, slot, training=False):
         slots, _ = self.__menu_parser.parse_slots(training)
         
