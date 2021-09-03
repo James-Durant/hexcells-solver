@@ -8,92 +8,22 @@ class Solver:
         self.__parser = parser
 
     def solve(self, level=None, game=None):
-        self.__grid = self.__parser.parse_grid()
+        grid = self.__parser.parse_grid()
         
         while True:
-            self.__setup_problem(level, game)
-            left_click_cells, right_click_cells = self.__solve_single_step()
+            left_click_cells, right_click_cells = self.solve_single_step(grid, game, level)
             if len(left_click_cells)+len(right_click_cells)-len(self.__unknown) == 0:
                 self.__parser.click_cells(left_click_cells, 'left')
                 self.__parser.click_cells(right_click_cells, 'right')
                 break
             
-            remaining = self.__parser.parse_clicked(self.__grid, left_click_cells, right_click_cells)
+            remaining = self.__parser.parse_clicked(grid, left_click_cells, right_click_cells)
             if remaining is not None:
-                self.__grid.remaining = remaining
-    
-    def __setup_problem(self, level, game):
-        #print(self.__grid)
-        self.__unknown = self.__grid.unknown_cells()
-        self.__known = self.__grid.known_cells()
-        
-        self.__get_constraints()
-        self.__get_reps(level)
-        self.__get_classes()
-        self.__get_variables()
-        
-        self.__solver = GLPK_CMD(path=Solver.__GLPK_PATH, msg=False, options=['--cuts'])
-        self.__problem = LpProblem('HexcellsMILP', LpMinimize)
-        
-        self.__add_remaining_constraint()
-        self.__add_column_constraints()
-        self.__add_cell_constraints()
-        
-        if level == '6-6' and game == 'Hexcells Plus':
-            self.__add_plus_end_level_constraints()
-        
-        elif level == '6-6' and game == 'Hexcells Infinite':
-            self.__add_infinite_end_level_constraints()
-        
-        temp = LpVariable('temp', 0, 1, 'binary')
-        self.__problem += temp == 1
-        self.__problem.setObjective(temp)
-        self.__problem.solve(self.__solver)
-        
-        #for var in self.__problem.variables():
-        #    print(var.name, var.varValue)
-
-    def __add_infinite_end_level_constraints(self):
-        for col in range(self.__grid.cols):
-            column = self.__grid.get_column(col)
-            x = LpVariable('x_'+str(col), 0, (len(column)-1)//2, 'Integer')
-            self.__problem += lpSum(self.__get_var(cell) for cell in column) == 2*x+1
-            
-        centre_1, centre_2 = self.__grid[8, 4], self.__grid[8, 12] 
-        
-        inner_1 = self.__grid.flower_neighbours(centre_1) + [centre_1]
-        inner_2 = self.__grid.flower_neighbours(centre_2) + [centre_2]
-            
-        self.__problem += lpSum(self.__get_var(cell) for cell in inner_1) == 7
-        self.__problem += lpSum(self.__get_var(cell) for cell in inner_2) == 7
-    
-    def __add_plus_end_level_constraints(self):
-        letters = [[0, 1, 2],
-                   [5],
-                   [8, 9, 10, 11, 12],
-                   [15],
-                   [18, 19, 20],
-                   [23, 24, 25, 26]]
-        
-        for i, letter in enumerate(letters):
-            cells = []
-            for col in letter:
-                cells.extend([self.__get_var(cell) for cell in self.__grid.get_column(col)])
+                grid.remaining = remaining
                 
-            letters[i] = cells
+    def solve_single_step(self, grid, game=None, level=None):   
+        self.__setup_problem(grid, game, level)
         
-        self.__problem += lpSum(letters[1]+letters[3]) == 5
-        self.__problem += lpSum(letters[0]+letters[5]) == 16
-
-        xs = []
-        for i, letter in enumerate(letters):
-            x = LpVariable('x_'+str(i), 0, 1, 'Integer')
-            self.__problem += lpSum(letter) <= x*len(letter)
-            xs.append(x)
-            
-        self.__problem += lpSum(xs) == len(letters)-1
-    
-    def __solve_single_step(self):   
         left_click_cells, right_click_cells = [], []
         true_class, false_class = self.__get_true_false_classes()
         while true_class or false_class:
@@ -122,18 +52,89 @@ class Solver:
             
         raise RuntimeError('solver failed to finish puzzle')
     
-    def __get_constraints(self):
+    def __setup_problem(self, grid, game, level):
+        #print(grid)
+        self.__unknown = grid.unknown_cells()
+        self.__known = grid.known_cells()
+        
+        self.__get_constraints(grid)
+        self.__get_reps(level)
+        self.__get_classes()
+        self.__get_variables()
+        
+        self.__solver = GLPK_CMD(path=Solver.__GLPK_PATH, msg=False, options=['--cuts'])
+        self.__problem = LpProblem('HexcellsMILP', LpMinimize)
+        
+        self.__add_remaining_constraint(grid)
+        self.__add_column_constraints(grid)
+        self.__add_cell_constraints(grid)
+        
+        if level == '6-6' and game == 'Hexcells Plus':
+            self.__add_plus_end_level_constraints(grid)
+        
+        elif level == '6-6' and game == 'Hexcells Infinite':
+            self.__add_infinite_end_level_constraints(grid)
+        
+        temp = LpVariable('temp', 0, 1, 'binary')
+        self.__problem += temp == 1
+        self.__problem.setObjective(temp)
+        self.__problem.solve(self.__solver)
+        
+        #for var in self.__problem.variables():
+        #    print(var.name, var.varValue)
+
+    def __add_infinite_end_level_constraints(self, grid):
+        for col in range(grid.cols):
+            column = grid.get_column(col)
+            x = LpVariable('x_'+str(col), 0, (len(column)-1)//2, 'Integer')
+            self.__problem += lpSum(self.__get_var(cell) for cell in column) == 2*x+1
+            
+        centre_1, centre_2 = grid[8, 4], grid[8, 12] 
+        
+        inner_1 = grid.flower_neighbours(centre_1) + [centre_1]
+        inner_2 = grid.flower_neighbours(centre_2) + [centre_2]
+            
+        self.__problem += lpSum(self.__get_var(cell) for cell in inner_1) == 7
+        self.__problem += lpSum(self.__get_var(cell) for cell in inner_2) == 7
+    
+    def __add_plus_end_level_constraints(self, grid):
+        letters = [[0, 1, 2],
+                   [5],
+                   [8, 9, 10, 11, 12],
+                   [15],
+                   [18, 19, 20],
+                   [23, 24, 25, 26]]
+        
+        for i, letter in enumerate(letters):
+            cells = []
+            for col in letter:
+                cells.extend([self.__get_var(cell) for cell in grid.get_column(col)])
+                
+            letters[i] = cells
+        
+        self.__problem += lpSum(letters[1]+letters[3]) == 5
+        self.__problem += lpSum(letters[0]+letters[5]) == 16
+
+        xs = []
+        for i, letter in enumerate(letters):
+            x = LpVariable('x_'+str(i), 0, 1, 'Integer')
+            self.__problem += lpSum(letter) <= x*len(letter)
+            xs.append(x)
+            
+        self.__problem += lpSum(xs) == len(letters)-1
+    
+    def __get_constraints(self, grid):
         self.__constraints = {}
         for cell1 in self.__known:
             if cell1.digit != '?':
-                for cell2 in self.__grid.neighbours(cell1):
+                for cell2 in grid.neighbours(cell1):
                     if cell2 != None and cell2.colour == Cell.ORANGE:
                         try:
                             self.__constraints[cell2].add(cell1)
                         except:
                             self.__constraints[cell2] = set([cell1])
  
-        for constraint in self.__grid.constraints:
+        for constraint in grid.constraints:
             for cell in constraint.members:
                 try:
                     self.__constraints[cell].add(constraint)
@@ -171,11 +172,11 @@ class Solver:
         for rep, size in self.__classes.items():
             self.__variables[rep] = LpVariable(str(rep.grid_coords), 0, size, 'Integer')
     
-    def __add_remaining_constraint(self):
-        self.__problem += lpSum(self.__get_var(cell) for cell in self.__unknown) == self.__grid.remaining
+    def __add_remaining_constraint(self, grid):
+        self.__problem += lpSum(self.__get_var(cell) for cell in self.__unknown) == grid.remaining
     
-    def __add_column_constraints(self):
-        for constraint in self.__grid.constraints:
+    def __add_column_constraints(self, grid):
+        for constraint in grid.constraints:
             self.__problem += lpSum(self.__get_var(cell) for cell in constraint.members) == constraint.size
             
             if constraint.hint == 'consecutive':
@@ -187,10 +188,10 @@ class Solver:
                 for offset in range(len(constraint.members)-constraint.size+1):
                     self.__problem += lpSum(self.__get_var(constraint.members[offset+i]) for i in range(constraint.size)) <= constraint.size-1
     
-    def __add_cell_constraints(self):
+    def __add_cell_constraints(self, grid):
         for cell in self.__known:
             if cell.digit != None and cell.digit != '?':       
-                neighbours = self.__grid.neighbours(cell)
+                neighbours = grid.neighbours(cell)
                 self.__problem += lpSum(self.__get_var(neighbour) for neighbour in neighbours) == cell.digit
                 
                 if (cell.hint != 'normal' and
@@ -198,7 +199,7 @@ class Solver:
                    (cell.colour == Cell.BLUE and 2 <= cell.digit <= 10))):
                     
                     if cell.colour == Cell.BLUE:
-                        neighbours = self.__grid.outer_neighbours(cell)
+                        neighbours = grid.outer_neighbours(cell)
                 
                     n = len(neighbours)
                     if cell.hint == 'consecutive':

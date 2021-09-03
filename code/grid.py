@@ -1,9 +1,10 @@
 import numpy as np
 
 class Constraint:
-    def __init__(self, size, hint, members):
+    def __init__(self, size, hint, angle, members):
         self.__size = size
         self.__hint = hint
+        self.__angle = angle
         self.__members = members
         
     @property 
@@ -15,14 +16,18 @@ class Constraint:
         return self.__hint 
     
     @property 
+    def angle(self):
+        return self.__angle
+    
+    @property 
     def members(self):
         return self.__members
 
 class Grid:
-    __DIRECT = [(0, -2), (1, -1), (1, 1), (0, 2), (-1, 1), (-1, -1)]
+    __DIRECT = [(0,-2), (1,-1), (1,1), (0,2), (-1,1), (-1,-1)]
     
-    __OUTER = [(0, -4), (1,-3), (2,-2), (2, 0), (2, 2), (1, 3), (0, 4),
-               (-1, 3), (-2, 2), (-2, 0), (-2,-2), (-1,-3)]
+    __OUTER = [(0,-4), (1,-3), (2,-2), (2,0), (2,2), (1,3), (0,4),
+               (-1,3), (-2,2), (-2,0), (-2,-2), (-1,-3)]
     
     __FLOWER = __DIRECT + __OUTER
     
@@ -62,6 +67,7 @@ class Grid:
     @property
     def cells(self):
         return self.__cells
+    
     def nearest_cell(self, query_coords):
         nearest = np.argmin(np.sum((self.__cell_image_coords - query_coords)**2, axis=1))
         return self.__cells[nearest]
@@ -81,13 +87,16 @@ class Grid:
         except ValueError:
             raise RuntimeError('grid constraint parsed incorrectly')    
         
+        if angle == 360:
+            angle = 0
+        
         cells = []
         while 0 <= row < self.__rows and 0 <= col < self.__cols:
             cell = self[(row, col)]
             if cell != None:
                 cells.append(cell)
             
-            if angle == 0 or angle == 360:
+            if angle == 0:
                 row += 1
                 
             elif angle == 60:
@@ -115,7 +124,7 @@ class Grid:
             else:
                 raise RuntimeError('invalid grid constraint angle')
 
-        self.__constraints.append(Constraint(size, hint, cells))
+        self.__constraints.append(Constraint(size, hint, angle, cells))
     
     def known_cells(self):
         return [cell for cell in self.cells if cell.colour != Cell.ORANGE]   
@@ -178,6 +187,8 @@ class Cell:
     BLACK = (62, 62, 62)
     ORANGE = (41, 177, 255) 
     ORANGE_OLD = (41, 175, 255) 
+    COLOURS = [BLUE, BLACK, ORANGE]
+    HINT_TYPES = ['normal', 'consecutive', 'non-consecutive']
     
     def __init__(self, image_coords, width, height, colour, digit=None):
         self.__image_coords = image_coords

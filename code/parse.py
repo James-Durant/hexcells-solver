@@ -250,7 +250,7 @@ class GameParser(Parser):
             cell.grid_coords = (row, col)
             grid[row][col] = cell
 
-        _, remaining = self.parse_counters(image)
+        remaining = self.parse_counters(image)
 
         scene = Grid(grid, cells, remaining)
         parsed = self.__parse_columns(image, scene, training=training)
@@ -329,7 +329,7 @@ class GameParser(Parser):
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         i = 0
-        parsed = [0]
+        remaining = None
         for contour in contours:
             if (cv2.contourArea(contour) > GameParser.__area_threshold and
                 cv2.matchShapes(contour, self.__counter_contour, 1, 0) < GameParser.__counter_match_threshold):
@@ -342,7 +342,7 @@ class GameParser(Parser):
                     x, y, w, h = cv2.boundingRect(contour)
                     y = round(y+h*0.35)
                     h = round(h*0.65)
-
+    
                     cropped = image[y: y+h, x: x+w]
                     thresh = cv2.cvtColor(np.where(cropped==Cell.BLUE, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)
                     thresh = cv2.resize(thresh, GameParser.__counter_dims, interpolation=cv2.INTER_AREA)
@@ -350,7 +350,7 @@ class GameParser(Parser):
                     hashed = average_hash(thresh)
     
                     if training:
-                        parsed.append(hashed)
+                        remaining = hashed
                         
                     else:
                         hashes, labels = self.__counter_data
@@ -361,16 +361,17 @@ class GameParser(Parser):
                         #cv2.imshow('test', thresh)
                         #cv2.waitKey(0)
                         
-                        parsed.append(match)
+                        remaining = match
 
-        return parsed
+        return remaining
 
     def parse_clicked(self, grid, left_click_cells, right_click_cells):
         left_click_cells.sort(key=lambda cell: cell.grid_coords, reverse=True)
+        image = None
         if left_click_cells:
             self.click_cells(left_click_cells, 'left')
           
-            time.sleep(0.2) 
+            time.sleep(0.1) 
             image = self.__window.screenshot()
             self.__parse_clicked_cells(image, left_click_cells)
 
@@ -378,14 +379,16 @@ class GameParser(Parser):
             right_click_cells.sort(key=lambda cell: cell.grid_coords, reverse=True)
             self.click_cells(right_click_cells, 'right')
             
-            min_row = min(right_click_cells, key=lambda cell: cell.grid_coords[0]).grid_coords[0]
-            
-            time.sleep(max(1.5, 0.12*(grid.rows-min_row)))
+            #min_row = min(right_click_cells, key=lambda cell: cell.grid_coords[0]).grid_coords[0]
+            time.sleep(0.1) 
+            #time.sleep(max(1.5, 0.12*(grid.rows-min_row)))
             image = self.__window.screenshot()
             self.__parse_clicked_cells(image, right_click_cells)
-
-        _, remaining = self.parse_counters(image)
-        return remaining
+            
+        if image is None:
+            image = self.__window.screenshot()
+            
+        return self.parse_counters(image)
 
     def click_cells(self, cells, button):
         cells.sort(key=lambda cell: cell.grid_coords, reverse=True)
@@ -407,7 +410,8 @@ class GameParser(Parser):
             elif np.count_nonzero(cropped == Cell.BLUE) > 10:
                 cell.colour = Cell.BLUE
             else:
-                raise RuntimeError('cell must be blue or black after click')
+                return
+                #raise RuntimeError('cell must be blue or black after click')
     
             cell.digit = self.__parse_cell_digit(cropped, cell.colour)
         

@@ -22,12 +22,12 @@ class Navigator:
         else:
             raise RuntimeError('invalid save slot given')
 
-    def puzzle_generator(self):
+    def puzzle_generator(self, func=None):
         if self.__window.title != 'Hexcells Infinite':
             raise RuntimeError('Only Hexcells Infinite has puzzle generator')
         
-        _, generator = self.__menu_parser.parse_slots()
-        self.__window.click(generator)
+        #_, generator = self.__menu_parser.parse_slots()
+        #self.__window.click(generator)
         
         while True:
             time.sleep(1)
@@ -37,7 +37,10 @@ class Navigator:
         
             self.__window.move_mouse()
             self.__menu_parser.wait_until_loaded()
-            self.solve(False)
+            if func:
+                func()
+            else:
+                self.solve(False)
 
     def solve(self, continuous, level=None):
         game_parser = GameParser(self.__window)
@@ -68,18 +71,18 @@ class Navigator:
             
         self.__window.click(coords)
         self.__window.move_mouse()
-        time.sleep(1.5)
+        self.__menu_parser.wait_until_loaded()
         
-    def solve_level(self, level):
-        self.load_level(level)
-        self.solve(False, level)
+    def solve_level(self, level_str):
+        self.load_level(level_str)
+        self.solve(False, level_str)
 
-    def solve_world(self, world):
+    def solve_set(self, set_str):
         levels = self.__menu_parser.parse_levels()
-        if world not in ['1', '2', '3', '4', '5', '6']:
+        if set_str not in ['1', '2', '3', '4', '5', '6']:
             raise RuntimeError('world must be between 1-6 (inclusive)')
         
-        level = world+'-1'
+        level = set_str+'-1'
         self.__window.click(levels[level])
         self.__window.move_mouse()
         time.sleep(1.5)
