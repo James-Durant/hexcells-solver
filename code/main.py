@@ -3,6 +3,7 @@ from subprocess import Popen
 from navigate import Navigator
 
 import threading, time
+import pythoncom
 
 class GUI:
     GAMEIDS = {'Hexcells': '265890',
@@ -32,12 +33,14 @@ class GUI:
         self.__thread.start()
     
     def __check_game_running(self):
+        pythoncom.CoInitialize()
         next_call = time.time()
         while self.__run_thread:
             try:
-                self.__menu = Navigator()
+                self.__menu = Navigator(self.__status_var)
                 self.__update_status(True)
                 self.__game_var.set(self.__menu.window.title)
+                self.__status_var.set(self.__menu.get_screen())
          
             except RuntimeError: # Make custom error
                 self.__update_status(False)
@@ -46,34 +49,41 @@ class GUI:
                 
             next_call += 1
             time.sleep(next_call - time.time())
-           
+          
+    def __on_screen_change(self, *args):
+        text = 'Status: '
+        if self.__game_running:
+            text += 'running ({})'.format(self.__status_var.get())
+        else:
+            text += 'not running'
+            
+        self.__status_label.configure(text=text)
+        
     def __update_status(self, status):
-        status_str = 'game running' if status else 'game not running'
         state = tk.NORMAL if status else tk.DISABLED
-        
-        if status:
-            self.__check_ready_to_solve()
-        
+
         self.__game_running = status
         
+        self.__on_screen_change()
+        self.__check_ready_to_solve()
         self.__save_optionmenu.configure(state=state)
         self.__set_optionmenu.configure(state=state)
         self.__level_optionmenu.configure(state=state)
-        self.__status_label.configure(text='Status: {}'.format(status_str)) 
        
     def __load_game(self):
         self.__run_thread = False
         if self.__menu:
             self.__menu.close_game()
-            
+        
+        self.__update_status(False)
+        
         Popen([r'C:\Program Files (x86)\Steam\steam.exe',
                r'steam://rungameid/'+GUI.GAMEIDS[self.__game_var.get()]],
                shell=True, stdin=None, stdout=None, stderr=None, close_fds=True) 
         
         while True:
-            time.sleep(0.1)
             try:
-                self.__menu = Navigator()
+                self.__menu = Navigator(self.__status_var)
                 if self.__menu.window.title == self.__game_var.get():
                     self.__update_status(True)
                     break 
@@ -83,6 +93,7 @@ class GUI:
             except RuntimeError:
                 self.__update_status(False)
        
+        self.__menu.wait_until_loaded()
         self.__start_thread()
        
     def __create_info_frame(self):
@@ -132,8 +143,9 @@ class GUI:
         self.__save_label.pack(side='left')
         self.__save_optionmenu.pack()
         
-        self.__status_label = tk.Label(self.__info_frame,
-                             font=('Arial', 9))
+        self.__status_var = tk.StringVar(self.__root)
+        self.__status_var.trace('w', self.__on_screen_change)
+        self.__status_label = tk.Label(self.__info_frame, font=('Arial', 9))
         
         self.__info_label.grid(sticky='w', row=0, column=0, columnspan=2)
         self.__game_1_radiobutton.grid(sticky='w', row=1, column=0)
@@ -288,13 +300,3 @@ class GUI:
          
 if __name__ == '__main__':
     application = GUI()
-    
-    #menu = Navigator()
-    #menu.solve(continuous=True)
-    
-    #menu.puzzle_generator()
-    
-    #menu.save_slot(2)
-    #menu.solve_level('6-6')
-    #menu.solve_world('6')
-    #menu.solve_game()

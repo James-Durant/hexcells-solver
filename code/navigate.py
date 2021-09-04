@@ -5,10 +5,10 @@ from parse import MenuParser, GameParser
 from solve import Solver
 
 class Navigator:
-    def __init__(self):
+    def __init__(self, status_var):
         self.__window = get_window()
         self.__menu_parser = MenuParser(self.__window)
-        self.__status = 'Menu Screen'
+        self.__status_var = status_var
 
     @property
     def window(self):
@@ -18,27 +18,51 @@ class Navigator:
     def status(self):
         return self.__status
     
+    def wait_until_loaded(self):
+        self.__menu_parser.wait_until_loaded()
+    
+    def get_screen(self):
+        return self.__menu_parser.get_screen().replace('_', ' ')
+    
     def save_slot(self, slot, training=False):
+        self.__return_to_main_menu()
         slots, _ = self.__menu_parser.parse_slots(training)
         
         if slot in [1,2,3]:
             self.__window.click(slots[slot-1])
+            self.__status_var.set('Level Select')
             time.sleep(1)
         else:
             raise RuntimeError('invalid save slot given')
 
-    def puzzle_generator(self, func=None):
+    def __return_to_main_menu(self):
+        if self.__status_var.get() == 'In Level':
+            self.__exit_level()
+            self.__status_var.set('Level Select')
+            time.sleep(1)
+            
+        if self.__status_var.get() != 'Main Menu':
+            self.back()
+            time.sleep(1)
+            
+        self.__status_var.set('Main Menu')
+
+    def level_generator(self, func=None):
         if self.__window.title != 'Hexcells Infinite':
-            raise RuntimeError('Only Hexcells Infinite has puzzle generator')
+            raise RuntimeError('Only Hexcells Infinite has level generator')
         
-        #_, generator = self.__menu_parser.parse_slots()
-        #self.__window.click(generator)
+        self.__return_to_main_menu()
+        
+        _, generator = self.__menu_parser.parse_slots()
+        self.__window.click(generator)
+        self.__status_var.set('Level Generator')
         
         while True:
             time.sleep(1)
             play, random = self.__menu_parser.parse_generator()
             self.__window.click(random)
             self.__window.click(play)
+            self.__status_var.set('In Level')
         
             self.__window.move_mouse()
             self.__menu_parser.wait_until_loaded()
@@ -66,6 +90,7 @@ class Navigator:
             self.solve(continuous, level)
         else:
             self.__window.click(menu_button)
+            self.__status_var.set('Level Select')
 
     def load_level(self, level):
         levels = self.__menu_parser.parse_levels()
@@ -75,6 +100,7 @@ class Navigator:
             raise RuntimeError('invalid level given')
             
         self.__window.click(coords)
+        self.__status_var.set('In Level')
         self.__window.move_mouse()
         self.__menu_parser.wait_until_loaded()
         
@@ -85,7 +111,7 @@ class Navigator:
     def solve_set(self, set_str):
         levels = self.__menu_parser.parse_levels()
         if set_str not in ['1', '2', '3', '4', '5', '6']:
-            raise RuntimeError('world must be between 1-6 (inclusive)')
+            raise RuntimeError('Set must be between 1-6 (inclusive)')
         
         level = set_str+'-1'
         self.__window.click(levels[level])

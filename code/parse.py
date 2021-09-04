@@ -10,7 +10,7 @@ def average_hash(image):
 class Parser:
     @staticmethod 
     def _load_hashes(digit_type):
-        path = os.path.join('../resources', digit_type, 'hashes.pickle')
+        path = os.path.join('..', 'resources', digit_type, 'hashes.pickle')
         try:
             with open(path, 'rb') as file:
                 return pickle.load(file)
@@ -21,6 +21,18 @@ class MenuParser(Parser):
     def __init__(self, window):
         self.__window = window
         self.__level_data = Parser._load_hashes('level')
+        self.__screen_data = Parser._load_hashes('screen')
+    
+    def get_screen(self):
+        image = cv2.resize(self.__window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
+        
+        images, labels = self.__screen_data
+        similarities = [np.square(image-x).mean() for x in images]
+
+        if min(similarities) > 10:
+            return 'in_level'
+        
+        return labels[np.argmin(similarities)]
       
     def parse_slots(self, training=False):
         image = self.__window.screenshot()
@@ -163,7 +175,7 @@ class MenuParser(Parser):
     def wait_until_loaded(self):
         while True:
             image = self.__window.screenshot()
-            mask = cv2.inRange(image, Cell.ORANGE, Cell.ORANGE)
+            mask = cv2.inRange(image, Cell.ORANGE, Cell.ORANGE) + cv2.inRange(image, Cell.BLUE, Cell.BLUE)
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             if contours:
                 break
