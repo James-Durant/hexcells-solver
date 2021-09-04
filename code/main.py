@@ -2,6 +2,8 @@ import tkinter as tk
 from subprocess import Popen
 from navigate import Navigator
 
+import threading, time
+
 class GUI:
     GAMEIDS = {'Hexcells': '265890',
                'Hexcells Plus': '271900',
@@ -18,39 +20,70 @@ class GUI:
         self.__create_info_frame()
         self.__create_solver_frame()
         
-        self.__check_game_running()
+        self.__game_running = False
+        self.__start_thread()
         
         tk.mainloop()
-        
+    
+    def __start_thread(self):
+        self.__run_thread = True
+        self.__thread = threading.Thread(target=self.__check_game_running)
+        self.__thread.daemon = True
+        self.__thread.start()
+    
     def __check_game_running(self):
-        try:
-            self.__menu = Navigator()
-            self.__update_status('game running')
-            self.__game_var.set(self.__menu.window.title)
-            
-        except RuntimeError: # Make custom error
-            self.__menu = None
-            self.__update_status('game not running')
-            self.__game_var.set(-1)
-       
+        next_call = time.time()
+        while self.__run_thread:
+            try:
+                self.__menu = Navigator()
+                self.__update_status(True)
+                self.__game_var.set(self.__menu.window.title)
+         
+            except RuntimeError: # Make custom error
+                self.__update_status(False)
+                self.__menu = None
+                self.__game_var.set(-1)
+                
+            next_call += 1
+            time.sleep(next_call - time.time())
+           
     def __update_status(self, status):
-        self.__status_label.configure(text='Status: {}'.format(status)) 
+        status_str = 'game running' if status else 'game not running'
+        state = tk.NORMAL if status else tk.DISABLED
+        
+        if status:
+            self.__check_ready_to_solve()
+        
+        self.__game_running = status
+        
+        self.__save_optionmenu.configure(state=state)
+        self.__set_optionmenu.configure(state=state)
+        self.__level_optionmenu.configure(state=state)
+        self.__status_label.configure(text='Status: {}'.format(status_str)) 
        
     def __load_game(self):
+        self.__run_thread = False
         if self.__menu:
             self.__menu.close_game()
             
-        process = Popen([r'C:\Program Files (x86)\Steam\steam.exe', r'steam://rungameid/'+GUI.GAMEIDS[self.__game_var.get()]],
-                        shell=True, stdin=None, stdout=None, stderr=None, close_fds=True) 
-        process.wait()
+        Popen([r'C:\Program Files (x86)\Steam\steam.exe',
+               r'steam://rungameid/'+GUI.GAMEIDS[self.__game_var.get()]],
+               shell=True, stdin=None, stdout=None, stderr=None, close_fds=True) 
         
         while True:
+            time.sleep(0.1)
             try:
                 self.__menu = Navigator()
-                self.__update_status('game running')
-                break
+                if self.__menu.window.title == self.__game_var.get():
+                    self.__update_status(True)
+                    break 
+                else:
+                    self.__update_status(False)
+                    
             except RuntimeError:
-                self.__update_status('game not running')
+                self.__update_status(False)
+       
+        self.__start_thread()
        
     def __create_info_frame(self):
         self.__info_frame = tk.Frame(self.__root)
@@ -83,14 +116,32 @@ class GUI:
                                                    font=('Arial Black', 9),
                                                    command=self.__load_game)
         
+        save_slots = ['1', '2', '3'] 
+        self.__save_var = tk.StringVar(self.__root)
+        self.__save_var.set('-')
+        self.__save_var.trace('w', self.__on_save_change)
+        
+        self.__save_frame = tk.Frame(self.__info_frame)
+        self.__save_label = tk.Label(self.__save_frame,
+                                    font=('Arial', 9),
+                                    text='Select Save:')
+        
+        self.__save_optionmenu = tk.OptionMenu(self.__save_frame,
+                                               self.__save_var,
+                                               *save_slots)
+        self.__save_label.pack(side='left')
+        self.__save_optionmenu.pack()
+        
         self.__status_label = tk.Label(self.__info_frame,
                              font=('Arial', 9))
         
-        self.__info_label.grid(sticky='w', row=0, column=0)
+        self.__info_label.grid(sticky='w', row=0, column=0, columnspan=2)
         self.__game_1_radiobutton.grid(sticky='w', row=1, column=0)
         self.__game_2_radiobutton.grid(sticky='w', row=2, column=0)
         self.__game_3_radiobutton.grid(sticky='w', row=3, column=0)
         self.__status_label.grid(sticky='w', row=4, column=0)
+        
+        self.__save_frame.grid(sticky='w', row=1, column=1)
         
         self.__info_frame.grid(row=0, column=0)
         
@@ -135,10 +186,10 @@ class GUI:
         self.__game_radiobutton.grid(sticky='w', row=3, column=0)
         self.__generator_radiobutton.grid(sticky='w', row=4, column=0)
         
-        sets = [str(x) for x in range(1, 7)]
+        sets = ['1', '2', '3', '4', '5', '6'] 
         self.__set_var = tk.StringVar(self.__root)
         self.__set_var.set('-')
-        self.__set_var.trace('w', self.__check_ready_to_solve)
+        self.__set_var.trace('w', self.__on_set_change)
         
         self.__set_frame = tk.Frame(self.__solver_frame)
         self.__set_label = tk.Label(self.__set_frame,
@@ -151,7 +202,7 @@ class GUI:
         self.__set_label.pack(side='left')
         self.__set_optionmenu.pack()
         
-        levels = [str(x) for x in range(1, 7)]
+        levels = ['1', '2', '3', '4', '5', '6'] 
         self.__level_var = tk.StringVar(self.__root)
         self.__level_var.set('-')
         self.__level_var.trace('w', self.__check_ready_to_solve)
@@ -181,12 +232,14 @@ class GUI:
         
     def __solver_radiobutton_callback(self, *args):
         if self.__solve_var.get() == 0:
-            self.__set_optionmenu.configure(state=tk.NORMAL)
-            self.__level_optionmenu.configure(state=tk.NORMAL)
+            if self.__game_running:
+                self.__set_optionmenu.configure(state=tk.NORMAL)
+                self.__level_optionmenu.configure(state=tk.NORMAL)
             
         elif self.__solve_var.get() == 1:
             self.__level_var.set('-')
-            self.__set_optionmenu.configure(state=tk.NORMAL)
+            if self.__game_running:
+                self.__set_optionmenu.configure(state=tk.NORMAL)
             self.__level_optionmenu.configure(state=tk.DISABLED)
             
         else:
@@ -196,9 +249,28 @@ class GUI:
             self.__level_optionmenu.configure(state=tk.DISABLED)
             
         self.__check_ready_to_solve()
-            
+    
+    def __on_save_change(self, *args):
+        pass
+    
+    def __on_set_change(self, *args):
+        levels = ['1', '2', '3', '4', '5', '6'] 
+        if self.__game_var.get() == 'Hexcells':
+            if self.__set_var.get() != '1':
+                levels.pop()
+            if self.__set_var.get() == '2':
+                levels.pop()
+        
+        self.__level_optionmenu['menu'].delete(0, 'end')
+        for level in levels:
+            self.__level_optionmenu['menu'].add_command(label=level, command=tk._setit(self.__level_var, level))
+
+        self.__level_var.set('-')
+        self.__check_ready_to_solve()
+    
     def __check_ready_to_solve(self, *args):
-        if ((self.__solve_var.get() == 0 and (self.__set_var.get() == '-' or self.__level_var.get() == '-')) or
+        if ((not self.__game_running) or
+            (self.__solve_var.get() == 0 and (self.__set_var.get() == '-' or self.__level_var.get() == '-')) or
             (self.__solve_var.get() == 1 and self.__set_var.get() == '-')):
             self.__solve_button.configure(state=tk.DISABLED)
         else:
