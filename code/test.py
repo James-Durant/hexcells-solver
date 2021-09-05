@@ -6,7 +6,7 @@ save_path = os.path.join('../resources/screen/hashes.pickle')
 window = get_window()
 image = cv2.resize(window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
 
-labels = ['main_menu', 'level_select', 'level_generator', 'user_levels', 'options'] #'In Level'
+labels = ['main_menu', 'level_select', 'level_exit', 'level_generator', 'user_levels', 'options'] #'In Level'
 
 if os.path.isfile(save_path):
     with open(save_path, 'rb') as file:

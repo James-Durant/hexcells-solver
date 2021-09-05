@@ -25,13 +25,18 @@ class MenuParser(Parser):
     
     def get_screen(self):
         image = cv2.resize(self.__window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
+        image = cv2.inRange(image, (230,230,230), (255,255,255))
         
         images, labels = self.__screen_data
-        similarities = [np.square(image-x).mean() for x in images]
-
-        if min(similarities) > 10:
-            return 'in_level'
+        similarities = [np.square(image-cv2.inRange(x, (230,230,230), (255,255,255))).mean() for x in images]
         
+        for label, sim in zip(labels, similarities):
+            print(label, sim)
+        print()
+    
+        if min(similarities) > 0.1:
+            return 'in_level'
+
         return labels[np.argmin(similarities)]
       
     def parse_slots(self, training=False):
@@ -82,6 +87,37 @@ class MenuParser(Parser):
         random = (x+w//2, y+h//2)
         
         return play, random
+   
+    def parse_level_exit(self):
+        image = self.__window.screenshot()
+        mask = cv2.inRange(image, (180,180,180), (255,255,255))
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        rects = [cv2.boundingRect(contour) for contour in contours]
+        rects.sort(key=lambda x: x[0])
+        
+        bounding_boxes = []
+        while rects:
+            rect1 = rects.pop()
+            to_merge = [rect1]
+            i = 0
+            while i < len(rects):
+                rect2 = rects[i]
+                if rect2[1]*0.95 < rect1[1] < rect2[1]*1.05:
+                    to_merge.append(rect2)
+                    del rects[i]
+                else:
+                    i += 1
+            
+            to_merge = np.asarray(to_merge)
+            x = to_merge[:,0].min()
+            y = to_merge[:,1].min()
+            w = np.max(to_merge[:,0] + to_merge[:,2]) - x
+            h = np.max(to_merge[:,1] + to_merge[:,3]) - y
+            
+            bounding_boxes.append((x+w//2, y+h//2))
+        
+        return bounding_boxes
    
     def parse_levels(self, training=False):
         image = self.__window.screenshot()

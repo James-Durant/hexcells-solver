@@ -21,70 +21,46 @@ class GUI:
         self.__create_info_frame()
         self.__create_solver_frame()
         
-        self.__game_running = False
-        self.__start_thread()
-        
+        self.__check_game_running()
         tk.mainloop()
     
-    def __start_thread(self):
-        self.__run_thread = True
-        self.__thread = threading.Thread(target=self.__check_game_running)
-        self.__thread.daemon = True
-        self.__thread.start()
-    
     def __check_game_running(self):
-        pythoncom.CoInitialize()
-        next_call = time.time()
-        while self.__run_thread:
-            try:
-                self.__menu = Navigator(self.__status_var)
-                self.__update_status(True)
-                self.__game_var.set(self.__menu.window.title)
-                self.__status_var.set(self.__menu.get_screen())
-         
-            except RuntimeError: # Make custom error
-                self.__update_status(False)
-                self.__menu = None
-                self.__game_var.set(-1)
-                
-            next_call += 1
-            time.sleep(next_call - time.time())
-          
-    def __on_screen_change(self, *args):
-        text = 'Status: '
-        if self.__game_running:
-            text += 'running ({})'.format(self.__status_var.get())
-        else:
-            text += 'not running'
-            
-        self.__status_label.configure(text=text)
-        
-    def __update_status(self, status):
-        state = tk.NORMAL if status else tk.DISABLED
+        try:
+            self.__menu = Navigator()
+            self.__update_status(True)
+            self.__game_var.set(self.__menu.title)
+     
+        except RuntimeError: # Make custom error
+            self.__update_status(False)
+            self.__menu = None
+            self.__game_var.set(-1)
 
+    def __update_status(self, status):
         self.__game_running = status
-        
-        self.__on_screen_change()
         self.__check_ready_to_solve()
+        
+        state = tk.NORMAL if status else tk.DISABLED
         self.__save_optionmenu.configure(state=state)
         self.__set_optionmenu.configure(state=state)
         self.__level_optionmenu.configure(state=state)
        
     def __load_game(self):
-        self.__run_thread = False
-        if self.__menu:
+        try:
             self.__menu.close_game()
+        except:
+            pass
         
         self.__update_status(False)
         
+        self.__root.update()
         Popen([r'C:\Program Files (x86)\Steam\steam.exe',
                r'steam://rungameid/'+GUI.GAMEIDS[self.__game_var.get()]],
-               shell=True, stdin=None, stdout=None, stderr=None, close_fds=True) 
+              shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
         
         while True:
             try:
-                self.__menu = Navigator(self.__status_var)
-                if self.__menu.window.title == self.__game_var.get():
+                self.__menu = Navigator()
+                if self.__menu.title == self.__game_var.get():
                     self.__update_status(True)
                     break 
                 else:
@@ -94,8 +70,11 @@ class GUI:
                 self.__update_status(False)
        
         self.__menu.wait_until_loaded()
-        self.__start_thread()
-       
+      
+    def __on_game_var_update(self, *args):
+        state = tk.NORMAL if self.__game_var.get() == 'Hexcells Infinite' else tk.DISABLED
+        self.__generator_radiobutton.configure(state=state)
+            
     def __create_info_frame(self):
         self.__info_frame = tk.Frame(self.__root)
         
@@ -105,6 +84,7 @@ class GUI:
         
         self.__game_var = tk.StringVar(self.__root)
         self.__game_var.set(-1)
+        self.__game_var.trace('w', self.__on_game_var_update)
         
         self.__game_1_radiobutton = tk.Radiobutton(self.__info_frame,
                                                    variable=self.__game_var,
@@ -143,15 +123,10 @@ class GUI:
         self.__save_label.pack(side='left')
         self.__save_optionmenu.pack()
         
-        self.__status_var = tk.StringVar(self.__root)
-        self.__status_var.trace('w', self.__on_screen_change)
-        self.__status_label = tk.Label(self.__info_frame, font=('Arial', 9))
-        
         self.__info_label.grid(sticky='w', row=0, column=0, columnspan=2)
         self.__game_1_radiobutton.grid(sticky='w', row=1, column=0)
         self.__game_2_radiobutton.grid(sticky='w', row=2, column=0)
         self.__game_3_radiobutton.grid(sticky='w', row=3, column=0)
-        self.__status_label.grid(sticky='w', row=4, column=0)
         
         self.__save_frame.grid(sticky='w', row=1, column=1)
         
@@ -290,13 +265,13 @@ class GUI:
       
     def __solve(self):
         if self.__solve_var.get() == 0:
-            self.__menu.solve_level(self.__set_var.get()+'-'+self.__level_var.get())
+            self.__menu.solve_level(self.__save_var.get(), self.__set_var.get()+'-'+self.__level_var.get())
         elif self.__solve_var.get() == 1:
-            self.__menu.solve_set(self.__set_var.get())
+            self.__menu.solve_set(self.__save_var.get(), self.__set_var.get())
         elif self.__solve_var.get() == 2:
-            self.__menu.solve_game()
+            self.__menu.solve_game(self.__save_var.get())
         elif self.__solve_var.get() == 3:
-            self.__menu.puzzle_generator()
-         
+            self.__menu.level_generator() 
+        
 if __name__ == '__main__':
     application = GUI()

@@ -56,7 +56,7 @@ class GameWindow(Window):
         
     def move_mouse(self):
         x, y, w, h = self._get_position()
-        pyautogui.moveTo(x+w, y+h)  
+        pyautogui.moveTo(x+w-1, y+h-1)  
 
 class ConfigWindow(Window):
     def __init__(self):
