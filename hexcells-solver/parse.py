@@ -129,8 +129,10 @@ class MenuParser(Parser):
         mask = cv2.inRange(image, (180,180,180), (180,180,180))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        bounding_boxes = self._merge_rects([cv2.boundingRect(contour) for contour in contours], 200, 20)        
-        return bounding_boxes[0]
+        rects = [cv2.boundingRect(contour) for contour in contours]
+        for bounding_box in self._merge_rects(rects, 200, 20):
+            if bounding_box[1] > image.shape[0] / 2:
+                return (bounding_box[0], bounding_box[1])
    
     def parse_level_exit(self):
         image = self.__window.screenshot()
@@ -300,11 +302,11 @@ class GameParser(Parser):
 
         blue_cells = self.parse_cells(image, Cell.BLUE)
         black_cells = self.parse_cells(image, Cell.BLACK)
-        orange_cells = self.parse_cells(image, Cell.ORANGE_OLD if training else Cell.ORANGE)
+        orange_cells = self.parse_cells(image, Cell.ORANGE)
 
         cells = blue_cells + black_cells + orange_cells
 
-        widths  = [cell.width  for cell in cells]
+        widths = [cell.width for cell in cells]
         heights = [cell.height for cell in cells]
         xs = [cell.image_coords[0] for cell in cells]
         ys = [cell.image_coords[1] for cell in cells]
@@ -420,42 +422,39 @@ class GameParser(Parser):
         mask = cv2.inRange(image, Cell.BLUE, Cell.BLUE)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        i = 0
-        remaining = None
+        parsed = []
         for contour in contours:
             if (cv2.contourArea(contour) > GameParser.__area_threshold and
                 cv2.matchShapes(contour, self.__counter_contour, 1, 0) < GameParser.__counter_match_threshold):
                 
-                i += 1
-                if i > 2:
-                    raise RuntimeError('counters parsed incorrectly')
-                
-                if i == 2:
-                    x, y, w, h = cv2.boundingRect(contour)
-                    y = round(y+h*0.35)
-                    h = round(h*0.65)
-    
-                    cropped = image[y: y+h, x: x+w]
-                    thresh = cv2.cvtColor(np.where(cropped==Cell.BLUE, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)
-                    thresh = cv2.resize(thresh, GameParser.__counter_dims, interpolation=cv2.INTER_AREA)
-    
-                    hashed = average_hash(thresh)
-    
-                    if training:
-                        remaining = hashed
-                        
-                    else:
-                        hashes, labels = self.__counter_data
-                        similarities = [np.sum(hashed != h) for h in hashes]
-                        match = labels[np.argmin(similarities)]
-                        
-                        #print(match)
-                        #cv2.imshow('test', thresh)
-                        #cv2.waitKey(0)
-                        
-                        remaining = match
+                x, y, w, h = cv2.boundingRect(contour)
+                y = round(y+h*0.35)
+                h = round(h*0.65)
 
-        return remaining
+                cropped = image[y:y+h, x:x+w]
+                thresh = cv2.cvtColor(np.where(cropped==Cell.BLUE, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)
+                thresh = cv2.resize(thresh, GameParser.__counter_dims, interpolation=cv2.INTER_AREA)
+                
+                hashed = average_hash(thresh)
+
+                if training:
+                    parsed.append(hashed)
+                    
+                else:
+                    hashes, labels = self.__counter_data
+                    similarities = [np.sum(hashed != h) for h in hashes]
+                    match = labels[np.argmin(similarities)]
+                    
+                    #print(match)
+                    #cv2.imshow('test', thresh)
+                    #cv2.waitKey(0)
+                    
+                    parsed.append(match)
+                    
+        if len(parsed) != 2:
+            raise RuntimeError('counters parsed incorrectly')
+                
+        return parsed
 
     def parse_clicked(self, grid, left_click_cells, right_click_cells):
         left_click_cells.sort(key=lambda cell: cell.grid_coords, reverse=True)

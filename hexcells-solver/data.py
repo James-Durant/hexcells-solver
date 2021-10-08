@@ -36,78 +36,84 @@ class Generator:
         
         Popen([self.__steam_path, r'steam://rungameid/'+GAMEIDS[game]],
                shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
-
-        while True:
-            try:
-                menu = Navigator()
-                if resolution >= menu.window.resolution:
-                    break
-            except RuntimeError:
-                continue
-
+        
+        time.sleep(5)
+        menu = Navigator()
         menu.window.move_mouse()
         menu.wait_until_loaded()
+        
         return menu
         
-    def make_dataset(self, digit_type):
-        save_path = os.path.join(self.__save_path, digit_type, 'hashes.pickle')
-        
-        if digit_type == 'column':
-            for i, hint in enumerate(['normal', 'consecutive', 'non-consecutive']):
-                level_path = os.path.join(self.__save_path, digit_type, '{}_level.hexcells'.format(hint))
-                self.__make_data(digit_type+'_'+hint, save_path, level_path, i==0)
-        
-        elif digit_type == 'diagonal':
-            for part in ['1', '2']:
-                for i, hint in enumerate(['normal', 'consecutive', 'non-consecutive']):
-                    level_path = os.path.join(self.__save_path, digit_type, '{0}_{1}_level.hexcells'.format(hint, part))
-                    self.__make_data(digit_type+'_{0}_{1}'.format(hint, part), save_path, level_path, part=='1' and i==0)
-                    
-        else:
-            level_path = os.path.join(self.__save_path, digit_type, 'level.hexcells')
-            self.__make_data(digit_type, save_path, level_path)
-        
-    def make_dataset_blue_special(self):
-        game = Navigator()
-        
-        hashes, labels = [], []
-        for i in range(6):
-            screenshot = game.window.screenshot()
-            parser = GameParser(game.window)
-            
-            hashes += parser.parse_cells(screenshot, Cell.BLUE, training=True)
-            labels += ['{5}', '-2-', '5', '4', '2', '4', '5', '{4}', '{2}', '5', '3', '10', '10']
-    
-            assert len(hashes) == len(labels)
-            print(i)
-            time.sleep(3)
-
-        game.close_game()
-    
-        hash_path = os.path.join(self.__save_path, 'blue', 'hashes.pickle')
-        with open(hash_path, 'rb') as file:
-            existing_hashes, existing_labels = pickle.load(file)
-            hashes += existing_hashes
-            labels += existing_labels
-
-        with open(hash_path, 'wb') as file:
-            pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
-        
-    def __make_data(self, digit_type, hash_path, level_path, delete_existing=True): 
+    def make_dataset(self, digit_type):         
         hashes, labels = [], []
         for resolution in Generator.__RESOLUTIONS:
-            menu = self.__load_game('Hexcells Infinite', resolution)
-            
-            if digit_type == 'level_select':
-                menu.load_save(1)
+            if digit_type == 'blue_special':
+                menu = self.__load_game('Hexcells Plus', resolution)
+                hash_path = os.path.join(self.__save_path, 'blue', 'hashes.pickle')
+                delete_existing = False
+                
             else:
-                menu.load_custom_level(level_path)
+                menu = self.__load_game('Hexcells Infinite', resolution)
+                hash_path = os.path.join(self.__save_path, digit_type, 'hashes.pickle')
+                delete_existing = True
+            
+            if digit_type == 'column':
+                hashes_res, labels_res = [], []
+                for hint in ['normal', 'consecutive', 'non-consecutive']:
+                    level_path = os.path.join(self.__save_path, digit_type, '{}_level.hexcells'.format(hint))
+                    menu.load_custom_level(level_path)
+                    
+                    hashes_hint, labels_hint = self.__get_hashes(menu.window, digit_type+'_'+hint)
+                    hashes_res += hashes_hint
+                    labels_res += labels_hint
+                    
+                    menu.back()
+                    time.sleep(1)
+                    menu.exit_level()
+                
+            elif digit_type == 'diagonal':
+                for part in ['1', '2']:
+                    for hint in ['normal', 'consecutive', 'non-consecutive']:
+                        level_path = os.path.join(self.__save_path, digit_type, '{0}_{1}_level.hexcells'.format(hint, part))
+                        menu.load_custom_level(level_path)
+                        
+                        hashes_hint, labels_hint = self.__get_hashes(menu.window, digit_type+'_{0}_{1}'.format(hint, part))
+                        hashes_res += hashes_hint
+                        labels_res += labels_hint
+                    
+                        menu.back()
+                        time.sleep(1)
+                        menu.exit_level()
+                        
+            else:
+                level_path = os.path.join(self.__save_path, digit_type, 'level.hexcells')
+                
+                if digit_type == 'level_select':
+                    menu.load_save(1)
+                
+                elif digit_type == 'blue_special':
+                    menu.load_save(1)
+                    
+                    menu_parser = MenuParser(menu.window)
+                    levels = menu_parser.parse_levels()
+                    
+                    menu.window.click(levels['4-6'])
+                    menu.window.move_mouse()
+                    menu.wait_until_loaded()
+                    
+                else:
+                    menu.load_custom_level(level_path)
 
-            hashes_res, labels_res = self.__get_hashes(menu.window, digit_type, resolution)
+                hashes_res, labels_res = self.__get_hashes(menu.window, digit_type)
+                
             hashes += hashes_res
             labels += labels_res
 
             menu.close_game()
+            
+            # Only run for one resolution.
+            if digit_type == 'counter':
+                break
         
         if not delete_existing:
             with open(hash_path, 'rb') as file:
@@ -118,7 +124,7 @@ class Generator:
         with open(hash_path, 'wb') as file:
             pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def __get_hashes(self, window, digit_type, resolution):
+    def __get_hashes(self, window, digit_type):
         if digit_type == 'level_select':
             parser = MenuParser(window)
             labels = ['3-3', '3-2', '2-3', '2-2', '3-4', '3-1',
@@ -130,16 +136,16 @@ class Generator:
             
             hashes = parser.parse_levels(training=True)
             
-        elif digit_type in ['black', 'blue', 'counter']:
+        elif digit_type in ['black', 'blue', 'blue_special', 'counter']:
             screenshot = window.screenshot()
             parser = GameParser(window)
     
             if digit_type == 'counter':
-                remaining = 478
+                remaining = 476
                 labels = list(range(remaining, -1, -1))
                 
                 hashes = []
-                for cell in parser.parse_cells(screenshot, Cell.ORANGE_OLD):
+                for cell in parser.parse_cells(screenshot, Cell.ORANGE):
                     mistakes_hash, remaining_hash = parser.parse_counters(screenshot, training=True)
     
                     hashes.append(remaining_hash)
@@ -158,6 +164,10 @@ class Generator:
             elif digit_type == 'blue':
                 hashes = parser.parse_cells(screenshot, Cell.BLUE, training=True)
                 labels = [str(i) for i in range(0, 19)]
+                
+            elif digit_type == 'blue_special':
+                hashes = parser.parse_cells(screenshot, Cell.BLUE, training=True)
+                labels = ['{5}', '-2-', '5', '4', '2', '4', '5', '{4}', '{2}', '5', '3', '10', '10']
 
         else:
             if digit_type == 'column_normal':
@@ -206,9 +216,9 @@ class Generator:
 if __name__ == '__main__':
     generator = Generator()
     #generator.make_dataset('level_select') #Broken
-    generator.make_dataset('black')
+    #generator.make_dataset('black')
     #generator.make_dataset('blue')
-    #generator.make_dataset_blue_special()
+    #generator.make_dataset_blue_special() # Only run after blue
     #generator.make_dataset('counter')
-    #generator.make_dataset('column')
+    generator.make_dataset('column')
     #generator.make_dataset('diagonal') 

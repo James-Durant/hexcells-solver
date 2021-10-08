@@ -186,7 +186,6 @@ class Cell:
     BLUE = (235, 164, 5)
     BLACK = (62, 62, 62)
     ORANGE = (41, 177, 255) 
-    ORANGE_OLD = (41, 175, 255) 
     COLOURS = [BLUE, BLACK, ORANGE]
     HINT_TYPES = ['normal', 'consecutive', 'non-consecutive']
     
@@ -229,7 +228,7 @@ class Cell:
     
     @colour.setter
     def colour(self, colour):
-        if colour not in [Cell.BLUE, Cell.BLACK, Cell.ORANGE, Cell.ORANGE_OLD]:
+        if colour not in [Cell.BLUE, Cell.BLACK, Cell.ORANGE]:
             raise RuntimeError('invalid cell colour')
         else:
             self.__colour = colour

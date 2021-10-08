@@ -38,15 +38,15 @@ class Navigator:
         if screen == 'in_level':
             self.back()
             time.sleep(0.5)
-            self.__exit_level()
+            self.exit_level()
         
         elif screen == 'level_exit':
-            self.__exit_level()
+            self.exit_level()
             
         if screen != 'main_menu':
             self.back()
 
-    def __exit_level(self):
+    def exit_level(self):
         _, _, exit_button = self.__menu_parser.parse_level_exit()
         self.__window.click(exit_button)
         self.__window.move_mouse()
@@ -61,10 +61,10 @@ class Navigator:
         elif screen == 'in_level':
             self.back()
             time.sleep(0.5)
-            self.__exit_level()
+            self.exit_level()
         
         elif screen == 'level_exit':
-            self.__exit_level()
+            self.exit_level()
             
         else:
             if screen != 'main_menu':

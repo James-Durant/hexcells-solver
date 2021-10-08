@@ -2,7 +2,7 @@ from pulp import GLPK_CMD, LpProblem, LpMinimize, LpVariable, lpSum, value
 from parse import Cell
 
 class Solver:
-    __GLPK_PATH = '../resources/winglpk-4.65/glpk-4.65/w64/glpsol.exe'
+    __GLPK_PATH = 'resources/winglpk-4.65/glpk-4.65/w64/glpsol.exe'
     
     def __init__(self, parser):
         self.__parser = parser
