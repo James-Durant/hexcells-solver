@@ -213,10 +213,10 @@ class Generator:
 if __name__ == '__main__':
     generator = Generator()
     # Do not change the ordering.
-    #generator.make_dataset('level_select')
-    #generator.make_dataset('black')
-    #generator.make_dataset('blue')
+    generator.make_dataset('level_select')
+    generator.make_dataset('black')
+    generator.make_dataset('blue')
     generator.make_dataset('blue_special')
-    #generator.make_dataset('counter')
-    #generator.make_dataset('column')
-    #generator.make_dataset('diagonal') 
+    generator.make_dataset('counter')
+    generator.make_dataset('column')
+    generator.make_dataset('diagonal') 
