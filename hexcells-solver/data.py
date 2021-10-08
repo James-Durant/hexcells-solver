@@ -9,9 +9,9 @@ from parse import GameParser, MenuParser
 # Turn off steam overlay
 
 class Generator:
-    __RESOLUTIONS = [(2560, 1920), (2560, 1600), (2048, 1536), (2048, 1152),
-                     (1920, 1440), (1920, 1200), (1920, 1080), (1856, 1392),
-                     (1792, 1344), (1680, 1050), (1600, 1200), (1600, 900)]
+    __RESOLUTIONS = [(2560, 1920), (2560, 1600), (2048, 1152),
+                     (1920, 1440), (1920, 1200), (1920, 1080),
+                     (1680, 1050), (1600, 1200)]
 
     def __init__(self, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources'):
         self.__options_path = os.path.join(steam_path, r'steamapps\common\Hexcells Infinite\saves\options.txt')
@@ -66,12 +66,9 @@ class Generator:
                     hashes_hint, labels_hint = self.__get_hashes(menu.window, digit_type+'_'+hint)
                     hashes_res += hashes_hint
                     labels_res += labels_hint
-                    
-                    menu.back()
-                    time.sleep(1)
-                    menu.exit_level()
                 
             elif digit_type == 'diagonal':
+                hashes_res, labels_res = [], []
                 for part in ['1', '2']:
                     for hint in ['normal', 'consecutive', 'non-consecutive']:
                         level_path = os.path.join(self.__save_path, digit_type, '{0}_{1}_level.hexcells'.format(hint, part))
@@ -215,10 +212,11 @@ class Generator:
 
 if __name__ == '__main__':
     generator = Generator()
-    #generator.make_dataset('level_select') #Broken
+    # Do not change the ordering.
+    #generator.make_dataset('level_select')
     #generator.make_dataset('black')
     #generator.make_dataset('blue')
-    #generator.make_dataset_blue_special() # Only run after blue
+    generator.make_dataset('blue_special')
     #generator.make_dataset('counter')
-    generator.make_dataset('column')
+    #generator.make_dataset('column')
     #generator.make_dataset('diagonal') 

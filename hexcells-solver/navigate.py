@@ -47,7 +47,13 @@ class Navigator:
             self.back()
 
     def exit_level(self):
-        _, _, exit_button = self.__menu_parser.parse_level_exit()
+        while True:
+            try:
+                _, _, exit_button = self.__menu_parser.parse_level_exit()
+                break
+            except:
+                continue
+            
         self.__window.click(exit_button)
         self.__window.move_mouse()
         self.__menu_parser.wait_until_loaded()

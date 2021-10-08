@@ -49,7 +49,7 @@ class MenuParser(Parser):
     
     def __init__(self, window):
         self.__window = window
-        self.__level_data = Parser._load_hashes('level')
+        self.__level_data = Parser._load_hashes('level_select')
         self.__screen_data = Parser._load_hashes('screen')
         
         user_level_image = cv2.imread(MenuParser.__user_level_mask_path)
@@ -168,12 +168,8 @@ class MenuParser(Parser):
     def parse_levels(self, training=False):
         image = self.__window.screenshot()
         grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        
-        if training:
-            mask = 255-cv2.inRange(image, (220,220,220), (255,255,255))
-        else:
-            mask = cv2.inRange(image, (245,245,245), (255,255,255))
-        
+    
+        mask = cv2.inRange(image, (245,245,245), (255,255,255))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         
         #cv2.imshow('test', mask)
@@ -215,18 +211,19 @@ class MenuParser(Parser):
                            
             if training:
                 training_hashes.append(hashed)
-
-            hashes, labels = self.__level_data
-    
-            similarities = [np.sum(hashed != h) for h in hashes]
-            best_matches = np.array(labels)[np.argsort(similarities)[:3]].tolist()
-            match = max(set(best_matches), key=best_matches.count)
-            
-            levels[match] = (x+w//2, y+h//2)
-            
-            #print(match, best_matches)
-            #cv2.imshow('test', cropped)
-            #cv2.waitKey(0)
+                
+            else:
+                hashes, labels = self.__level_data
+        
+                similarities = [np.sum(hashed != h) for h in hashes]
+                best_matches = np.array(labels)[np.argsort(similarities)[:3]].tolist()
+                match = max(set(best_matches), key=best_matches.count)
+                
+                levels[match] = (x+w//2, y+h//2)
+                
+                #print(match, best_matches)
+                #cv2.imshow('test', cropped)
+                #cv2.waitKey(0)
 
         return training_hashes if training else levels
             
@@ -376,7 +373,7 @@ class GameParser(Parser):
         return cells
 
     def __parse_cell_digit(self, image, cell_colour, training=False):
-        if cell_colour == Cell.ORANGE or cell_colour == Cell.ORANGE_OLD:
+        if cell_colour == Cell.ORANGE:
             return None
         
         thresh = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)   
@@ -520,14 +517,13 @@ class GameParser(Parser):
                     np.linalg.norm(coords-grid.nearest_cell(coords).image_coords) < 140):
                     rects.append((x, y, w, h))
                     
-        bounding_boxes = self._merge_rects(rects, self.__hex_width*0.75, self.__hex_height*0.7)
+        bounding_boxes = self._merge_rects(rects, self.__hex_width*0.76, self.__hex_height*0.7)
 
         #for x, y, w, h in bounding_boxes:
         #    cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255))
         
         #cv2.imshow('test', image)
-        #while cv2.waitKey(0) != 27:
-        #    pass
+        #cv2.waitKey(0)
         
         parsed = []
         for x, y, w, h in bounding_boxes:
