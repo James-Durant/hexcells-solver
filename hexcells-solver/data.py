@@ -1,45 +1,71 @@
-import time, os, pickle
-
+import json, os, time, pickle
 from subprocess import Popen
 
-from navigate import Navigator
-from window import ConfigWindow
-from parse import MenuParser, GameParser
 from grid import Cell
+from main import GAMEIDS
+from navigate import Navigator
+from parse import GameParser, MenuParser
+
+# Turn off steam overlay
 
 class Generator:
-    __RESOLUTIONS =  ['2048x1152', '1920x1200', '1920x1080', '1680x1050', '1600x1200', '1600x900']
-    __HEXCELLS_PATH = r'C:\Program Files (x86)\Steam\steamapps\content\app_304410\depot_304411\Hexcells Infinite.exe'
+    __RESOLUTIONS = [(2560, 1920), (2560, 1600), (2048, 1536), (2048, 1152),
+                     (1920, 1440), (1920, 1200), (1920, 1080), (1856, 1392),
+                     (1792, 1344), (1680, 1050), (1600, 1200), (1600, 900)]
 
-    def __init__(self, save_path='../resources'):
+    def __init__(self, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources'):
+        self.__options_path = os.path.join(steam_path, r'steamapps\common\Hexcells Infinite\saves\options.txt')
+        self.__steam_path = os.path.join(steam_path, 'steam.exe')
         self.__save_path = save_path
 
-    def __reset_resolution(self):
-        Popen([Generator.__HEXCELLS_PATH], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
+    def __load_game(self, game, resolution):
+        # Close game if open already
+        try:
+            menu = Navigator()
+            menu.close_game()
+        except:
+            pass
+        
+        with open(self.__options_path, 'r') as file:
+            data = json.load(file)
+            
+        data['screenWidth'], data['screenHeight'] = resolution
 
-        time.sleep(1)
-        config_window = ConfigWindow()
-        config_window.reset_resolution()
+        with open(self.__options_path, 'w') as file:
+            json.dump(data, file)
+        
+        Popen([self.__steam_path, r'steam://rungameid/'+GAMEIDS[game]],
+               shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
 
-        menu = Navigator()
-        menu.close_game()
+        while True:
+            try:
+                menu = Navigator()
+                if resolution >= menu.window.resolution:
+                    break
+            except RuntimeError:
+                continue
 
+        menu.window.move_mouse()
+        menu.wait_until_loaded()
+        return menu
+        
     def make_dataset(self, digit_type):
         save_path = os.path.join(self.__save_path, digit_type, 'hashes.pickle')
+        
         if digit_type == 'column':
             for i, hint in enumerate(['normal', 'consecutive', 'non-consecutive']):
                 level_path = os.path.join(self.__save_path, digit_type, '{}_level.hexcells'.format(hint))
-                self.__make_data_infinite(digit_type+'_'+hint, save_path, level_path, i==0)
+                self.__make_data(digit_type+'_'+hint, save_path, level_path, i==0)
         
         elif digit_type == 'diagonal':
             for part in ['1', '2']:
                 for i, hint in enumerate(['normal', 'consecutive', 'non-consecutive']):
                     level_path = os.path.join(self.__save_path, digit_type, '{0}_{1}_level.hexcells'.format(hint, part))
-                    self.__make_data_infinite(digit_type+'_{0}_{1}'.format(hint, part), save_path, level_path, part=='1' and i==0)
+                    self.__make_data(digit_type+'_{0}_{1}'.format(hint, part), save_path, level_path, part=='1' and i==0)
                     
         else:
             level_path = os.path.join(self.__save_path, digit_type, 'level.hexcells')
-            self.__make_data_infinite(digit_type, save_path, level_path)
+            self.__make_data(digit_type, save_path, level_path)
         
     def make_dataset_blue_special(self):
         game = Navigator()
@@ -67,30 +93,15 @@ class Generator:
         with open(hash_path, 'wb') as file:
             pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
         
-    def __make_data_infinite(self, digit_type, hash_path, level_path, delete_existing=True): 
-        self.__reset_resolution()
-
+    def __make_data(self, digit_type, hash_path, level_path, delete_existing=True): 
         hashes, labels = [], []
         for resolution in Generator.__RESOLUTIONS:
-            Popen([Generator.__HEXCELLS_PATH], shell=True,
-                  stdin=None, stdout=None, stderr=None, close_fds=True)
-
-            time.sleep(1)
-
-            config_window = ConfigWindow()
-            config_window.start_game()
-
-            time.sleep(1.5)
-
-            menu = Navigator()
+            menu = self.__load_game('Hexcells Infinite', resolution)
             
-            if digit_type == 'level':
-                menu.load_save_slot(1)
+            if digit_type == 'level_select':
+                menu.load_save(1)
             else:
                 menu.load_custom_level(level_path)
-            
-            menu.window.move_mouse()
-            time.sleep(2.5)
 
             hashes_res, labels_res = self.__get_hashes(menu.window, digit_type, resolution)
             hashes += hashes_res
@@ -108,7 +119,7 @@ class Generator:
             pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
 
     def __get_hashes(self, window, digit_type, resolution):
-        if digit_type == 'level':
+        if digit_type == 'level_select':
             parser = MenuParser(window)
             labels = ['3-3', '3-2', '2-3', '2-2', '3-4', '3-1',
                       '2-4', '2-1', '3-5', '3-6', '2-5', '2-6',
@@ -194,8 +205,8 @@ class Generator:
 
 if __name__ == '__main__':
     generator = Generator()
-    #generator.make_dataset('level')
-    #generator.make_dataset('black')
+    #generator.make_dataset('level_select') #Broken
+    generator.make_dataset('black')
     #generator.make_dataset('blue')
     #generator.make_dataset_blue_special()
     #generator.make_dataset('counter')

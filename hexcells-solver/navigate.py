@@ -82,9 +82,9 @@ class Navigator:
 
             _, generator = self.__menu_parser.parse_slots()
             self.__window.click(generator)
+            self.__menu_parser.wait_until_loaded()
         
         while True:
-            self.__menu_parser.wait_until_loaded()
             play, random = self.__menu_parser.parse_generator()
             self.__window.click(random)
             self.__window.click(play)
@@ -93,6 +93,13 @@ class Navigator:
             self.__menu_parser.wait_until_loaded()
             if func:
                 func()
+                # make this code better
+                self.__window.move_mouse()
+                time.sleep(1.2)
+                next_button, menu_button = self.__menu_parser.parse_level_end()
+                self.__window.click(menu_button)
+                self.__window.move_mouse()
+                time.sleep(1.2)
             else:
                 self.solve(False)
 
@@ -160,14 +167,14 @@ class Navigator:
         self.__window.close()
         
     def load_custom_level(self, level_path):
+        self.__transition_to_main_menu()
+        
         with open(level_path, 'r') as file:
             level = file.read()
+            
         pyperclip.copy(level)
         
-        x1, y1, x2, y2 = self.__window._get_position()
-        x = round((x1+x2)*0.92)
-        y = round((y1+y2)*0.97)
-        
-        self.__window.to_foreground()
-        for i in range(5):
-            self.__window.click((x-x1, y-y1))
+        user_levels = self.__menu_parser.parse_user_levels()
+        self.__window.click(user_levels)
+        self.__window.move_mouse()
+        self.__menu_parser.wait_until_loaded()

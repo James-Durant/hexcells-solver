@@ -2,21 +2,18 @@ import tkinter as tk
 from subprocess import Popen
 from navigate import Navigator
 
-import threading, time
-import pythoncom
+GAMEIDS = {'Hexcells': '265890',
+           'Hexcells Plus': '271900',
+           'Hexcells Infinite': '304410'}
 
 class GUI:
-    GAMEIDS = {'Hexcells': '265890',
-               'Hexcells Plus': '271900',
-               'Hexcells Infinite': '304410'}
-    
     def __init__(self):
         self.__root = tk.Tk()
         self.__root.title('HexSolver')
         self.__root.resizable(width=False, height=False)
-        self.__window_width = 300
-        self.__window_height = 600 
-        self.__root.geometry('{0}x{1}+0+0'.format(self.__window_width, self.__window_height))
+        #self.__window_width = 300
+        #self.__window_height = 600 
+        #self.__root.geometry('{0}x{1}+0+0'.format(self.__window_width, self.__window_height))
         
         self.__create_info_frame()
         self.__create_solver_frame()
@@ -54,7 +51,7 @@ class GUI:
         
         self.__root.update()
         Popen([r'C:\Program Files (x86)\Steam\steam.exe',
-               r'steam://rungameid/'+GUI.GAMEIDS[self.__game_var.get()]],
+               r'steam://rungameid/'+GAMEIDS[self.__game_var.get()]],
               shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
         
         while True:
@@ -80,7 +77,7 @@ class GUI:
         
         self.__info_label = tk.Label(self.__info_frame,
                                      font=('Arial Black', 10),
-                                     text='-'*80+'\n'+'Game Options\n'+'-'*80)
+                                     text='-'*70+'\n'+'Game Options\n'+'-'*70)
         
         self.__game_var = tk.StringVar(self.__root)
         self.__game_var.set(-1)
@@ -141,7 +138,7 @@ class GUI:
         
         self.__solve_label = tk.Label(self.__solver_frame,
                                       font=('Arial Black', 10),
-                                      text='-'*80+'\n'+'Solver Options\n'+'-'*80)
+                                      text='-'*70+'\n'+'Solver Options\n'+'-'*70)
         
         self.__level_radiobutton = tk.Radiobutton(self.__solver_frame,
                                                   variable=self.__solve_var,
