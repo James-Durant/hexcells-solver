@@ -67,36 +67,42 @@ class MenuParser(Parser):
         
         #for label, sim in zip(labels, similarities):
         #    print(label, sim)
-        #print()
+        print(labels[np.argmin(similarities)])
+        print()
     
         if min(similarities) > 0.1:
             return 'in_level'
 
         return labels[np.argmin(similarities)]
       
-    def parse_slots(self, training=False):
+    def parse_slots(self):
         image = self.__window.screenshot()
         
         height = image.shape[1]
-        if training:
-            image = image[round(height*0.2):round(height*0.5), :]
-            mask = cv2.inRange(image, (254,254,254), (255,255,255))
-        else:
-            image = image[round(height*0.2):round(height*0.4), :]
-            mask = cv2.inRange(image, (240,240,240), (255,255,255))
+        image = image[round(height*0.25):, :]
+        mask = cv2.inRange(image, (240,240,240), (255,255,255))
         
         #cv2.imshow('test', mask)
         #cv2.waitKey(0)
         
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        slots = []
-        for contour in contours:
-            x, y, w, h = cv2.boundingRect(contour)
-            y += round(height*0.2)
-            
-            slots.append((x+w//2, y+h//2))
+        #image = cv2.drawContours(image, contours, -1, (0,255,0), 3)
+        #cv2.imshow('test', image)
+        #cv2.waitKey(0)
         
+        rects = [cv2.boundingRect(contour) for contour in contours]
+        rects = self._merge_rects(rects, 100, 100)
+        #for x, y, w, h in rects:
+        #    image = cv2.rectangle(image, (x,y), (x+w,y+h), (0,255,0), 1)
+        #cv2.imshow('test', image)
+        #cv2.waitKey(0)
+        
+        slots = []
+        for x, y, w, h in rects:
+            y += round(height*0.25)
+            slots.append((x+w//2, y+h//2))
+
         if len(slots) == 4:
             slots.sort(key=lambda x: tuple(reversed(x)))
             generator = slots.pop()
@@ -130,9 +136,19 @@ class MenuParser(Parser):
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         rects = [cv2.boundingRect(contour) for contour in contours]
-        for bounding_box in self._merge_rects(rects, 200, 20):
+        
+        #for x, y, w, h in self._merge_rects(rects, image.shape[1], 20):
+        #    image = cv2.rectangle(image, (x,y), (x+w,y+h), (0,255,0), 1)
+        #cv2.imshow('test', image)
+        #cv2.waitKey(0)
+        
+        buttons = []
+        for bounding_box in self._merge_rects(rects, image.shape[1], 20):
             if bounding_box[1] > image.shape[0] / 2:
-                return (bounding_box[0], bounding_box[1])
+                buttons.append((bounding_box[0], bounding_box[1]))
+                
+            if len(buttons) == 2:
+                return buttons
    
     def parse_level_exit(self):
         image = self.__window.screenshot()

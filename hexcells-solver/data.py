@@ -1,4 +1,4 @@
-import json, os, time, pickle
+import json, os, cv2, time, pickle
 from subprocess import Popen
 
 from grid import Cell
@@ -37,7 +37,7 @@ class Generator:
         Popen([self.__steam_path, r'steam://rungameid/'+GAMEIDS[game]],
                shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
         
-        time.sleep(5)
+        time.sleep(8)
         menu = Navigator()
         menu.window.move_mouse()
         menu.wait_until_loaded()
@@ -88,6 +88,49 @@ class Generator:
                 if digit_type == 'level_select':
                     menu.load_save(1)
                 
+                elif digit_type == 'screen':
+                    main_screen = cv2.resize(menu.window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
+                    
+                    menu_parser = MenuParser(menu.window)
+                    saves, _ = menu_parser.parse_slots()
+                    menu.window.click(saves[0])
+                    menu.window.move_mouse()
+                    menu_parser.wait_until_loaded()
+                    level_select = cv2.resize(menu.window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
+                    
+                    levels = menu_parser.parse_levels()
+                    coords = levels['4-4']
+                    menu.window.click(coords)
+                    menu.window.move_mouse()
+                    time.sleep(2)
+                    menu.back()
+                    level_exit = cv2.resize(menu.window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
+                    
+                    menu.exit_level()
+                    menu.back()
+                    _, generator_button = menu_parser.parse_slots()
+                    menu.window.click(generator_button)
+                    menu.window.move_mouse()
+                    time.sleep(2)
+                    level_generator = cv2.resize(menu.window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
+                    
+                    menu.back()
+                    user_levels_button, _ = menu_parser.parse_user_levels()
+                    menu.window.click(user_levels_button)
+                    menu.window.move_mouse()
+                    time.sleep(2)
+                    user_levels = cv2.resize(menu.window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
+                    
+                    menu.back()
+                    _, options_button = menu_parser.parse_user_levels()
+                    menu.window.click(options_button)
+                    menu.window.move_mouse()
+                    time.sleep(2)
+                    options = cv2.resize(menu.window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
+                    
+                    hashes_res = [main_screen, level_select, level_exit, level_generator, user_levels, options]
+                    labels_res = ['main_menu', 'level_select', 'level_exit', 'level_generator', 'user_levels', 'options']
+                
                 elif digit_type == 'blue_special':
                     menu.load_save(1)
                     
@@ -100,8 +143,9 @@ class Generator:
                     
                 else:
                     menu.load_custom_level(level_path)
-
-                hashes_res, labels_res = self.__get_hashes(menu.window, digit_type)
+                
+                if digit_type != 'screen':
+                    hashes_res, labels_res = self.__get_hashes(menu.window, digit_type)
                 
             hashes += hashes_res
             labels += labels_res
@@ -212,11 +256,13 @@ class Generator:
 
 if __name__ == '__main__':
     generator = Generator()
+    
     # Do not change the ordering.
-    generator.make_dataset('level_select')
-    generator.make_dataset('black')
-    generator.make_dataset('blue')
-    generator.make_dataset('blue_special')
-    generator.make_dataset('counter')
-    generator.make_dataset('column')
-    generator.make_dataset('diagonal') 
+    #generator.make_dataset('level_select')
+    generator.make_dataset('screen')
+    #generator.make_dataset('black')
+    #generator.make_dataset('blue')
+    #generator.make_dataset('blue_special')
+    #generator.make_dataset('counter')
+    #generator.make_dataset('column')
+    #generator.make_dataset('diagonal')

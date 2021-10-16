@@ -20,9 +20,9 @@ class Navigator:
     def wait_until_loaded(self):
         self.__menu_parser.wait_until_loaded()
     
-    def load_save(self, save, training=False):
+    def load_save(self, save):
         self.__transition_to_main_menu()
-        saves, _ = self.__menu_parser.parse_slots(training)
+        saves, _ = self.__menu_parser.parse_slots()
         
         if save in [1,2,3]:
             self.__window.click(saves[save-1])
@@ -47,13 +47,7 @@ class Navigator:
             self.back()
 
     def exit_level(self):
-        while True:
-            try:
-                _, _, exit_button = self.__menu_parser.parse_level_exit()
-                break
-            except:
-                continue
-            
+        _, _, exit_button = self.__menu_parser.parse_level_exit()
         self.__window.click(exit_button)
         self.__window.move_mouse()
         self.__menu_parser.wait_until_loaded()
@@ -167,11 +161,11 @@ class Navigator:
      
     def back(self):
         self.__window.press_key('esc')
-        self.__menu_parser.wait_until_loaded()
+        time.sleep(2)
         
     def close_game(self):
         self.__window.close()
-        
+    
     def load_custom_level(self, level_path):
         self.__transition_to_main_menu()
         
@@ -180,7 +174,7 @@ class Navigator:
             
         pyperclip.copy(level)
         
-        user_levels = self.__menu_parser.parse_user_levels()
+        user_levels, _ = self.__menu_parser.parse_user_levels()
         self.__window.click(user_levels)
         self.__window.move_mouse()
         self.__menu_parser.wait_until_loaded()
