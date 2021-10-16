@@ -9,15 +9,10 @@ class Window:
             raise RuntimeError('Hexcells window not found') 
             
         x1, y1, x2, y2 = self._get_position()
-        self.__resolution = (x2-x1, y2-y1)
       
     @property
     def title(self):
         return self.__title
-      
-    @property
-    def resolution(self):
-        return self.__resolution
       
     def _get_position(self):
         x1, y1, x2, y2 = win32gui.GetClientRect(self.__hwnd)

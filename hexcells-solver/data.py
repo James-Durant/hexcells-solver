@@ -4,15 +4,12 @@ from subprocess import Popen
 from grid import Cell
 from main import GAMEIDS
 from navigate import Navigator
-from parse import GameParser, MenuParser
+from parse import GameParser, MenuParser, RESOLUTIONS
+from solve import Solver
 
 # Turn off steam overlay
-
+    
 class Generator:
-    __RESOLUTIONS = [(2560, 1920), (2560, 1600), (2048, 1152),
-                     (1920, 1440), (1920, 1200), (1920, 1080),
-                     (1680, 1050), (1600, 1200)]
-
     def __init__(self, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources'):
         self.__options_path = os.path.join(steam_path, r'steamapps\common\Hexcells Infinite\saves\options.txt')
         self.__steam_path = os.path.join(steam_path, 'steam.exe')
@@ -46,7 +43,7 @@ class Generator:
         
     def make_dataset(self, digit_type):         
         hashes, labels = [], []
-        for resolution in Generator.__RESOLUTIONS:
+        for resolution in RESOLUTIONS:
             if digit_type == 'blue_special':
                 menu = self.__load_game('Hexcells Plus', resolution)
                 hash_path = os.path.join(self.__save_path, 'blue', 'hashes.pickle')
@@ -89,47 +86,70 @@ class Generator:
                     menu.load_save(1)
                 
                 elif digit_type == 'screen':
-                    main_screen = cv2.resize(menu.window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
+                    main_screen = menu.window.screenshot()
                     
                     menu_parser = MenuParser(menu.window)
                     saves, _ = menu_parser.parse_slots()
                     menu.window.click(saves[0])
                     menu.window.move_mouse()
                     menu_parser.wait_until_loaded()
-                    level_select = cv2.resize(menu.window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
+                    level_select = menu.window.screenshot()
                     
                     levels = menu_parser.parse_levels()
-                    coords = levels['4-4']
+                    coords = levels['1-1']
                     menu.window.click(coords)
                     menu.window.move_mouse()
                     time.sleep(2)
                     menu.back()
-                    level_exit = cv2.resize(menu.window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
+                    level_exit = menu.window.screenshot()
                     
-                    menu.exit_level()
+                    menu.back()
+                    game_parser = GameParser(menu.window)
+                    solver = Solver(game_parser)
+                    solver.solve('1-1', menu.window.title)
+        
+                    menu.window.move_mouse()
+                    time.sleep(1.2)
+                    level_end = menu.window.screenshot()
+                    _, menu_button = menu_parser.parse_level_end()
+                    menu.window.click(menu_button)
+                    menu.window.move_mouse()
+                    time.sleep(1)               
+                    
                     menu.back()
                     _, generator_button = menu_parser.parse_slots()
                     menu.window.click(generator_button)
                     menu.window.move_mouse()
                     time.sleep(2)
-                    level_generator = cv2.resize(menu.window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
+                    level_generator = menu.window.screenshot()
                     
                     menu.back()
                     user_levels_button, _ = menu_parser.parse_user_levels()
                     menu.window.click(user_levels_button)
                     menu.window.move_mouse()
                     time.sleep(2)
-                    user_levels = cv2.resize(menu.window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
+                    user_levels = menu.window.screenshot()
                     
                     menu.back()
                     _, options_button = menu_parser.parse_user_levels()
                     menu.window.click(options_button)
                     menu.window.move_mouse()
                     time.sleep(2)
-                    options = cv2.resize(menu.window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
+                    options = menu.window.screenshot()
                     
-                    hashes_res = [main_screen, level_select, level_exit, level_generator, user_levels, options]
-                    labels_res = ['main_menu', 'level_select', 'level_exit', 'level_generator', 'user_levels', 'options']
+                    hashes = [main_screen, level_select, level_exit, level_end, level_generator, user_levels, options]
+                    labels = ['main_menu', 'level_select', 'level_exit', 'level_end', 'level_generator', 'user_levels', 'options']
+                    
+                    hash_path = os.path.join(self.__save_path, digit_type, '{0}x{1}'.format(*resolution))
+                    if not os.path.exists(hash_path):
+                        os.makedirs(hash_path)
+                    
+                    hash_path = os.path.join(hash_path, 'hashes.pickle')
+                    with open(hash_path, 'wb') as file:
+                        pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
+                        
+                    menu.close_game()
+                    continue
                 
                 elif digit_type == 'blue_special':
                     menu.load_save(1)
@@ -144,8 +164,7 @@ class Generator:
                 else:
                     menu.load_custom_level(level_path)
                 
-                if digit_type != 'screen':
-                    hashes_res, labels_res = self.__get_hashes(menu.window, digit_type)
+                hashes_res, labels_res = self.__get_hashes(menu.window, digit_type)
                 
             hashes += hashes_res
             labels += labels_res
@@ -156,14 +175,15 @@ class Generator:
             if digit_type == 'counter':
                 break
         
-        if not delete_existing:
-            with open(hash_path, 'rb') as file:
-                existing_hashes, existing_labels = pickle.load(file)
-                hashes += existing_hashes
-                labels += existing_labels
-
-        with open(hash_path, 'wb') as file:
-            pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
+        if digit_type != 'screen':
+            if not delete_existing:
+                with open(hash_path, 'rb') as file:
+                    existing_hashes, existing_labels = pickle.load(file)
+                    hashes += existing_hashes
+                    labels += existing_labels
+    
+            with open(hash_path, 'wb') as file:
+                pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
 
     def __get_hashes(self, window, digit_type):
         if digit_type == 'level_select':

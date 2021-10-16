@@ -106,7 +106,7 @@ class GUI:
         
         save_slots = ['1', '2', '3'] 
         self.__save_var = tk.StringVar(self.__root)
-        self.__save_var.set('-')
+        self.__save_var.set('1')
         self.__save_var.trace('w', self.__on_save_change)
         
         self.__save_frame = tk.Frame(self.__info_frame)

@@ -39,6 +39,13 @@ class Navigator:
             self.back()
             time.sleep(0.5)
             self.exit_level()
+            
+        elif screen == 'level_end':
+            _, menu_button = self.__menu_parser.parse_level_end()
+            self.__window.click(menu_button)
+            self.__window.move_mouse()
+            time.sleep(1.6)
+            self.back()
         
         elif screen == 'level_exit':
             self.exit_level()
@@ -47,7 +54,13 @@ class Navigator:
             self.back()
 
     def exit_level(self):
-        _, _, exit_button = self.__menu_parser.parse_level_exit()
+        while True:
+            try:
+                _, _, exit_button = self.__menu_parser.parse_level_exit()
+                break
+            except:
+                continue
+            
         self.__window.click(exit_button)
         self.__window.move_mouse()
         self.__menu_parser.wait_until_loaded()
@@ -56,12 +69,18 @@ class Navigator:
         screen = self.__menu_parser.get_screen() 
     
         if screen == 'level_select':
-            pass   
+            pass
         
         elif screen == 'in_level':
             self.back()
             time.sleep(0.5)
             self.exit_level()
+            
+        elif screen == 'level_end':
+            _, menu_button = self.__menu_parser.parse_level_end()
+            self.__window.click(menu_button)
+            self.__window.move_mouse()
+            self.__menu_parser.wait_until_loaded()
         
         elif screen == 'level_exit':
             self.exit_level()

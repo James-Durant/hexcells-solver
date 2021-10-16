@@ -1,7 +1,11 @@
 import numpy as np
-import cv2, os, pickle, time
+import cv2, os, json, pickle, time
 
-from grid import Grid, Cell 
+from grid import Grid, Cell
+
+RESOLUTIONS = [(2560, 1920), (2560, 1600), (2048, 1152),
+               (1920, 1440), (1920, 1200), (1920, 1080),
+               (1680, 1050), (1600, 1200)]
 
 def average_hash(image):
     diff = image > image.mean()
@@ -9,8 +13,12 @@ def average_hash(image):
 
 class Parser:
     @staticmethod 
-    def _load_hashes(digit_type):
-        path = os.path.join('resources', digit_type, 'hashes.pickle')
+    def _load_hashes(digit_type, resolution=None):
+        path = os.path.join('resources', digit_type)
+        if resolution:
+            path = os.path.join(path, '{0}x{1}'.format(*resolution))
+            
+        path = os.path.join(path, 'hashes.pickle')
         try:
             with open(path, 'rb') as file:
                 return pickle.load(file)
@@ -45,22 +53,24 @@ class Parser:
         return bounding_boxes
     
 class MenuParser(Parser):
-    __user_level_mask_path = 'resources/user_level_mask.png'
-    
-    def __init__(self, window):
+    def __init__(self, window, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources'):
         self.__window = window
+        
+        options_path = os.path.join(steam_path, r'steamapps\common\{}\saves\options.txt'.format(window.title))
+        with open(options_path, 'r') as file:
+            data = json.load(file)
+        
+        self.__resolution = data['screenWidth'], data['screenHeight']
+        if self.__resolution not in RESOLUTIONS:
+            self.__resolution = (1920, 1080)
+        
+        self.__screen_data = Parser._load_hashes('screen', self.__resolution)
         self.__level_data = Parser._load_hashes('level_select')
-        self.__screen_data = Parser._load_hashes('screen')
-        
-        user_level_image = cv2.imread(MenuParser.__user_level_mask_path)
-        user_level_mask = cv2.inRange(user_level_image, (220, 220, 220), (255, 255, 255))
-        user_level_contour, _ = cv2.findContours(user_level_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
-        self.user_level_contour = user_level_contour[0]
     
     def get_screen(self):
-        image = cv2.resize(self.__window.screenshot(), (1920, 1080), interpolation=cv2.INTER_AREA)
-        image = cv2.inRange(image, (230,230,230), (255,255,255))
+        image = cv2.inRange(self.__window.screenshot(), (230,230,230), (255,255,255))
+        if image.shape[0] != self.__resolution[1] or image.shape[1] != self.__resolution[0]:
+            image = cv2.resize(image, tuple(reversed(self.__resolution)), interpolation=cv2.INTER_AREA)
         
         images, labels = self.__screen_data
         similarities = [np.square(image-cv2.inRange(x, (230,230,230), (255,255,255))).mean() for x in images]
@@ -68,7 +78,6 @@ class MenuParser(Parser):
         #for label, sim in zip(labels, similarities):
         #    print(label, sim)
         print(labels[np.argmin(similarities)])
-        print()
     
         if min(similarities) > 0.1:
             return 'in_level'
@@ -178,6 +187,11 @@ class MenuParser(Parser):
             h = np.max(to_merge[:,1] + to_merge[:,3]) - y
             
             bounding_boxes.append((x+w//2, y+h//2))
+            
+        for x, y in bounding_boxes:
+            image = cv2.rectangle(image, (x-50,y-50), (x+50,y+50), (0,255,0), 1)
+        cv2.imshow('test', image)
+        cv2.waitKey(0)
         
         return bounding_boxes
    
