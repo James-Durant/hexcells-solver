@@ -163,6 +163,11 @@ class Grid:
             return self.__grid[row][col]
         return None
     
+    def __setitem__(self, key, value):
+        row, col = key
+        if 0 <= row < self.__rows and 0 <= col < self.__cols:
+            self.__grid[row][col] = value
+    
     #Make this better
     def __str__(self):
         return_str = ''

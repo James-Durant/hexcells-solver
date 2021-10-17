@@ -15,7 +15,6 @@ class Environment:
     def __init__(self, grid, grid_solved):
         self.__grid = grid
         self.__grid_solved = grid_solved
-        self.__remaining_initial = grid.remaining
         self.__state = self.__initial_state()
     
     def __initial_state(self):
@@ -40,9 +39,6 @@ class Environment:
             
         return rep
     
-    def get_state(self):
-        return self.__state
-    
     def __action_to_coords(self, action_index):
         return [(0,1), (1,0), (1,2),
                 (2,1), (3,0), (3,2),
@@ -55,6 +51,9 @@ class Environment:
                 (4,1), (5,0), (5,2),
                 (6,1)].index(coords)
     
+    def get_state(self):
+        return self.__state
+    
     def step(self, action_index):
         button = action_index // Environment.MAX_HEXES # Either left or right click
         action_index %= Environment.MAX_HEXES
@@ -63,18 +62,19 @@ class Environment:
         reward = -1
         solved = False
         if row in range(Environment.STATE_DIMS[0]) and col in range(Environment.STATE_DIMS[1]):
-            cell = self.__grid[row, col]
-            if cell and cell.colour == Cell.ORANGE:
-                if ((button == 0 and self.__grid_solved[row, col].colour == Cell.Blue) or
-                    (button == 1 and self.__grid_solved[row, col].colour == Cell.Black)):
-                    self.__grid[row, col] = self.__solved[row, col]
-                    if cell.colour == Cell.Blue:
+            cell_curr = self.__grid[row, col]
+            cell_true = self.__grid_solved[row, col]
+            if cell_curr and cell_curr.colour == Cell.ORANGE:
+                if ((button == 0 and cell_true.colour == Cell.BLUE) or
+                    (button == 1 and cell_true.colour == Cell.BLACK)):
+                    self.__grid[row, col] = cell_true
+                    if cell_true.colour == Cell.BLUE:
                         self.__grid.remaining -= 1
                     
-                    self.__state[row, col] = self.__rep_of_cell[cell]
+                    self.__state[row][col] = self.__cell_to_rep(cell_true)
                     
                     reward = 1       
-                    if len(self.__grid.unknown() == 0):
+                    if len(self.__grid.unknown_cells() == 0):
                         solved = True
                         
         return self.__state, reward, solved
@@ -90,7 +90,7 @@ class Environment:
 
 class Agent:
     def __init__(self, environment, epsilon=0.1, discount=0.1, learning_rate=0.01, batch_size=64,
-                 max_replay_memory=1000, file_path=r'C:\Users\Admin\Documents'):
+                 max_replay_memory=1024, file_path=r'C:\Users\Admin\Documents'):
         self.__environment = environment
         self.__epsilon = epsilon
         self.__discount = discount
@@ -98,17 +98,15 @@ class Agent:
         self.__batch_size = batch_size
         self.__file_path = file_path
         self.__max_replay_memory = max_replay_memory
-        
-        self.__iters = 0
         self.__replay_memory = []
         
         self.__model = self.__create_model((*Environment.STATE_DIMS, 1), Environment.MAX_HEXES*2)
             
-        log_dir = os.path.join(self.file_path, 'logs', 'fit', datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+        log_dir = os.path.join(self.__file_path, 'logs', 'fit', datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
         self.__tensorboard_callback = TensorBoard(log_dir=log_dir)
         
-        self.__weight_paths = os.path.join(self.file_path, 'logs', 'model_weights.h5')
-        if os.path.isfile(self.weight_path):
+        self.__weights_path = os.path.join(self.__file_path, 'logs', 'model_weights.h5')
+        if os.path.isfile(self.__weights_path):
             self.__model.load_weights(self.__weights_path)
 
     def __create_model(self, input_dims, num_actions):
@@ -124,10 +122,10 @@ class Agent:
         return model
 
     def get_action(self, state):
-        unknown = self.__env.unknown()
+        unknown = self.__environment.unknown()
 
         if np.random.random() < self.__epsilon:
-            return np.random.choice(self.__env.unknown())
+            return np.random.choice(self.__environment.unknown())
         else:
             action_rewards = self.__model.predict(np.reshape(state, (1, 7, 3, 1)))[0]
             temp = np.zeros_like(action_rewards)-float('inf')
@@ -160,12 +158,7 @@ class Agent:
             y.append(current_state_rewards[i])
 
         self.__model.fit(np.array(X), np.array(y), batch_size=self.__batch_size,
-                         shuffle=False, verbose=True,
-                         callbacks=[self.__tensorboard_callback])
-        
-        self.__iters += 1
-        if self.__iters % 10 == 0:
-            self.__model.save_weights(self.__weight_path)
+                         shuffle=False, verbose=True, callbacks=[self.__tensorboard_callback])
     
     def update_replay_memory(self, transition):
         if len(self.__replay_memory) >= self.__max_replay_memory:
@@ -173,37 +166,31 @@ class Agent:
 
         self.__replay_memory.append(transition)
         
+    def save_weights(self):
+        self.__model.save_weights(self.__weights_path)
+        
 def train(levels_path='resources/levels/levels.pickle'):
     with open(levels_path, 'rb') as file:
-        levels = pickle.load(file)
+        levels, _ = pickle.load(file)
     
-    for grid, grid_solved in levels:
-        environment = Environment(GameParser(get_window()))
-    
-    agent = DQNAgent(None)
-    agent.environment = Environment(GameParser(get_window()))
-    
-    solved = False
-    while not solved:
-        current_state = agent.environment.get_state()
+    for i, (grid, grid_solved) in enumerate(levels):
+        environment = Environment(grid, grid_solved)    
+        agent = Agent(environment)
 
-        action = agent.get_action(current_state)
+        solved = False
+        while not solved:
+            current_state = environment.get_state()
 
-        new_state, reward, solved = agent.environment.step(action)
+            action = agent.get_action(current_state)
+
+            new_state, reward, solved = environment.step(action)
         
-        agent.update_replay_memory((current_state, action, reward, new_state, solved))
-        agent.train(solved)
+            agent.update_replay_memory((current_state, action, reward, new_state, solved))
+            agent.train()
             
-"""
-def test(model_path):
-    env = Environment()
-    agent = DQNAgent(env, model_path='model.h5')
-    
-    solved = False
-    while not solved:
-        action = agent.get_action(env.get_state())
-        _, solved = env.step(action)
-"""
+        agent.save_weights()   
+        print('>>> {0}/{1}'.format(i+1, len(levels)))
+            
 if __name__ == '__main__': 
-    Environment(GameParser(get_window()))
+    train()
     
