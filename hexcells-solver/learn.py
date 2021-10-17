@@ -1,5 +1,6 @@
 import os, pickle, datetime
 import numpy as np
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, Dense, Flatten
@@ -102,7 +103,7 @@ class Environment:
         return action_indices
 
 class Agent:
-    def __init__(self, environment, epsilon=0.1, discount=0.1, learning_rate=0.01, batch_size=64,
+    def __init__(self, environment=None, epsilon=0.1, discount=0.1, learning_rate=0.01, batch_size=64,
                  max_replay_memory=1024, file_path=r'C:\Users\Admin\Documents'):
         self.__environment = environment
         self.__epsilon = epsilon
@@ -122,6 +123,14 @@ class Agent:
         if os.path.isfile(self.__weights_path):
             self.__model.load_weights(self.__weights_path)
 
+    @property
+    def environment(self):
+        return self.__environment
+    
+    @environment.setter
+    def environment(self, environment):
+        self.__environment = environment
+    
     def __create_model(self, input_dims, num_actions):
         model = Sequential([Conv2D(21, (3,3), activation='relu', padding='same', input_shape=input_dims),
                             Conv2D(14, (3,3), activation='relu', padding='same'),
@@ -187,9 +196,9 @@ def train(levels_path='resources/levels/levels.pickle'):
     with open(levels_path, 'rb') as file:
         levels, _ = pickle.load(file)
     
+    agent = Agent()
     for i, (grid, grid_solved) in enumerate(levels):
-        environment = Environment(grid, grid_solved)    
-        agent = Agent(environment)
+        agent.environment = environment = Environment(grid, grid_solved)
 
         solved = False
         while not solved:
@@ -204,7 +213,18 @@ def train(levels_path='resources/levels/levels.pickle'):
             
         agent.save_weights()   
         print('>>> {0}/{1}'.format(i+1, len(levels)))
-            
+
+def test():
+    environment = Environment(grid, grid_solved)
+    agent = Agent(environment)
+    
+    solved = False
+    while not solved:
+        current_state = environment.get_state()
+        action = agent.get_action(current_state)
+        _, _, solved = environment.step(action)
+           
 if __name__ == '__main__': 
     train()
+    #test()
     
