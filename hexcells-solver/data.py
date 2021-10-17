@@ -1,4 +1,4 @@
-import json, os, cv2, time, pickle
+import json, os, time, pickle, pyperclip
 from subprocess import Popen
 
 from grid import Cell
@@ -8,14 +8,14 @@ from parse import GameParser, MenuParser, RESOLUTIONS
 from solve import Solver
 
 # Turn off steam overlay
-    
+
 class Generator:
     def __init__(self, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources'):
         self.__options_path = os.path.join(steam_path, r'steamapps\common\Hexcells Infinite\saves\options.txt')
         self.__steam_path = os.path.join(steam_path, 'steam.exe')
-        self.__save_path = save_path
+        self._save_path = save_path
 
-    def __load_game(self, game, resolution):
+    def _load_game(self, game, resolution):
         # Close game if open already
         try:
             menu = Navigator()
@@ -40,24 +40,109 @@ class Generator:
         menu.wait_until_loaded()
         
         return menu
+
+class LevelData(Generator):
+    def __init__(self, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources/levels'):
+        super().__init__(steam_path, save_path)
+        
+    def make_dataset(self, num_levels=100):
+        menu = self._load_game('Hexcells Infinite', (1920, 1080))
+        
+        menu_parser = MenuParser(menu.window)
+        _, generator = menu_parser.parse_slots()
+        menu.window.click(generator)
+        menu.window.move_mouse()
+        time.sleep(2)
+        
+        levels = []
+        labels = ['0'*(8-len(str(i)))+str(i) for i in range(num_levels)]
+        for i in range(num_levels):
+            pyperclip.copy(labels[i])
+                
+            play, _, seed = menu_parser.parse_generator()
+            menu.window.click(seed)
+            menu.window.move_mouse()
+            time.sleep(0.2)
+            menu.window.paste()
+            time.sleep(0.2)
+            
+            menu.window.click(play)
+            menu.window.move_mouse()
+            menu_parser.wait_until_loaded()
+            
+            game_parser = GameParser(menu.window)
+            solver = Solver(game_parser)
+            
+            grid = game_parser.parse_grid()
+            grid_initial = game_parser.parse_grid()
+            while True:
+                left_click_cells, right_click_cells = solver.solve_single_step(grid, menu.window, None)
+                if len(left_click_cells)+len(right_click_cells)-len(grid.unknown_cells()) == 0:
+                    if len(left_click_cells) > 0:
+                        game_parser.parse_clicked(grid, left_click_cells[1:], right_click_cells)
+                        left_click_cells, right_click_cells = [left_click_cells[0]], []
+                    else:
+                        game_parser.parse_clicked(grid, left_click_cells, right_click_cells[1:])
+                        left_click_cells, right_click_cells = [], [right_click_cells[0]]
+                    
+                    game_parser.click_cells(left_click_cells, 'left')
+                    game_parser.click_cells(right_click_cells, 'right')
+                    
+                    menu.window.move_mouse()
+                    time.sleep(1.2)
+                    _, menu_button = menu_parser.parse_level_end()
+        
+                    menu.window.click(menu_button)
+                    menu.window.move_mouse()
+                    time.sleep(2)
+                    
+                    play, _, _ = menu_parser.parse_generator()
+                    menu.window.click(play)
+                    menu.window.move_mouse()
+                    menu_parser.wait_until_loaded()
+                    
+                    game_parser.parse_clicked(grid, left_click_cells, right_click_cells)
+                    
+                    menu.window.press_key('esc')
+                    menu.window.move_mouse()
+                    time.sleep(1.5)
+                    _, _, exit_button = menu_parser.parse_level_exit()
+            
+                    menu.window.click(exit_button)
+                    menu.window.move_mouse()
+                    time.sleep(2)
+                    
+                    levels.append((grid_initial, grid))
+                    print('>>> {0}/{1}'.format(i+1, num_levels))
+                    break
+                    
+                _, remaining = game_parser.parse_clicked(grid, left_click_cells, right_click_cells)
+                grid.remaining = remaining
+                
+        with open(os.path.join(self._save_path, 'levels.pickle'), 'wb') as file:
+            pickle.dump((levels, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
+
+class ImageData(Generator):
+    def __init__(self, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources'):
+        super().__init__(steam_path, save_path)
         
     def make_dataset(self, digit_type):         
         hashes, labels = [], []
         for resolution in RESOLUTIONS:
             if digit_type == 'blue_special':
-                menu = self.__load_game('Hexcells Plus', resolution)
-                hash_path = os.path.join(self.__save_path, 'blue', 'hashes.pickle')
+                menu = self._load_game('Hexcells Plus', resolution)
+                hash_path = os.path.join(self._save_path, 'blue', 'hashes.pickle')
                 delete_existing = False
                 
             else:
-                menu = self.__load_game('Hexcells Infinite', resolution)
-                hash_path = os.path.join(self.__save_path, digit_type, 'hashes.pickle')
+                menu = self._load_game('Hexcells Infinite', resolution)
+                hash_path = os.path.join(self._save_path, digit_type, 'hashes.pickle')
                 delete_existing = True
             
             if digit_type == 'column':
                 hashes_res, labels_res = [], []
                 for hint in ['normal', 'consecutive', 'non-consecutive']:
-                    level_path = os.path.join(self.__save_path, digit_type, '{}_level.hexcells'.format(hint))
+                    level_path = os.path.join(self._save_path, digit_type, '{}_level.hexcells'.format(hint))
                     menu.load_custom_level(level_path)
                     
                     hashes_hint, labels_hint = self.__get_hashes(menu.window, digit_type+'_'+hint)
@@ -68,7 +153,7 @@ class Generator:
                 hashes_res, labels_res = [], []
                 for part in ['1', '2']:
                     for hint in ['normal', 'consecutive', 'non-consecutive']:
-                        level_path = os.path.join(self.__save_path, digit_type, '{0}_{1}_level.hexcells'.format(hint, part))
+                        level_path = os.path.join(self._save_path, digit_type, '{0}_{1}_level.hexcells'.format(hint, part))
                         menu.load_custom_level(level_path)
                         
                         hashes_hint, labels_hint = self.__get_hashes(menu.window, digit_type+'_{0}_{1}'.format(hint, part))
@@ -80,7 +165,7 @@ class Generator:
                         menu.exit_level()
                         
             else:
-                level_path = os.path.join(self.__save_path, digit_type, 'level.hexcells')
+                level_path = os.path.join(self._save_path, digit_type, 'level.hexcells')
                 
                 if digit_type == 'level_select':
                     menu.load_save(1)
@@ -140,7 +225,7 @@ class Generator:
                     hashes = [main_screen, level_select, level_exit, level_end, level_generator, user_levels, options]
                     labels = ['main_menu', 'level_select', 'level_exit', 'level_end', 'level_generator', 'user_levels', 'options']
                     
-                    hash_path = os.path.join(self.__save_path, digit_type, '{0}x{1}'.format(*resolution))
+                    hash_path = os.path.join(self._save_path, digit_type, '{0}x{1}'.format(*resolution))
                     if not os.path.exists(hash_path):
                         os.makedirs(hash_path)
                     
@@ -275,11 +360,13 @@ class Generator:
         return hashes, labels
 
 if __name__ == '__main__':
-    generator = Generator()
+    generator = LevelData()
+    generator.make_dataset()
     
     # Do not change the ordering.
+    #generator = ImageData()
     #generator.make_dataset('level_select')
-    generator.make_dataset('screen')
+    #generator.make_dataset('screen')
     #generator.make_dataset('black')
     #generator.make_dataset('blue')
     #generator.make_dataset('blue_special')

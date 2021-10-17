@@ -1,5 +1,5 @@
-import numpy as np
 import cv2, os, json, pickle, time
+import numpy as np
 
 from grid import Grid, Cell
 
@@ -77,7 +77,7 @@ class MenuParser(Parser):
         
         #for label, sim in zip(labels, similarities):
         #    print(label, sim)
-        print(labels[np.argmin(similarities)])
+        #print(labels[np.argmin(similarities)])
     
         if min(similarities) > 0.1:
             return 'in_level'
@@ -136,7 +136,14 @@ class MenuParser(Parser):
         x, y, w, h = boxes.pop(0)
         random = (x+w//2, y+h//2)
         
-        return play, random
+        mask = cv2.inRange(image, (234, 164, 6), (234, 164, 6))
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        rects = [cv2.boundingRect(contour) for contour in contours]
+        rects = self._merge_rects(rects, image.shape[1], 100)
+        seed = (rects[0][0] + rects[0][2]//2, rects[0][1] + rects[0][3] //2)
+        
+        return play, random, seed
     
     def parse_user_levels(self):
         image = self.__window.screenshot()
@@ -188,10 +195,10 @@ class MenuParser(Parser):
             
             bounding_boxes.append((x+w//2, y+h//2))
             
-        for x, y in bounding_boxes:
-            image = cv2.rectangle(image, (x-50,y-50), (x+50,y+50), (0,255,0), 1)
-        cv2.imshow('test', image)
-        cv2.waitKey(0)
+        #for x, y in bounding_boxes:
+        #    image = cv2.rectangle(image, (x-50,y-50), (x+50,y+50), (0,255,0), 1)
+        #cv2.imshow('test', image)
+        #cv2.waitKey(0)
         
         return bounding_boxes
    
@@ -302,7 +309,7 @@ class GameParser(Parser):
     __digit_dims = (45, 30)
     __counter_dims = (200, 50)
 
-    def __init__(self, window, load_counter_hashes=True, load_grid_hashes=True):
+    def __init__(self, window):
         self.__window = window
         self.__hex_contour, self.__counter_contour = GameParser.__load_masks()
         
@@ -371,7 +378,7 @@ class GameParser(Parser):
             cell.grid_coords = (row, col)
             grid[row][col] = cell
 
-        remaining = self.parse_counters(image)
+        _, remaining = self.parse_counters(image)
 
         scene = Grid(grid, cells, remaining)
         parsed = self.__parse_columns(image, scene, training=training)

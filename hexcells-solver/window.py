@@ -7,8 +7,6 @@ class Window:
         self.__hwnd  = win32gui.FindWindow(None, title)
         if not self.__hwnd:
             raise RuntimeError('Hexcells window not found') 
-            
-        x1, y1, x2, y2 = self._get_position()
       
     @property
     def title(self):
@@ -36,14 +34,11 @@ class Window:
         
     def click(self, coords, button='left'):
         x, y, _, _ = self._get_position()
-        x += coords[0]
-        y += coords[1]
-        pyautogui.click(x=x, y=y, button=button)
-    
-    def close(self):
-        win32gui.PostMessage(self.__hwnd, win32con.WM_CLOSE, 0, 0)
+        pyautogui.click(x=x+coords[0], y=y+coords[1], button=button)
+        
+    def paste(self):
+        pyautogui.hotkey('ctrl', 'v')
 
-class GameWindow(Window): 
     def click_cell(self, cell, button):
         x1, y1, _, _ = self._get_position()
         x2, y2 = cell.image_coords
@@ -51,33 +46,21 @@ class GameWindow(Window):
         
     def move_mouse(self):
         x, y, w, h = self._get_position()
-        pyautogui.moveTo(x+w-1, y+h-1)  
-
-class ConfigWindow(Window):
-    def __init__(self):
-        super().__init__('Hexcells Infinite Configuration')
-    
-    def start_game(self):
-        self.to_foreground()
-        pyautogui.press('tab')
-        pyautogui.press('up') 
-        pyautogui.press('enter')
+        pyautogui.moveTo(x+w-1, y+h-1)
         
-    def reset_resolution(self):
-        self.to_foreground()
-        pyautogui.press('tab')
-        pyautogui.press('down', presses=14) 
-        pyautogui.press('enter')
-    
+    def close(self):
+        win32gui.PostMessage(self.__hwnd, win32con.WM_CLOSE, 0, 0)
+        
 def get_window():
     try:
-        window = GameWindow('Hexcells')
+        window = Window('Hexcells')
     except RuntimeError:
         try:
-            window = GameWindow('Hexcells Plus')
+            window = Window('Hexcells Plus')
         except RuntimeError:
             try:
-                window = GameWindow('Hexcells Infinite')
+                window = Window('Hexcells Infinite')
             except RuntimeError:
                 raise RuntimeError('Hexcells client not found')
+                
     return window

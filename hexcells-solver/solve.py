@@ -53,7 +53,6 @@ class Solver:
         raise RuntimeError('solver failed to finish puzzle')
     
     def __setup_problem(self, grid, game, level):
-        #print(grid)
         self.__unknown = grid.unknown_cells()
         self.__known = grid.known_cells()
         
@@ -79,9 +78,6 @@ class Solver:
         self.__problem += temp == 1
         self.__problem.setObjective(temp)
         self.__problem.solve(self.__solver)
-        
-        #for var in self.__problem.variables():
-        #    print(var.name, var.varValue)
 
     def __add_infinite_end_level_constraints(self, grid):
         for col in range(grid.cols):

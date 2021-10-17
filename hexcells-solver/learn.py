@@ -51,7 +51,7 @@ class Environment:
       
                 encoding[row, col] = rep
             
-        print(encoding)
+        #print(encoding)
         return encoding #(encoding, self.__grid.remaining)
         
     def step(self, action_index):
@@ -100,7 +100,7 @@ class Environment:
                     self.__state[row, col] = rep
                     reward = 1
         
-        print(reward)
+        #print(reward)
         return self.__state, reward, solved
     
     def unknown(self):
@@ -122,7 +122,7 @@ class DQNAgent:
     DISCOUNT = 0.1 #gamma
     
     # Exploration settings
-    EPSILON_INIT = 0
+    EPSILON_INIT = 0.1
     EPSILON_DECAY = 0.99975
     EPSILON_MIN = 0.01
     
