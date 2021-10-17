@@ -4,7 +4,7 @@ import numpy as np
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, Dense, Flatten
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import TensorBoard
+#from tensorflow.keras.callbacks import TensorBoard
 
 from grid import Cell
 
@@ -18,8 +18,14 @@ class Environment:
         self.__state = self.__initial_state()
     
     def __initial_state(self):
-        return [[self.__cell_to_rep(self.__grid[row, col]) for col in range(Environment.STATE_DIMS[0])]
-                for row in range(Environment.STATE_DIMS[1])]
+        state = np.zeros(Environment.STATE_DIMS)-1
+        self.__row_offset = 1 if self.__grid[0, 1] is None else 0
+        
+        for row in range(self.__grid.rows):
+            for col in range(self.__grid.cols):
+                state[row+self.__row_offset, col] = self.__cell_to_rep(self.__grid[row, col])
+                
+        return state
     
     def __cell_to_rep(self, cell):
         if cell is None:
@@ -62,27 +68,34 @@ class Environment:
         reward = -1
         solved = False
         if row in range(Environment.STATE_DIMS[0]) and col in range(Environment.STATE_DIMS[1]):
-            cell_curr = self.__grid[row, col]
-            cell_true = self.__grid_solved[row, col]
+            cell_curr = self.__grid[row-self.__row_offset, col]
+            cell_true = self.__grid_solved[row-self.__row_offset, col]
             if cell_curr and cell_curr.colour == Cell.ORANGE:
                 if ((button == 0 and cell_true.colour == Cell.BLUE) or
                     (button == 1 and cell_true.colour == Cell.BLACK)):
-                    self.__grid[row, col] = cell_true
+                    
                     if cell_true.colour == Cell.BLUE:
                         self.__grid.remaining -= 1
+                    
+                    cell_curr.colour = cell_true.colour
+                    if cell_true.digit is not None:
+                        cell_curr.hint = cell_true.hint
+                        cell_curr.digit = str(cell_true.digit)
                     
                     self.__state[row][col] = self.__cell_to_rep(cell_true)
                     
                     reward = 1       
-                    if len(self.__grid.unknown_cells() == 0):
+                    if len(self.__grid.unknown_cells()) == 0:
                         solved = True
+                        
+                    #print(self.__grid)
                         
         return self.__state, reward, solved
     
     def unknown(self):
         action_indices = []
         for cell in self.__grid.unknown_cells():
-            index = self.__coords_to_action(cell.grid_coords)
+            index = self.__coords_to_action((cell.grid_coords[0]+self.__row_offset, cell.grid_coords[1]))
             action_indices.append(index)
             action_indices.append(index+Environment.MAX_HEXES)
             
@@ -102,8 +115,8 @@ class Agent:
         
         self.__model = self.__create_model((*Environment.STATE_DIMS, 1), Environment.MAX_HEXES*2)
             
-        log_dir = os.path.join(self.__file_path, 'logs', 'fit', datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
-        self.__tensorboard_callback = TensorBoard(log_dir=log_dir)
+        #log_dir = os.path.join(self.__file_path, 'logs', 'fit', datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
+        #self.__tensorboard_callback = TensorBoard(log_dir=log_dir)
         
         self.__weights_path = os.path.join(self.__file_path, 'logs', 'model_weights.h5')
         if os.path.isfile(self.__weights_path):
@@ -127,7 +140,7 @@ class Agent:
         if np.random.random() < self.__epsilon:
             return np.random.choice(self.__environment.unknown())
         else:
-            action_rewards = self.__model.predict(np.reshape(state, (1, 7, 3, 1)))[0]
+            action_rewards = self.__model.predict(np.reshape(state, (1, *Environment.STATE_DIMS, 1)))[0]
             temp = np.zeros_like(action_rewards)-float('inf')
             temp[unknown] = action_rewards[unknown]
             return np.argmax(temp)
@@ -136,14 +149,14 @@ class Agent:
     def train(self):
         if len(self.__replay_memory) < self.__batch_size:
             return
-            
+
         np.random.shuffle(self.__replay_memory)
 
         current_states = np.array([transition[0] for transition in self.__replay_memory])
-        current_state_rewards = self.__model.predict(current_states)
+        current_state_rewards = self.__model.predict(np.expand_dims(current_states, -1))
 
         new_states = np.array([transition[3] for transition in self.__replay_memory])
-        new_state_rewards = self.__model.predict(new_states)
+        new_state_rewards = self.__model.predict(np.expand_dims(new_states, -1))
 
         X, y = [], []
         for i, (current_state, action, reward, new_current_state, solved) in enumerate(self.__replay_memory):
@@ -154,11 +167,12 @@ class Agent:
 
             current_state_rewards[i][action] = new_reward
 
-            X.append(current_state)
+            X.append(np.expand_dims(current_state, -1))
             y.append(current_state_rewards[i])
 
         self.__model.fit(np.array(X), np.array(y), batch_size=self.__batch_size,
-                         shuffle=False, verbose=True, callbacks=[self.__tensorboard_callback])
+                         shuffle=False, verbose=False) 
+                         #callbacks=[self.__tensorboard_callback])
     
     def update_replay_memory(self, transition):
         if len(self.__replay_memory) >= self.__max_replay_memory:

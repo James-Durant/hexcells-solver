@@ -45,7 +45,7 @@ class LevelData(Generator):
     def __init__(self, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources/levels'):
         super().__init__(steam_path, save_path)
         
-    def make_dataset(self, num_levels=5):
+    def make_dataset(self, num_levels=100):
         menu = self._load_game('Hexcells Infinite', (1920, 1080))
         
         menu_parser = MenuParser(menu.window)
