@@ -452,7 +452,10 @@ class GameParser(Parser):
     
         return match
 
-    def parse_counters(self, image, training=False):
+    def parse_counters(self, image=None, training=False):
+        if image is None:
+            image = self.__window.screenshot()
+        
         mask = cv2.inRange(image, Cell.BLUE, Cell.BLUE)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
