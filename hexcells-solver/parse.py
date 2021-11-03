@@ -322,11 +322,11 @@ class GameParser(Parser):
     @staticmethod
     def __load_masks():
         hex_image = cv2.imread(GameParser.__hex_mask_path)
-        hex_mask  = cv2.inRange(hex_image, Cell.ORANGE , Cell.ORANGE)
+        hex_mask = cv2.inRange(hex_image, Cell.ORANGE , Cell.ORANGE)
         hex_contour, _ = cv2.findContours(hex_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         counter_image = cv2.imread(GameParser.__counter_mask_path)
-        counter_mask  = cv2.inRange(counter_image, Cell.BLUE, Cell.BLUE)
+        counter_mask = cv2.inRange(counter_image, Cell.BLUE, Cell.BLUE)
         counter_contour, _ = cv2.findContours(counter_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         return hex_contour[0], counter_contour[0]
