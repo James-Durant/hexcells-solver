@@ -1,4 +1,8 @@
-import json, os, time, pickle, pyperclip
+import os
+import json
+import time
+import pickle
+import pyperclip
 from subprocess import Popen
 
 from grid import Cell
@@ -11,7 +15,7 @@ from solve import Solver
 
 class Generator:
     def __init__(self, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources'):
-        self.__options_path = os.path.join(steam_path, r'steamapps\common\Hexcells Infinite\saves\options.txt')
+        self.__options_path = os.path.join(steam_path, r'steamapps\common\{0}\saves\options.txt')
         self.__steam_path = os.path.join(steam_path, 'steam.exe')
         self._save_path = save_path
 
@@ -23,12 +27,14 @@ class Generator:
         except:
             pass
 
-        with open(self.__options_path, 'r') as file:
+        options_path = self.__options_path.format(game)
+
+        with open(options_path, 'r') as file:
             data = json.load(file)
 
         data['screenWidth'], data['screenHeight'] = resolution
 
-        with open(self.__options_path, 'w') as file:
+        with open(options_path, 'w') as file:
             json.dump(data, file)
 
         Popen([self.__steam_path, r'steam://rungameid/'+GAMEIDS[game]],
@@ -49,8 +55,9 @@ class LevelData(Generator):
         menu = self._load_game('Hexcells Infinite', (1920, 1080))
 
         menu_parser = MenuParser(menu.window)
-        _, generator = menu_parser.parse_slots()
-        menu.window.click(generator)
+        buttons = menu_parser.parse_main_menu()
+        generator_button = buttons['level_generator']
+        menu.window.click(generator_button)
         menu.window.move_mouse()
         time.sleep(2)
 
@@ -127,17 +134,15 @@ class ImageData(Generator):
         super().__init__(steam_path, save_path)
 
     def make_dataset(self, digit_type):
+        hash_path = os.path.join(self._save_path, digit_type, 'hashes.pickle')
+        game = 'Hexcells Infinite'
+        if digit_type == 'blue_special':
+            hash_path = os.path.join(self._save_path, 'blue', 'hashes.pickle')
+            game = 'Hexcells Plus'
+        
         hashes, labels = [], []
         for resolution in RESOLUTIONS:
-            if digit_type == 'blue_special':
-                menu = self._load_game('Hexcells Plus', resolution)
-                hash_path = os.path.join(self._save_path, 'blue', 'hashes.pickle')
-                delete_existing = False
-
-            else:
-                menu = self._load_game('Hexcells Infinite', resolution)
-                hash_path = os.path.join(self._save_path, digit_type, 'hashes.pickle')
-                delete_existing = True
+            menu = self._load_game(game, resolution)
 
             if digit_type == 'column':
                 hashes_res, labels_res = [], []
@@ -174,8 +179,9 @@ class ImageData(Generator):
                     main_screen = menu.window.screenshot()
 
                     menu_parser = MenuParser(menu.window)
-                    saves, _ = menu_parser.parse_slots()
-                    menu.window.click(saves[0])
+                    buttons = menu_parser.parse_main_menu()
+                    save_slot_buttons = buttons['save_slots']
+                    menu.window.click(save_slot_buttons[0])
                     menu.window.move_mouse()
                     menu_parser.wait_until_loaded()
                     level_select = menu.window.screenshot()
@@ -202,21 +208,24 @@ class ImageData(Generator):
                     time.sleep(1)
 
                     menu.back()
-                    _, generator_button = menu_parser.parse_slots()
+                    buttons = menu_parser.parse_main_menu()
+                    generator_button = buttons['level_generator']
                     menu.window.click(generator_button)
                     menu.window.move_mouse()
                     time.sleep(2)
                     level_generator = menu.window.screenshot()
 
                     menu.back()
-                    user_levels_button, _ = menu_parser.parse_user_levels()
+                    buttons = menu_parser.parse_main_menu()
+                    user_levels_button = buttons['user_levels']
                     menu.window.click(user_levels_button)
                     menu.window.move_mouse()
                     time.sleep(2)
                     user_levels = menu.window.screenshot()
 
                     menu.back()
-                    _, options_button = menu_parser.parse_user_levels()
+                    buttons = menu_parser.parse_main_menu()
+                    options_ubtton = buttons['options']
                     menu.window.click(options_button)
                     menu.window.move_mouse()
                     time.sleep(2)
@@ -261,11 +270,11 @@ class ImageData(Generator):
                 break
 
         if digit_type != 'screen':
-            if not delete_existing:
-                with open(hash_path, 'rb') as file:
-                    existing_hashes, existing_labels = pickle.load(file)
-                    hashes += existing_hashes
-                    labels += existing_labels
+            #if not delete_existing:
+            #    with open(hash_path, 'rb') as file:
+            #        existing_hashes, existing_labels = pickle.load(file)
+            #        hashes += existing_hashes
+            #        labels += existing_labels
 
             with open(hash_path, 'wb') as file:
                 pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
@@ -360,16 +369,16 @@ class ImageData(Generator):
         return hashes, labels
 
 if __name__ == '__main__':
-    generator = LevelData()
-    generator.make_dataset()
+    level_generator = LevelData()
+    level_generator.make_dataset()
 
     # Do not change the ordering.
-    #generator = ImageData()
-    #generator.make_dataset('level_select')
-    #generator.make_dataset('screen')
-    #generator.make_dataset('black')
-    #generator.make_dataset('blue')
-    #generator.make_dataset('blue_special')
-    #generator.make_dataset('counter')
-    #generator.make_dataset('column')
-    #generator.make_dataset('diagonal')
+    #image_generator = ImageData()
+    #image_generator.make_dataset('level_select')
+    #image_generator.make_dataset('screen')
+    #image_generator.make_dataset('black')
+    #image_generator.make_dataset('blue')
+    #image_generator.make_dataset('blue_special')
+    #image_generator.make_dataset('counter')
+    #image_generator.make_dataset('column')
+    #image_generator.make_dataset('diagonal')

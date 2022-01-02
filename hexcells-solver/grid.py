@@ -1,28 +1,5 @@
 import numpy as np
 
-class Constraint:
-    def __init__(self, size, hint, angle, members):
-        self.__size = size
-        self.__hint = hint
-        self.__angle = angle
-        self.__members = members
-
-    @property
-    def size(self):
-        return self.__size
-
-    @property
-    def hint(self):
-        return self.__hint
-
-    @property
-    def angle(self):
-        return self.__angle
-
-    @property
-    def members(self):
-        return self.__members
-
 class Grid:
     __DIRECT = [(0,-2), (1,-1), (1,1), (0,2), (-1,1), (-1,-1)]
 
@@ -37,7 +14,6 @@ class Grid:
         self.__cols = len(grid[0])
         self.__remaining = remaining
         self.__constraints = []
-
         self.__cells = cells
         self.__cell_image_coords = np.asarray([cell.image_coords for cell in cells])
 
@@ -314,3 +290,26 @@ class Cell:
                 digit = ' ' + str(self.__digit) + ' '
 
         return colour + digit
+
+class Constraint:
+    def __init__(self, size, hint, angle, members):
+        self.__size = size
+        self.__hint = hint
+        self.__angle = angle
+        self.__members = members
+
+    @property
+    def size(self):
+        return self.__size
+
+    @property
+    def hint(self):
+        return self.__hint
+
+    @property
+    def angle(self):
+        return self.__angle
+
+    @property
+    def members(self):
+        return self.__members

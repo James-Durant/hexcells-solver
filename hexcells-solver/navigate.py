@@ -20,12 +20,13 @@ class Navigator:
     def wait_until_loaded(self):
         self.__menu_parser.wait_until_loaded()
 
-    def load_save(self, save):
+    def load_save(self, slot):
         self.__transition_to_main_menu()
-        saves, _ = self.__menu_parser.parse_slots()
+        buttons = self.__menu_parser.parse_main_menu()
+        save_slot_buttons = buttons['save_slots']
 
-        if save in [1,2,3]:
-            self.__window.click(saves[save-1])
+        if slot in [1,2,3]:
+            self.__window.click(save_slot_buttons[slot-1])
             self.__window.move_mouse()
             self.__menu_parser.wait_until_loaded()
             time.sleep(0.25)
@@ -99,8 +100,9 @@ class Navigator:
         if screen != 'level_generator':
             self.__transition_to_main_menu()
 
-            _, generator = self.__menu_parser.parse_slots()
-            self.__window.click(generator)
+            buttons = self.__menu_parser.parse_main_menu()
+            generator_button = buttons['level_generator']
+            self.__window.click(generator_button)
             self.__menu_parser.wait_until_loaded()
 
         while True:
@@ -193,7 +195,8 @@ class Navigator:
 
         pyperclip.copy(level)
 
-        user_levels, _ = self.__menu_parser.parse_user_levels()
-        self.__window.click(user_levels)
+        buttons = self.__menu_parser.parse_user_levels()
+        user_level_button = buttons['user_levels']
+        self.__window.click(user_level_button)
         self.__window.move_mouse()
         self.__menu_parser.wait_until_loaded()

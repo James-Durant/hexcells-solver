@@ -36,9 +36,6 @@ class Window:
         x, y, _, _ = self._get_position()
         pyautogui.click(x=x+coords[0], y=y+coords[1], button=button)
 
-    def paste(self):
-        pyautogui.hotkey('ctrl', 'v')
-
     def click_cell(self, cell, button):
         x1, y1, _, _ = self._get_position()
         x2, y2 = cell.image_coords

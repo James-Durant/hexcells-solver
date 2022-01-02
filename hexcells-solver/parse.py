@@ -3,6 +3,8 @@ import numpy as np
 
 from grid import Grid, Cell
 
+IMAGE_PATH = r'C:\Users\james\OneDrive\Warwick\Year 3\CS310 Computer Science Project\Final Report\Figures\Implementation\Parsing'
+
 RESOLUTIONS = [(2560, 1920), (2560, 1600), (2048, 1152),
                (1920, 1440), (1920, 1200), (1920, 1080),
                (1680, 1050), (1600, 1200)]
@@ -28,35 +30,41 @@ class Parser:
     def _merge_rects(self, rects, xdist, ydist):
         rects.sort(key=lambda x: x[0])
 
-        bounding_boxes = []
+        merged = []
         while rects:
-            rect1 = rects.pop()
-            to_merge = [rect1]
+            x1, y1, w1, h1 = rects.pop()
+            x_min, y_min = x1, y1
+            x_max, y_max = x1 + w1, y1 + h1
+            
             i = 0
             while i < len(rects):
-                rect2 = rects[i]
-                if (abs(rect1[0]+rect1[2]-rect2[0]) < xdist and
-                    abs(rect1[1]-rect2[1]) < ydist):
-                    to_merge.append(rect2)
+                x2, y2, w2, h2 = rects[i]
+                if (abs(x1 + w1 - x2) < xdist and
+                    abs(y1 - y2) < ydist):
+                    
+                    x_min = min(x_min, x2)
+                    y_min = min(y_min, y2)
+                    x_max = max(x_max, x2 + w2)
+                    y_max = max(y_max, y2 + h2)
                     del rects[i]
+                    
                 else:
                     i += 1
 
-            to_merge = np.asarray(to_merge)
-            x = to_merge[:,0].min()
-            y = to_merge[:,1].min()
-            w = np.max(to_merge[:,0] + to_merge[:,2]) - x
-            h = np.max(to_merge[:,1] + to_merge[:,3]) - y
+            merged.append((x_min, y_min, x_max-x_min, y_max-y_min))
 
-            bounding_boxes.append((x, y, w, h))
-
-        return bounding_boxes
+        return merged
 
 class MenuParser(Parser):
-    def __init__(self, window, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources'):
+    def __init__(self, window, steam_path=r'C:\Program Files (x86)\Steam'):
         self.__window = window
+        self.__steam_path = steam_path
 
-        options_path = os.path.join(steam_path, r'steamapps\common\{}\saves\options.txt'.format(window.title))
+        self.__load_data()
+        self.__level_data = Parser._load_hashes('level_select')
+
+    def __load_data(self):
+        options_path = os.path.join(self.__steam_path, r'steamapps\common\{}\saves\options.txt'.format(self.__window.title))
         with open(options_path, 'r') as file:
             data = json.load(file)
 
@@ -65,13 +73,15 @@ class MenuParser(Parser):
             self.__resolution = (1920, 1080)
 
         self.__screen_data = Parser._load_hashes('screen', self.__resolution)
-        self.__level_data = Parser._load_hashes('level_select')
 
     def get_screen(self):
         image = cv2.inRange(self.__window.screenshot(), (230,230,230), (255,255,255))
         if image.shape[0] != self.__resolution[1] or image.shape[1] != self.__resolution[0]:
-            image = cv2.resize(image, tuple(reversed(self.__resolution)), interpolation=cv2.INTER_AREA)
-
+            self.__load_data()
+            if image.shape[0] != self.__resolution[1] or image.shape[1] != self.__resolution[0]:
+                image = cv2.resize(image, tuple(reversed(self.__resolution)), interpolation=cv2.INTER_AREA)
+            
+        # Using image hashing I think
         images, labels = self.__screen_data
         similarities = [np.square(image-cv2.inRange(x, (230,230,230), (255,255,255))).mean() for x in images]
 
@@ -83,43 +93,78 @@ class MenuParser(Parser):
             return 'in_level'
 
         return labels[np.argmin(similarities)]
-
-    def parse_slots(self):
+    
+    def wait_until_loaded(self):
+        while True:
+            image = self.__window.screenshot()
+            mask = cv2.inRange(image, Cell.ORANGE, Cell.ORANGE) + cv2.inRange(image, Cell.BLUE, Cell.BLUE)
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if contours:
+                time.sleep(0.5)
+                break
+            time.sleep(0.1)
+        
+    def parse_main_menu(self):
         image = self.__window.screenshot()
+        
+        threshold = round(0.24*image.shape[1])
 
-        height = image.shape[1]
-        image = image[round(height*0.25):, :]
         mask = cv2.inRange(image, (240,240,240), (255,255,255))
-
-        #cv2.imshow('test', mask)
-        #cv2.waitKey(0)
-
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        #image = cv2.drawContours(image, contours, -1, (0,255,0), 3)
-        #cv2.imshow('test', image)
-        #cv2.waitKey(0)
+        rects = [cv2.boundingRect(contour) for contour in contours]
+        
+        #cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_main_mask_1.png', mask)
+        #temp1 = image.copy()
+        #temp2 = image.copy()
+        #cv2.drawContours(temp1, contours, -1, (0,255,0), 2)
+        #for x, y, w, h in rects:
+        #    cv2.rectangle(temp1, (x, y), (x+w, y+h), (0,0,255), 2)
+        #    cv2.rectangle(temp2, (x, y), (x+w, y+h), (0,0,255), 2)
+            
+        buttons = [(x+w//2, y+h//2) for x, y, w, h in rects if y > threshold]
+
+        if len(buttons) == 4:
+            buttons.sort(key=lambda x: tuple(reversed(x)))
+            level_generator = buttons.pop()
+        else:
+            level_generator = None
+
+        slots = sorted(buttons, key=lambda x: x[0])
+
+        mask = cv2.inRange(image, (180,180,180), (180,180,180))
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         rects = [cv2.boundingRect(contour) for contour in contours]
-        rects = self._merge_rects(rects, 100, 100)
+
+        #cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_main_mask_2.png', mask)
+        #cv2.drawContours(temp1, contours, -1, (0,255,0), 2)
         #for x, y, w, h in rects:
-        #    image = cv2.rectangle(image, (x,y), (x+w,y+h), (0,255,0), 1)
-        #cv2.imshow('test', image)
-        #cv2.waitKey(0)
+        #    if y > threshold:
+        #        cv2.rectangle(temp1, (x, y), (x+w, y+h), (0,0,255), 2)
+        #cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_main_contours.png', temp1)
 
-        slots = []
-        for x, y, w, h in rects:
-            y += round(height*0.25)
-            slots.append((x+w//2, y+h//2))
+        bounding_boxes = self._merge_rects(rects, image.shape[1], 20)
+        buttons = [(x+w//2, y+h//2) for x, y, w, h in bounding_boxes if y > threshold]
 
-        if len(slots) == 4:
-            slots.sort(key=lambda x: tuple(reversed(x)))
-            generator = slots.pop()
+        #for x, y, w, h in bounding_boxes:
+        #    if y > threshold:
+        #        cv2.rectangle(temp2, (x,y), (x+w,y+h), (0,0,255), 2)
+        #cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_main_boxes.png', temp2)
+
+        if len(buttons) == 3:
+            user_levels, options, menu_exit = buttons
+        elif len(buttons) == 2:
+            user_levels = None
+            options, menu_exit = buttons
         else:
-            generator = None
-
-        slots.sort(key=lambda x: x[0])
-        return slots, generator
+            raise RuntimeError('main menu parsing failed')
+        
+        return {'save_slots': slots,
+                'level_generator': level_generator,
+                'user_levels': user_levels,
+                'options': options,
+                'exit': menu_exit}
 
     def parse_generator(self):
         image = self.__window.screenshot()
@@ -144,63 +189,6 @@ class MenuParser(Parser):
         seed = (rects[0][0] + rects[0][2]//2, rects[0][1] + rects[0][3] //2)
 
         return play, random, seed
-
-    def parse_user_levels(self):
-        image = self.__window.screenshot()
-
-        mask = cv2.inRange(image, (180,180,180), (180,180,180))
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        rects = [cv2.boundingRect(contour) for contour in contours]
-
-        #for x, y, w, h in self._merge_rects(rects, image.shape[1], 20):
-        #    image = cv2.rectangle(image, (x,y), (x+w,y+h), (0,255,0), 1)
-        #cv2.imshow('test', image)
-        #cv2.waitKey(0)
-
-        buttons = []
-        for bounding_box in self._merge_rects(rects, image.shape[1], 20):
-            if bounding_box[1] > image.shape[0] / 2:
-                buttons.append((bounding_box[0], bounding_box[1]))
-
-            if len(buttons) == 2:
-                return buttons
-
-    def parse_level_exit(self):
-        image = self.__window.screenshot()
-        mask = cv2.inRange(image, (180,180,180), (255,255,255))
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        rects = [cv2.boundingRect(contour) for contour in contours]
-        rects.sort(key=lambda x: x[0])
-
-        bounding_boxes = []
-        while rects:
-            rect1 = rects.pop()
-            to_merge = [rect1]
-            i = 0
-            while i < len(rects):
-                rect2 = rects[i]
-                if rect2[1]*0.95 < rect1[1] < rect2[1]*1.05:
-                    to_merge.append(rect2)
-                    del rects[i]
-                else:
-                    i += 1
-
-            to_merge = np.asarray(to_merge)
-            x = to_merge[:,0].min()
-            y = to_merge[:,1].min()
-            w = np.max(to_merge[:,0] + to_merge[:,2]) - x
-            h = np.max(to_merge[:,1] + to_merge[:,3]) - y
-
-            bounding_boxes.append((x+w//2, y+h//2))
-
-        #for x, y in bounding_boxes:
-        #    image = cv2.rectangle(image, (x-50,y-50), (x+50,y+50), (0,255,0), 1)
-        #cv2.imshow('test', image)
-        #cv2.waitKey(0)
-
-        return bounding_boxes
 
     def parse_levels(self, training=False):
         image = self.__window.screenshot()
@@ -263,8 +251,35 @@ class MenuParser(Parser):
                 #cv2.waitKey(0)
 
         return training_hashes if training else levels
+    
+    def parse_level_exit(self):
+        image = self.__window.screenshot()
+        mask = cv2.inRange(image, (180,180,180), (255,255,255))
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+        rects = [cv2.boundingRect(contour) for contour in contours]
+        
+        #cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_exit_image.png', image)
+        #cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_exit_mask.png', mask)
+        #temp = image.copy()
+        #for x, y, w, h in rects:
+        #    cv2.rectangle(temp, (x, y), (x+w, y+h), (0,0,255), 2)
+        
+        bounding_boxes = self._merge_rects(rects, image.shape[1], 100)
+        
+        #cv2.drawContours(temp, contours, -1, (0,255,0), 2)
+        #for x, y, w, h in rects:
+        #    cv2.rectangle(temp, (x-3, y-3), (x+w+3, y+h+3), (0,0,255), 2)
+        #cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_exit_contours.png', temp)
+        #temp = image.copy()
+        #for x, y, w, h in bounding_boxes:
+        #    cv2.rectangle(temp, (x, y), (x+w, y+h), (0,0,255), 2)
+        #cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_exit_boxes.png', temp)
+            
+        return bounding_boxes
+    
     def parse_level_end(self):
+        # end -> completion
         image = self.__window.screenshot()
 
         mask = cv2.inRange(image, (255, 255, 255), (255, 255, 255))
@@ -272,6 +287,15 @@ class MenuParser(Parser):
 
         bounding_boxes = [cv2.boundingRect(contour) for contour in contours]
         bounding_boxes.sort(key=lambda x: (x[1], x[0]), reverse=True)
+
+        #temp = image.copy()
+        #cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_completion_mask.png', mask)
+        #for i, (x, y, w, h) in enumerate(bounding_boxes):
+        #    if i <= 1:
+        #        cv2.rectangle(temp, (x, y), (x+w-1, y+h-1), (0,0,255), 2)
+        #    else:
+        #        cv2.rectangle(temp, (x, y), (x+w-1, y+h-1), (0,255,0), 2)
+        #cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_completion_contours.png', temp)
 
         if len(contours) == 6:
             next_button = (bounding_boxes[0][0] + bounding_boxes[0][2] // 2,
@@ -288,17 +312,6 @@ class MenuParser(Parser):
 
         return None, menu_button
 
-    def wait_until_loaded(self):
-        while True:
-            image = self.__window.screenshot()
-            mask = cv2.inRange(image, Cell.ORANGE, Cell.ORANGE) + cv2.inRange(image, Cell.BLUE, Cell.BLUE)
-            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            if contours:
-                break
-            time.sleep(0.1)
-
-        time.sleep(0.5)
-
 class GameParser(Parser):
     __hex_mask_path = 'resources/hex_mask.png'
     __counter_mask_path = 'resources/counter_mask.png'
@@ -311,16 +324,13 @@ class GameParser(Parser):
 
     def __init__(self, window):
         self.__window = window
-        self.__hex_contour, self.__counter_contour = GameParser.__load_masks()
-
+        
         self.__black_data = Parser._load_hashes('black')
         self.__blue_data = Parser._load_hashes('blue')
         self.__counter_data = Parser._load_hashes('counter')
         self.__column_data = Parser._load_hashes('column')
         self.__diagonal_data = Parser._load_hashes('diagonal')
-
-    @staticmethod
-    def __load_masks():
+        
         hex_image = cv2.imread(GameParser.__hex_mask_path)
         hex_mask = cv2.inRange(hex_image, Cell.ORANGE , Cell.ORANGE)
         hex_contour, _ = cv2.findContours(hex_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -328,8 +338,9 @@ class GameParser(Parser):
         counter_image = cv2.imread(GameParser.__counter_mask_path)
         counter_mask = cv2.inRange(counter_image, Cell.BLUE, Cell.BLUE)
         counter_contour, _ = cv2.findContours(counter_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        return hex_contour[0], counter_contour[0]
+        
+        self.__hex_contour = hex_contour[0]
+        self.__counter_contour = counter_contour[0]
 
     def parse_grid(self, training=False):
         image = self.__window.screenshot()
@@ -369,7 +380,6 @@ class GameParser(Parser):
         #print(self.__hex_height, (self.__y_max - self.__y_min) / y_spacing)
 
         grid = [[None]*cols for _ in range(rows)]
-
         for cell in cells:
             x, y = cell.image_coords
 
@@ -377,6 +387,27 @@ class GameParser(Parser):
             row = int(round((y - self.__y_min) / y_spacing))
             cell.grid_coords = (row, col)
             grid[row][col] = cell
+
+        #temp = image.copy()
+        #img_height, img_width, _ = temp.shape
+        
+        #diff =  grid[1][1].image_coords[1] - grid[0][0].image_coords[1]
+        #for row in range(rows):
+        #    y = int(round(self.__y_min+row*diff))
+        #    cv2.line(temp, (0, y), (img_width, y), (0,255,0), 2)
+        
+        #diff =  grid[1][1].image_coords[0] - grid[0][0].image_coords[0]
+        #for col in range(cols):
+        #    x = int(round(self.__x_min+col*diff))
+        #    cv2.line(temp, (x, 0), (x, img_height), (0,255,0), 2) 
+
+        #for cell in cells:
+        #    x, y = cell.image_coords
+        #    row, col = cell.grid_coords
+        #    cv2.circle(temp, (x,y), radius=4, color=(0,0,255), thickness=-1)
+        #    cv2.putText(temp, str((col,row)), (x+5,y-10), cv2.FONT_HERSHEY_DUPLEX, 0.6, (0,0,255), thickness=1)
+
+        #cv2.imwrite(IMAGE_PATH+'\implementation_parsing_grid.png', temp)
 
         _, remaining = self.parse_counters(image)
 
@@ -389,6 +420,9 @@ class GameParser(Parser):
         mask = cv2.inRange(image, cell_colour, cell_colour)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+        #temp = image.copy()
+        #cv2.imwrite(IMAGE_PATH+'\cells\implementation_parsing_cells_mask_{}.png'.format(cell_colour), mask)
+
         cells = []
         for contour in contours:
             if (cv2.contourArea(contour) > GameParser.__area_threshold and
@@ -399,6 +433,11 @@ class GameParser(Parser):
                 cropped = image[y+y_crop:y+h-y_crop, x+x_crop:x+w-x_crop]
 
                 parsed = self.__parse_cell_digit(cropped, cell_colour, training)
+                
+                #cv2.drawContours(temp, [contour], -1, (0,255,0), 2)
+                #if parsed is not None:
+                #    cv2.rectangle(temp, (x+x_crop, y+y_crop), (x+w-x_crop-1, y+h-y_crop-1), (0,0,255), 2)
+                
                 if training:
                     if parsed is not None:
                         cells.append(parsed)
@@ -406,7 +445,9 @@ class GameParser(Parser):
                     centre = (x + w//2, y + h//2)
                     cell = Cell(centre, w, h, cell_colour, parsed)
                     cells.append(cell)
-
+                    
+       # cv2.imwrite(IMAGE_PATH+'\cells\implementation_parsing_cells_boxes_{}.png'.format(cell_colour), temp)
+        
         return cells
 
     def __parse_cell_digit(self, image, cell_colour, training=False):
@@ -458,6 +499,13 @@ class GameParser(Parser):
 
         mask = cv2.inRange(image, Cell.BLUE, Cell.BLUE)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        #temp = image.copy()
+        #cv2.drawContours(temp, contours, -1, (0,255,0), 2)
+        #cv2.imwrite(IMAGE_PATH+'\implementation_parsing_counters_image.png', image)
+        #cv2.imwrite(IMAGE_PATH+'\implementation_parsing_counters_mask.png', mask)
+        #cv2.imwrite(IMAGE_PATH+'\implementation_parsing_counters_contours.png', temp)
+        #temp = image.copy()
 
         parsed = []
         for contour in contours:
@@ -467,11 +515,15 @@ class GameParser(Parser):
                 x, y, w, h = cv2.boundingRect(contour)
                 y = round(y+h*0.35)
                 h = round(h*0.65)
-
+                
+                #cv2.rectangle(temp, (x, y), (x+w-1, y+h-1), (0,0,255), 2)
+                
                 cropped = image[y:y+h, x:x+w]
                 thresh = cv2.cvtColor(np.where(cropped==Cell.BLUE, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)
+                
+                #cv2.imwrite(IMAGE_PATH+'\implementation_parsing_counters_thresh_{}.png'.format(len(parsed)), thresh)
+                
                 thresh = cv2.resize(thresh, GameParser.__counter_dims, interpolation=cv2.INTER_AREA)
-
                 hashed = average_hash(thresh)
 
                 if training:
@@ -490,6 +542,8 @@ class GameParser(Parser):
 
         if len(parsed) != 2:
             raise RuntimeError('counters parsed incorrectly')
+
+        #cv2.imwrite(IMAGE_PATH+'\implementation_parsing_counters_filtered.png', temp)
 
         return parsed
 
@@ -546,24 +600,28 @@ class GameParser(Parser):
     def __parse_columns(self, image, grid, training=False):
         _, thresh = cv2.threshold(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 120, 255, cv2.THRESH_BINARY_INV)
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        #temp = image.copy()
+        #cv2.imwrite(IMAGE_PATH+'\Columns\implementation_parsing_columns_mask.png', thresh)
 
         rects = []
         for contour in contours:
             if cv2.contourArea(contour) < 1000:
                 x, y, w, h = cv2.boundingRect(contour)
                 coords = np.asarray([x+w//2, y+h//2])
-                if (self.__x_min-2*self.__hex_width < x <  self.__x_max+2*self.__hex_width and
+                if (self.__x_min-2*self.__hex_width < x < self.__x_max+2*self.__hex_width and
                     self.__y_min-2*self.__hex_height < y < self.__y_max+self.__hex_height and
-                    np.linalg.norm(coords-grid.nearest_cell(coords).image_coords) < 140):
+                    np.linalg.norm(coords-grid.nearest_cell(coords).image_coords) < 144):
                     rects.append((x, y, w, h))
+                    #cv2.drawContours(temp, [contour], -1, (0,255,0), 1)
+                    #cv2.rectangle(temp, (x, y), (x+w, y+h), (0,0,255))
 
         bounding_boxes = self._merge_rects(rects, self.__hex_width*0.76, self.__hex_height*0.7)
-
+        
+        #cv2.imwrite(IMAGE_PATH+'\Columns\implementation_parsing_columns_boxes_1.png', temp)  
+        #temp = image.copy()
         #for x, y, w, h in bounding_boxes:
-        #    cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255))
-
-        #cv2.imshow('test', image)
-        #cv2.waitKey(0)
+        #    cv2.rectangle(temp, (x, y), (x+w, y+h), (0,0,255)) 
 
         parsed = []
         for x, y, w, h in bounding_boxes:
@@ -576,6 +634,11 @@ class GameParser(Parser):
             theta = (90 - np.degrees(np.arctan2(delta_y, delta_x))) % 360
             angle = GameParser.__angles[np.argmin(np.abs(GameParser.__angles-theta))]
 
+            #cv2.arrowedLine(temp, (x+w//2,y+h//2), nearest_coords, (0,0,255), 2)
+            #if angle == 360:
+            #    angle = 0
+            #cv2.putText(temp, str(angle), (nearest_coords[0]+5,nearest_coords[1]+15), cv2.FONT_HERSHEY_DUPLEX, 0.6, (0,0,255), thickness=1)
+
             cropped = thresh[y: y+h, x: x+w]
             digit = self.__parse_grid_digit(255-cropped, angle, training)
 
@@ -584,6 +647,8 @@ class GameParser(Parser):
             else:
                 row, col = nearest_cell.grid_coords
                 grid.add_constraint(row, col, digit, angle)
+
+        #cv2.imwrite(IMAGE_PATH+'\Columns\implementation_parsing_columns_boxes_2.png', temp)  
 
         return parsed
 
