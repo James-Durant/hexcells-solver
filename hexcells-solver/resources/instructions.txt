@@ -1,11 +1,11 @@
-0. Close any currently running Hexcells windows.
-1. Download dnSpy assembly editor (https://github.com/dnSpy/dnSpy) - dnSpy-net.win64.zip
-2. Extract the zip file and execute dySpy.exe
-3. Go to File -> Open and select C:\Program Files (x86)\Steam\steamapps\common\Hexcells Infinite\Hexcells Infinite_Data\Managed\Assembly-CSharp.dll
-4. On the left-hand panel, expand the "Assembly-CSharp" dropdown, then expand "Assembly-CSharp.dll", then expand "{}".
-5. Expand "HexBehaviour" and click on "DestroyClick()".
-6. You should now be able to see some code. Right-click on the code and select "Edit Method (C#)...". A new window should appear.
-7. Deletes line 13 and 18 ("ParticleSystem particleSystem = UnityEngine.Object.Instantiate<ParticleSystem>(this.blockDestroy, base.transform.position, this.blockDestroy.transform.rotation);" and "UnityEngine.Object.Destroy(particleSystem.gameObject, 3f);")
-8. Click the "Compile" button in the bottom right-hand corner of the window containing the code.
-9. Go to File -> Save Module. A new window will appear and should should click the "OK" button.
-10. You can now close the dnSpy editor and run Hexcells.
+1. Close any currently running Hexcells windows.
+2. Download dnSpy assembly editor (https://github.com/dnSpy/dnSpy) - dnSpy-net.win64.zip
+3. Extract the zip file and execute dySpy.exe
+4. Go to File -> Open and select C:\Program Files (x86)\Steam\steamapps\common\Hexcells Infinite\Hexcells Infinite_Data\Managed\Assembly-CSharp.dll
+5. On the left-hand panel, expand the "Assembly-CSharp" dropdown, then expand "Assembly-CSharp.dll", then expand "{}".
+6. Expand "HexBehaviour" and click on "DestroyClick()".
+7. You should now be able to see some code. Right-click on the code and select "Edit Method (C#)...". A new window should appear.
+8. Deletes line 13 and 18 ("ParticleSystem particleSystem = UnityEngine.Object.Instantiate<ParticleSystem>(this.blockDestroy, base.transform.position, this.blockDestroy.transform.rotation);" and "UnityEngine.Object.Destroy(particleSystem.gameObject, 3f);")
+9. Click the "Compile" button in the bottom right-hand corner of the window containing the code.
+10. Go to File -> Save Module. A new window will appear and should should click the "OK" button.
+11. You can now close the dnSpy editor and run Hexcells.

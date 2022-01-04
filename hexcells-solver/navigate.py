@@ -1,8 +1,9 @@
-import time, pyperclip
+import time
+import pyperclip
 
+from solve import Solver
 from window import get_window
 from parse import MenuParser, GameParser
-from solve import Solver
 
 class Navigator:
     def __init__(self):
@@ -92,38 +93,6 @@ class Navigator:
 
             self.load_save(int(save) if save != '-' else 1)
 
-    def level_generator(self, func=None):
-        if self.__window.title != 'Hexcells Infinite':
-            raise RuntimeError('Only Hexcells Infinite has level generator')
-
-        screen = self.__menu_parser.get_screen()
-        if screen != 'level_generator':
-            self.__transition_to_main_menu()
-
-            buttons = self.__menu_parser.parse_main_menu()
-            generator_button = buttons['level_generator']
-            self.__window.click(generator_button)
-            self.__menu_parser.wait_until_loaded()
-
-        while True:
-            play, random = self.__menu_parser.parse_generator()
-            self.__window.click(random)
-            self.__window.click(play)
-
-            self.__window.move_mouse()
-            self.__menu_parser.wait_until_loaded()
-            if func:
-                func()
-                # make this code better
-                self.__window.move_mouse()
-                time.sleep(1.2)
-                next_button, menu_button = self.__menu_parser.parse_level_end()
-                self.__window.click(menu_button)
-                self.__window.move_mouse()
-                time.sleep(1.2)
-            else:
-                self.solve(False)
-
     def solve(self, continuous, level=None):
         game_parser = GameParser(self.__window)
         solver = Solver(game_parser)
@@ -179,7 +148,40 @@ class Navigator:
         for world in ['1', '2', '3', '4', '5', '6']:
             self.solve_set(world)
             self.__menu_parser.wait_until_loaded()
+            
+    def level_generator(self, func=None):
+        if self.__window.title != 'Hexcells Infinite':
+            raise RuntimeError('Only Hexcells Infinite has level generator')
 
+        screen = self.__menu_parser.get_screen()
+        if screen != 'level_generator':
+            self.__transition_to_main_menu()
+
+            buttons = self.__menu_parser.parse_main_menu()
+            generator_button = buttons['level_generator']
+            self.__window.click(generator_button)
+            self.__menu_parser.wait_until_loaded()
+
+        while True:
+            buttons = self.__menu_parser.parse_generator()
+            play_button, random_button = buttons['play'], buttons['random']
+            self.__window.click(random_button)
+            self.__window.click(play_button)
+
+            self.__window.move_mouse()
+            self.__menu_parser.wait_until_loaded()
+            if func:
+                func()
+                # make this code better
+                self.__window.move_mouse()
+                time.sleep(1.2)
+                next_button, menu_button = self.__menu_parser.parse_level_end()
+                self.__window.click(menu_button)
+                self.__window.move_mouse()
+                time.sleep(1.2)
+            else:
+                self.solve(False)
+                
     def back(self):
         self.__window.press_key('esc')
         time.sleep(2)

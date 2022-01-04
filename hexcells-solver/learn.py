@@ -1,5 +1,7 @@
-import os, pickle
+import os
+import pickle
 import numpy as np
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 from tensorflow.keras.models import Sequential

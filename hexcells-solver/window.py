@@ -1,4 +1,8 @@
-import cv2, pyautogui, win32gui, win32con, win32com.client
+import cv2
+import win32gui
+import win32con
+import pyautogui
+import win32com.client
 import numpy as np
 
 class Window:

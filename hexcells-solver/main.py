@@ -1,4 +1,5 @@
 import tkinter as tk
+
 from subprocess import Popen
 from navigate import Navigator
 

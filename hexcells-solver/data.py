@@ -3,6 +3,7 @@ import json
 import time
 import pickle
 import pyperclip
+
 from subprocess import Popen
 
 from grid import Cell
@@ -66,14 +67,15 @@ class LevelData(Generator):
         for i in range(num_levels):
             pyperclip.copy(labels[i])
 
-            play, _, seed = menu_parser.parse_generator()
-            menu.window.click(seed)
+            buttons = menu_parser.parse_generator()
+            play_button, seed_button = buttons['play'], buttons['seed']
+            menu.window.click(seed_button)
             menu.window.move_mouse()
             time.sleep(0.2)
             menu.window.paste()
             time.sleep(0.2)
 
-            menu.window.click(play)
+            menu.window.click(play_button)
             menu.window.move_mouse()
             menu_parser.wait_until_loaded()
 
@@ -103,8 +105,9 @@ class LevelData(Generator):
                     menu.window.move_mouse()
                     time.sleep(2)
 
-                    play, _, _ = menu_parser.parse_generator()
-                    menu.window.click(play)
+                    buttons = menu_parser.parse_generator()
+                    play_button = buttons['play']
+                    menu.window.click(play_button)
                     menu.window.move_mouse()
                     menu_parser.wait_until_loaded()
 
