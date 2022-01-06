@@ -16,8 +16,12 @@ class Environment:
     STATE_DIMS = (7, 3)
     MAX_HEXES = 10
 
+    @property
+    def state(self):
+        return self._state
+
     def _initial_state(self):
-        state = np.zeros(Environment.STATE_DIMS)-1
+        state = np.zeros(Environment.STATE_DIMS)+10
         self._row_offset = 1 if self._grid[0, 1] is None else 0
 
         for row in range(self._grid.rows):
@@ -28,21 +32,19 @@ class Environment:
 
     def _cell_to_rep(self, cell):
         if cell is None:
-            rep = -1
+            return 10
 
         elif cell.colour == Cell.BLACK:
             if cell.digit == '?':
-                rep = 7
+                return 7
             else:
-                rep = cell.digit
-
-        elif cell.colour == Cell.ORANGE:
-            rep = 8
+                return cell.digit
 
         elif cell.colour == Cell.BLUE:
-            rep = 9
+            return 8
 
-        return rep
+        elif cell.colour == Cell.ORANGE:
+            return 9
 
     def _action_to_coords(self, action_index):
         return [(0,1), (1,0), (1,2),
@@ -55,9 +57,6 @@ class Environment:
                 (2,1), (3,0), (3,2),
                 (4,1), (5,0), (5,2),
                 (6,1)].index(coords)
-
-    def get_state(self):
-        return self._state
 
     def unknown(self):
         action_indices = []
@@ -126,7 +125,9 @@ class OnlineEnvironment(Environment):
                 left_click_cells = [cell] if button == 0 else []
                 right_click_cells = [cell] if button == 1 else []
                 mistakes_new, remaining = self.__parser.parse_clicked(self._grid, left_click_cells, right_click_cells)
-
+                
+                self._grid.remaining = remaining
+                
                 if mistakes_old == mistakes_new:
                     reward = 1
                     if len(self._grid.unknown_cells()) == 0:
@@ -220,7 +221,7 @@ class Agent:
     def save_weights(self):
         self.__model.save_weights(self.__weights_path)
 
-def train(epochs=5, levels_path='resources/levels/levels.pickle'):
+def train_offline(epochs=5, levels_path='resources/levels/levels.pickle'):
     agent = Agent()
     for epoch in range(epochs):
         print('Epoch {}'.format(epoch+1))
@@ -277,6 +278,6 @@ def test_online():
         _, _, solved = environment.step(action)
 
 if __name__ == '__main__':
-    train()
+    train_offline()
     #test_offline()
     #test_online()

@@ -35,6 +35,9 @@ class Window:
 
     def press_key(self, key):
         pyautogui.press(key)
+        
+    def paste(self):
+        pyautogui.hotkey('ctrl', 'v')
 
     def click(self, coords, button='left'):
         x, y, _, _ = self._get_position()
