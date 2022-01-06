@@ -118,16 +118,17 @@ class MenuParser(Parser):
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         rects = [cv2.boundingRect(contour) for contour in contours]
+        bounding_boxes = self._merge_rects(rects, 100, 100)
         
         #cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_main_mask_1.png', mask)
         #temp1 = image.copy()
         #temp2 = image.copy()
         #cv2.drawContours(temp1, contours, -1, (0,255,0), 2)
-        #for x, y, w, h in rects:
+        #for x, y, w, h in bounding_boxes:
         #    cv2.rectangle(temp1, (x, y), (x+w, y+h), (0,0,255), 2)
         #    cv2.rectangle(temp2, (x, y), (x+w, y+h), (0,0,255), 2)
             
-        buttons = [(x+w//2, y+h//2) for x, y, w, h in rects if y > threshold]
+        buttons = [(x+w//2, y+h//2) for x, y, w, h in bounding_boxes if y > threshold]
 
         if len(buttons) == 4:
             buttons.sort(key=lambda x: tuple(reversed(x)))

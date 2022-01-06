@@ -185,16 +185,22 @@ class Agent:
             return np.argmax(temp)
             #print(moves.argsort()[-5:][::-1], moves[moves.argsort()[-5:][::-1]])
 
-    def train(self):
+    def train(self, transition):
+        # update_replay_memory
+        if len(self.__replay_memory) >= self.__max_replay_memory:
+            self.__replay_memory.pop(np.random.randint(0, len(self.__replay_memory)))
+
+        self.__replay_memory.append(transition)
+        
         if len(self.__replay_memory) < self.__batch_size:
             return
 
         np.random.shuffle(self.__replay_memory)
 
-        current_states = np.array([transition[0] for transition in self.__replay_memory])
+        current_states = np.array([t[0] for t in self.__replay_memory])
         current_state_rewards = self.__model.predict(np.expand_dims(current_states, -1))
 
-        new_states = np.array([transition[3] for transition in self.__replay_memory])
+        new_states = np.array([t[3] for t in self.__replay_memory])
         new_state_rewards = self.__model.predict(np.expand_dims(new_states, -1))
 
         X, y = [], []
@@ -212,15 +218,10 @@ class Agent:
         self.__model.fit(np.array(X), np.array(y), batch_size=self.__batch_size,
                          shuffle=False, verbose=False)
 
-    def update_replay_memory(self, transition):
-        if len(self.__replay_memory) >= self.__max_replay_memory:
-            self.__replay_memory.pop(np.random.randint(0, len(self.__replay_memory)))
-
-        self.__replay_memory.append(transition)
-
     def save_weights(self):
         self.__model.save_weights(self.__weights_path)
 
+#online training?
 def train_offline(epochs=5, levels_path='resources/levels/levels.pickle'):
     agent = Agent()
     for epoch in range(epochs):
@@ -239,8 +240,7 @@ def train_offline(epochs=5, levels_path='resources/levels/levels.pickle'):
 
                 new_state, reward, solved = environment.step(action)
 
-                agent.update_replay_memory((current_state, action, reward, new_state, solved))
-                agent.train()
+                agent.train(current_state, action, reward, new_state, solved)
 
             agent.save_weights()
             if i % 10 == 0:

@@ -48,7 +48,7 @@ class Generator:
 
         return menu
 
-class TrainingData(Generator):
+class LearningData(Generator):
     def __init__(self, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources/levels'):
         super().__init__(steam_path, save_path)
 
@@ -372,7 +372,7 @@ class ImageData(Generator):
         return hashes, labels
 
 if __name__ == '__main__':
-    level_generator = TrainingData()
+    level_generator = LearningData()
     level_generator.make_dataset()
 
     # Do not change the ordering.
