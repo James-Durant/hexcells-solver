@@ -53,6 +53,8 @@ class LearningData(Generator):
         super().__init__(steam_path, save_path)
 
     def make_dataset(self, num_levels=2000):
+        file_path = os.path.join(self._save_path, 'levels.pickle')
+        
         menu = self._load_game('Hexcells Infinite', (1920, 1080))
 
         menu_parser = MenuParser(menu.window)
@@ -62,10 +64,9 @@ class LearningData(Generator):
         menu.window.move_mouse()
         time.sleep(2)
 
-        levels = []
-        labels = ['0'*(8-len(str(i)))+str(i) for i in range(num_levels)]
+        seeds = ['0'*(8-len(str(i)))+str(i) for i in range(num_levels)]
         for i in range(num_levels):
-            pyperclip.copy(labels[i])
+            pyperclip.copy(seeds[i])
 
             buttons = menu_parser.parse_generator()
             play_button, seed_button = buttons['play'], buttons['seed']
@@ -87,13 +88,16 @@ class LearningData(Generator):
             while True:
                 left_click_cells, right_click_cells = solver.solve_single_step(grid, menu.window, None)
                 if len(left_click_cells)+len(right_click_cells)-len(grid.unknown_cells()) == 0:
-                    if len(left_click_cells) > 0:
+                    skip = False
+                    if len(left_click_cells) + len(right_click_cells) == 1:
+                        skip = True
+                    elif len(left_click_cells) > 0:
                         game_parser.parse_clicked(grid, left_click_cells[1:], right_click_cells)
                         left_click_cells, right_click_cells = [left_click_cells[0]], []
-                    else:
+                    elif len(right_click_cells) > 0:
                         game_parser.parse_clicked(grid, left_click_cells, right_click_cells[1:])
                         left_click_cells, right_click_cells = [], [right_click_cells[0]]
-
+                        
                     game_parser.click_cells(left_click_cells, 'left')
                     game_parser.click_cells(right_click_cells, 'right')
 
@@ -104,6 +108,10 @@ class LearningData(Generator):
                     menu.window.click(menu_button)
                     menu.window.move_mouse()
                     time.sleep(2)
+                    
+                    if skip:
+                        print('>>> Skipping {0}/{1}'.format(i+1, num_levels))
+                        break
 
                     buttons = menu_parser.parse_generator()
                     play_button = buttons['play']
@@ -121,16 +129,24 @@ class LearningData(Generator):
                     menu.window.click(exit_button)
                     menu.window.move_mouse()
                     time.sleep(2)
-
+                    
+                    if os.path.isfile(file_path):
+                        with open(file_path, 'rb') as file:
+                            levels, labels = pickle.load(file)
+                    else:
+                        levels, labels = [], []
+        
                     levels.append((grid_initial, grid))
+                    labels.append(seeds[i])
+        
+                    with open(file_path, 'wb') as file:
+                        pickle.dump((levels, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
+                    
                     print('>>> {0}/{1}'.format(i+1, num_levels))
                     break
 
                 _, remaining = game_parser.parse_clicked(grid, left_click_cells, right_click_cells)
                 grid.remaining = remaining
-
-        with open(os.path.join(self._save_path, 'levels.pickle'), 'wb') as file:
-            pickle.dump((levels, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
 
 class ImageData(Generator):
     def __init__(self, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources'):
