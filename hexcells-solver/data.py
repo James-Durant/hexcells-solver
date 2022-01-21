@@ -63,9 +63,11 @@ class LearningData(Generator):
         menu.window.click(generator_button)
         menu.window.move_mouse()
         time.sleep(2)
-
+        
         seeds = ['0'*(8-len(str(i)))+str(i) for i in range(num_levels)]
-        for i in range(num_levels):
+        
+        i = 0
+        while i < num_levels:
             pyperclip.copy(seeds[i])
 
             buttons = menu_parser.parse_generator()
@@ -142,7 +144,8 @@ class LearningData(Generator):
                     with open(file_path, 'wb') as file:
                         pickle.dump((levels, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
                     
-                    print('>>> {0}/{1}'.format(i+1, num_levels))
+                    i += 1
+                    print('>>> {0}/{1}'.format(i, num_levels))
                     break
 
                 _, remaining = game_parser.parse_clicked(grid, left_click_cells, right_click_cells)

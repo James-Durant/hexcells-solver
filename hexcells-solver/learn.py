@@ -16,8 +16,7 @@ class Environment:
     STATE_DIMS = (7, 3)
     MAX_HEXES = 10
 
-    @property
-    def state(self):
+    def get_state(self):
         return self._state
 
     def _initial_state(self):
@@ -116,7 +115,7 @@ class OnlineEnvironment(Environment):
         action_index %= Environment.MAX_HEXES
         row, col = self._action_to_coords(action_index)
 
-        reward = -1
+        reward = -2
         solved = False
         if row in range(Environment.STATE_DIMS[0]) and col in range(Environment.STATE_DIMS[1]):
             cell = self._grid[row-self._row_offset, col]
@@ -136,22 +135,36 @@ class OnlineEnvironment(Environment):
         return self._state, reward, solved
 
 class Agent:
-    def __init__(self, environment=None, epsilon=0.5, discount=0.1, learning_rate=0.01, batch_size=64,
-                 max_replay_memory=1024, file_path=r'C:\Users\Admin\Documents'):
+    def __init__(self, environment=None, epsilon=0.95, epsilon_decay=0.99975,
+                 epsilon_min=0.01, discount=0.1, learning_rate=0.01, 
+                 learning_decay=0.99975, learning_min=0.001, batch_size=64,
+                 max_replay_memory=50000, update_target_step=1,
+                 weights_path=r'resources/models/model_weights.h5'):
+        
         self.__environment = environment
         self.__epsilon = epsilon
+        self.__epsilon_decay = epsilon_decay
+        self.__epsilon_min = epsilon_min
         self.__discount = discount
         self.__learning_rate = learning_rate
+        self.__learning_decay = learning_decay
+        self.__learning_min = learning_min
         self.__batch_size = batch_size
-        self.__file_path = file_path
         self.__max_replay_memory = max_replay_memory
         self.__replay_memory = []
+        
+        self.__update_target_step = update_target_step
+        self.__target_update_counter = 0
+        
+        self.__weights_path = weights_path
 
         self.__model = self.__create_model((*Environment.STATE_DIMS, 1), Environment.MAX_HEXES*2)
 
-        self.__weights_path = os.path.join(self.__file_path, 'logs', 'model_weights.h5')
         if os.path.isfile(self.__weights_path):
             self.__model.load_weights(self.__weights_path)
+            
+        self.__target_model = self.__create_model((*Environment.STATE_DIMS, 1), Environment.MAX_HEXES*2)
+        self.__target_model.set_weights(self.__model.get_weights())
 
     @property
     def environment(self):
@@ -163,11 +176,12 @@ class Agent:
 
     def __create_model(self, input_dims, num_actions):
         model = Sequential([Conv2D(21, (3,3), activation='relu', padding='same', input_shape=input_dims),
-                            Conv2D(14, (3,3), activation='relu', padding='same'),
-                            Conv2D(7, (3,3), activation='relu', padding='same'),
+                            Conv2D(21, (3,3), activation='relu', padding='same'),
+                            Conv2D(21, (3,3), activation='relu', padding='same'),
+                            Conv2D(21, (3,3), activation='relu', padding='same'),
                             Flatten(),
-                            Dense(40, activation='relu'),
-                            Dense(20, activation='relu'),
+                            Dense(256, activation='relu'),
+                            Dense(256, activation='relu'),
                             Dense(num_actions, activation='linear')])
 
         model.compile(optimizer=Adam(learning_rate=self.__learning_rate, epsilon=1e-4), loss='mse')
@@ -201,7 +215,7 @@ class Agent:
         current_state_rewards = self.__model.predict(np.expand_dims(current_states, -1))
 
         new_states = np.array([t[3] for t in self.__replay_memory])
-        new_state_rewards = self.__model.predict(np.expand_dims(new_states, -1))
+        new_state_rewards = self.__target_model.predict(np.expand_dims(new_states, -1))
 
         X, y = [], []
         for i, (current_state, action, reward, new_current_state, solved) in enumerate(self.__replay_memory):
@@ -217,12 +231,22 @@ class Agent:
 
         self.__model.fit(np.array(X), np.array(y), batch_size=self.__batch_size,
                          shuffle=False, verbose=False)
+        
+        if solved:
+            self.__target_update_counter += 1
+            
+        if self.__target_update_counter >= self.__update_target_step:
+            self.__target_update_counter = 0
+            self.__target_model.set_weights(self.__model.get_weights())
+        
+        self.__learning_rate = max(self.__learning_min, self.__learning_rate*self.__learning_decay)
+        self.__epsilon = max(self.__epsilon_min, self.__epsilon*self.__epsilon_decay)
 
     def save_weights(self):
         self.__model.save_weights(self.__weights_path)
 
 #online training?
-def train_offline(epochs=5, levels_path='resources/levels/levels.pickle'):
+def train_offline(epochs=10, levels_path='resources/levels/levels.pickle'):
     agent = Agent()
     for epoch in range(epochs):
         print('Epoch {}'.format(epoch+1))
@@ -240,7 +264,7 @@ def train_offline(epochs=5, levels_path='resources/levels/levels.pickle'):
 
                 new_state, reward, solved = environment.step(action)
 
-                agent.train(current_state, action, reward, new_state, solved)
+                agent.train((current_state, action, reward, new_state, solved))
 
             agent.save_weights()
             if i % 10 == 0:
@@ -269,13 +293,13 @@ def test_offline(levels_path='resources/levels/levels.pickle'):
 
 def test_online():
     environment = OnlineEnvironment(GameParser(get_window()))
-    agent = Agent(environment)
+    agent = Agent(environment, epsilon=0)
 
     solved = False
     while not solved:
         current_state = environment.get_state()
         action = agent.get_action(current_state)
-        _, _, solved = environment.step(action)
+        new_state, reward, solved = environment.step(action)
 
 if __name__ == '__main__':
     train_offline()
