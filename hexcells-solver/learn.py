@@ -1,7 +1,8 @@
 import os
-import pickle
+import pickle5 as pickle
 import numpy as np
 
+from copy import deepcopy
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 from tensorflow.keras.models import Sequential
@@ -9,8 +10,8 @@ from tensorflow.keras.layers import Conv2D, Dense, Flatten
 from tensorflow.keras.optimizers import Adam
 
 from grid import Cell
-from parse import GameParser
-from window import get_window
+#from parse import GameParser
+#from window import get_window
 
 class Environment:
     STATE_DIMS = (7, 3)
@@ -20,7 +21,7 @@ class Environment:
         return self._state
 
     def _initial_state(self):
-        state = np.zeros(Environment.STATE_DIMS)+10
+        state = np.zeros(Environment.STATE_DIMS)
         self._row_offset = 1 if self._grid[0, 1] is None else 0
 
         for row in range(self._grid.rows):
@@ -31,19 +32,19 @@ class Environment:
 
     def _cell_to_rep(self, cell):
         if cell is None:
-            return 10
+            return 0
 
         elif cell.colour == Cell.BLACK:
             if cell.digit == '?':
-                return 7
+                return 8
             else:
-                return cell.digit
+                return cell.digit+1
 
         elif cell.colour == Cell.BLUE:
-            return 8
+            return 9
 
         elif cell.colour == Cell.ORANGE:
-            return 9
+            return 10
 
     def _action_to_coords(self, action_index):
         return [(0,1), (1,0), (1,2),
@@ -68,11 +69,29 @@ class Environment:
 
 class OfflineEnvironment(Environment):
     def __init__(self, grid, grid_solved):
-        self._grid = grid
+        self._grid = deepcopy(grid)
         self._grid_solved = grid_solved
         self._state = self._initial_state()
 
     def step(self, action_index):
+        rewards = []
+        for action in range(2*Environment.MAX_HEXES):
+            state, grid, reward, solved = self.__step(action_index)
+            rewards.append(reward)
+            if action == action_index:
+                grid_new = grid
+                state_new = state
+                solved_new = solved
+            
+        self._grid = grid_new
+        self._state = state_new
+        
+        return state_new, rewards, solved_new
+
+    def __step(self, action_index):
+        state = deepcopy(self._state)
+        grid = deepcopy(self._grid)
+        
         button = action_index // Environment.MAX_HEXES # Either left or right click
         action_index %= Environment.MAX_HEXES
         row, col = self._action_to_coords(action_index)
@@ -80,29 +99,28 @@ class OfflineEnvironment(Environment):
         reward = -1
         solved = False
         if row in range(Environment.STATE_DIMS[0]) and col in range(Environment.STATE_DIMS[1]):
-            cell_curr = self._grid[row-self._row_offset, col]
+            cell_curr = grid[row-self._row_offset, col]
             cell_true = self._grid_solved[row-self._row_offset, col]
+            
             if cell_curr and cell_curr.colour == Cell.ORANGE:
                 if ((button == 0 and cell_true.colour == Cell.BLUE) or
                     (button == 1 and cell_true.colour == Cell.BLACK)):
-
-                    if cell_true.colour == Cell.BLUE:
-                        self._grid.remaining -= 1
-
-                    cell_curr.colour = cell_true.colour
-                    if cell_true.digit is not None:
-                        cell_curr.hint = cell_true.hint
-                        cell_curr.digit = str(cell_true.digit)
-
-                    self._state[row][col] = self._cell_to_rep(cell_true)
-
                     reward = 1
-                    if len(self._grid.unknown_cells()) == 0:
-                        solved = True
+                
+                if cell_true.colour == Cell.BLUE:
+                    grid.remaining -= 1
 
-                    #print(self._grid)
+                cell_curr.colour = cell_true.colour
+                if cell_true.digit is not None:
+                    cell_curr.hint = cell_true.hint
+                    cell_curr.digit = str(cell_true.digit)
 
-        return self._state, reward, solved
+                state[row][col] = self._cell_to_rep(cell_true)
+
+                if len(grid.unknown_cells()) == 0:
+                    solved = True
+
+        return state, grid, reward, solved
 
 class OnlineEnvironment(Environment):
     def __init__(self, parser):
@@ -135,36 +153,24 @@ class OnlineEnvironment(Environment):
         return self._state, reward, solved
 
 class Agent:
-    def __init__(self, environment=None, epsilon=0.95, epsilon_decay=0.99975,
-                 epsilon_min=0.01, discount=0.1, learning_rate=0.01, 
-                 learning_decay=0.99975, learning_min=0.001, batch_size=64,
-                 max_replay_memory=50000, update_target_step=1,
-                 weights_path=r'resources/models/model_weights.h5'):
+    def __init__(self, environment=None, epsilon=0.95, discount=0.1,
+                 learning_rate=0.01, batch_size=64,
+                 max_replay_memory=50000,
+                 weights_path=r'./resources/models/model_weights.h5'):
         
         self.__environment = environment
         self.__epsilon = epsilon
-        self.__epsilon_decay = epsilon_decay
-        self.__epsilon_min = epsilon_min
         self.__discount = discount
         self.__learning_rate = learning_rate
-        self.__learning_decay = learning_decay
-        self.__learning_min = learning_min
         self.__batch_size = batch_size
         self.__max_replay_memory = max_replay_memory
         self.__replay_memory = []
-        
-        self.__update_target_step = update_target_step
-        self.__target_update_counter = 0
-        
         self.__weights_path = weights_path
 
         self.__model = self.__create_model((*Environment.STATE_DIMS, 1), Environment.MAX_HEXES*2)
 
         if os.path.isfile(self.__weights_path):
             self.__model.load_weights(self.__weights_path)
-            
-        self.__target_model = self.__create_model((*Environment.STATE_DIMS, 1), Environment.MAX_HEXES*2)
-        self.__target_model.set_weights(self.__model.get_weights())
 
     @property
     def environment(self):
@@ -197,10 +203,8 @@ class Agent:
             temp = np.zeros_like(action_rewards)-float('inf')
             temp[unknown] = action_rewards[unknown]
             return np.argmax(temp)
-            #print(moves.argsort()[-5:][::-1], moves[moves.argsort()[-5:][::-1]])
 
     def train(self, transition):
-        # update_replay_memory
         if len(self.__replay_memory) >= self.__max_replay_memory:
             self.__replay_memory.pop(np.random.randint(0, len(self.__replay_memory)))
 
@@ -211,47 +215,41 @@ class Agent:
 
         np.random.shuffle(self.__replay_memory)
 
-        current_states = np.array([t[0] for t in self.__replay_memory])
-        current_state_rewards = self.__model.predict(np.expand_dims(current_states, -1))
+        current_states = np.array([s for s, _, _, _, _ in self.__replay_memory])
+        rewards = np.array([r for _, _, r, _, _ in self.__replay_memory])
+        
+        #new_states = np.array([t[3] for t in self.__replay_memory])
+        #new_state_rewards = self.__model.predict(np.expand_dims(new_states, -1))
 
-        new_states = np.array([t[3] for t in self.__replay_memory])
-        new_state_rewards = self.__target_model.predict(np.expand_dims(new_states, -1))
+        #y = []
+        #for i, (current_state, action, rewards, new_current_state, solved) in enumerate(self.__replay_memory):
+        #    current_state_rewards[i] = rewards
+        #    if not solved:
+        #        current_state_rewards[i][action] += self.__discount*np.max(new_state_rewards[i])
+        
+        #    y.append(current_state_rewards[i])
 
-        X, y = [], []
-        for i, (current_state, action, reward, new_current_state, solved) in enumerate(self.__replay_memory):
-            if solved:
-                new_reward = reward
-            else:
-                new_reward = reward + self.__discount*np.max(new_state_rewards[i])
-
-            current_state_rewards[i][action] = new_reward
-
-            X.append(np.expand_dims(current_state, -1))
-            y.append(current_state_rewards[i])
-
-        self.__model.fit(np.array(X), np.array(y), batch_size=self.__batch_size,
+        self.__model.fit(current_states, np.array(rewards), batch_size=self.__batch_size,
                          shuffle=False, verbose=False)
-        
-        if solved:
-            self.__target_update_counter += 1
-            
-        if self.__target_update_counter >= self.__update_target_step:
-            self.__target_update_counter = 0
-            self.__target_model.set_weights(self.__model.get_weights())
-        
-        self.__learning_rate = max(self.__learning_min, self.__learning_rate*self.__learning_decay)
-        self.__epsilon = max(self.__epsilon_min, self.__epsilon*self.__epsilon_decay)
 
     def save_weights(self):
         self.__model.save_weights(self.__weights_path)
 
 #online training?
-def train_offline(epochs=10, levels_path='resources/levels/levels.pickle'):
+def train_offline(epochs=50, levels_path='resources/levels/levels.pickle'):
+    with open(levels_path, 'rb') as file:
+        levels, _ = pickle.load(file)
+        train_levels = levels[:10]
+        test_levels = levels[10:]
+    
     agent = Agent()
+    train_accuracy = accuracy_offline(agent, train_levels)
+    test_accuracy = accuracy_offline(agent, test_levels)
+    print('Training Accuracy: {0}'.format(train_accuracy))
+    print('Test Accuracy: {0}\n'.format(test_accuracy))
+    
     for epoch in range(epochs):
         print('Epoch {}'.format(epoch+1))
-        with open(levels_path, 'rb') as file:
-            levels, _ = pickle.load(file)
 
         for i, (grid, grid_solved) in enumerate(levels, 1):
             agent.environment = environment = OfflineEnvironment(grid, grid_solved)
@@ -259,49 +257,49 @@ def train_offline(epochs=10, levels_path='resources/levels/levels.pickle'):
             solved = False
             while not solved:
                 current_state = environment.get_state()
-
                 action = agent.get_action(current_state)
-
                 new_state, reward, solved = environment.step(action)
-
                 agent.train((current_state, action, reward, new_state, solved))
 
-            agent.save_weights()
-            if i % 10 == 0:
-                print('>>> {0}/{1}'.format(i, len(levels)))
+            if i % 100 == 0:
+                print('>>> {0}/{1}'.format(i, len(train_levels)))
+                agent.save_weights()
+            
+        agent.save_weights()
+        train_accuracy = accuracy_offline(agent, train_levels)
+        test_accuracy = accuracy_offline(agent, test_levels)
+        print('Training Accuracy: {0}'.format(train_accuracy))
+        print('Test Accuracy: {0}\n'.format(test_accuracy))
 
-        print()
-
-def test_offline(levels_path='resources/levels/levels.pickle'):
-    with open(levels_path, 'rb') as file:
-        levels, _ = pickle.load(file)
-
-    agent = Agent()
-    for i, (grid, grid_solved) in enumerate(levels):
+def accuracy_offline(agent, levels):
+    actions = 0
+    mistakes = 0
+    for grid, grid_solved in levels:
         agent.environment = environment = OfflineEnvironment(grid, grid_solved)
 
         solved = False
-        mistakes = 0
         while not solved:
             current_state = environment.get_state()
-            action = agent.get_action(current_state)
+            action = agent.get_action(current_state, testing=True)
             _, reward, solved = environment.step(action)
-            if reward == -1:
+
+            actions += 1
+            if reward != 1:
                 mistakes += 1
+    
+    return 1 - (mistakes / actions)
 
-        print('>>> {0}/{1} - Mistakes: {2}'.format(i+1, len(levels), mistakes))
-
-def test_online():
-    environment = OnlineEnvironment(GameParser(get_window()))
-    agent = Agent(environment, epsilon=0)
-
-    solved = False
-    while not solved:
-        current_state = environment.get_state()
-        action = agent.get_action(current_state)
-        new_state, reward, solved = environment.step(action)
+#def test_online():
+#    environment = OnlineEnvironment(GameParser(get_window()))
+#    agent = Agent(environment, epsilon=0)
+#
+#    solved = False
+#    while not solved:
+#        current_state = environment.get_state()
+#        action = agent.get_action(current_state)
+#        new_state, reward, solved = environment.step(action)
 
 if __name__ == '__main__':
     train_offline()
-    #test_offline()
+    #test_offline(Agent())
     #test_online()
