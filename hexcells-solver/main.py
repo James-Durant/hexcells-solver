@@ -1,6 +1,8 @@
 import os
+
 import tkinter as tk
 from tkinter import filedialog
+from tkinter import messagebox
 
 from subprocess import Popen
 from navigate import Navigator
@@ -73,7 +75,7 @@ class GUI:
 
         self.__menu.wait_until_loaded()
 
-    def __on_game_var_update(self):
+    def __on_game_var_update(self, *args):
         state = tk.NORMAL if self.__game_var.get() == 'Hexcells Infinite' else tk.DISABLED
         self.__generator_radiobutton.configure(state=state)
 
@@ -112,7 +114,6 @@ class GUI:
         save_slots = ['1', '2', '3']
         self.__save_var = tk.StringVar(self.__root)
         self.__save_var.set('1')
-        self.__save_var.trace('w', self.__on_save_change)
 
         self.__save_frame = tk.Frame(self.__info_frame)
         self.__save_label = tk.Label(self.__save_frame,
@@ -211,7 +212,7 @@ class GUI:
 
         self.__solve_button = tk.Button(self.__solver_frame,
                                         text='Solve',
-                                        state=tk.DISABLED,
+                                        state='disabled',
                                         font=('Arial', 10),
                                         command=self.__solve)
 
@@ -219,30 +220,27 @@ class GUI:
 
         self.__solver_frame.grid(row=1, column=0)
 
-    def __solver_radiobutton_callback(self):
+    def __solver_radiobutton_callback(self, *args):
         if self.__solve_var.get() == 0:
             if self.__game_running:
-                self.__set_optionmenu.configure(state=tk.NORMAL)
-                self.__level_optionmenu.configure(state=tk.NORMAL)
+                self.__set_optionmenu.configure(state='normal')
+                self.__level_optionmenu.configure(state='normal')
 
         elif self.__solve_var.get() == 1:
             self.__level_var.set('-')
             if self.__game_running:
-                self.__set_optionmenu.configure(state=tk.NORMAL)
-            self.__level_optionmenu.configure(state=tk.DISABLED)
+                self.__set_optionmenu.configure(state='normal')
+            self.__level_optionmenu.configure(state='disabled')
 
         else:
             self.__set_var.set('-')
             self.__level_var.set('-')
-            self.__set_optionmenu.configure(state=tk.DISABLED)
-            self.__level_optionmenu.configure(state=tk.DISABLED)
+            self.__set_optionmenu.configure(state='disabled')
+            self.__level_optionmenu.configure(state='disabled')
 
         self.__check_ready_to_solve()
 
-    def __on_save_change(self, *args):
-        pass
-
-    def __on_set_change(self):
+    def __on_set_change(self, *args):
         levels = ['1', '2', '3', '4', '5', '6']
         if self.__game_var.get() == 'Hexcells':
             if self.__set_var.get() != '1':
@@ -261,9 +259,9 @@ class GUI:
         if ((not self.__game_running) or
                 (self.__solve_var.get() == 0 and (self.__set_var.get() == '-' or self.__level_var.get() == '-')) or
                 (self.__solve_var.get() == 1 and self.__set_var.get() == '-')):
-            self.__solve_button.configure(state=tk.DISABLED)
+            self.__solve_button.configure(state='disabled')
         else:
-            self.__solve_button.configure(state=tk.NORMAL)
+            self.__solve_button.configure(state='normal')
 
     def __solve(self):
         if self.__solve_var.get() == 0:
@@ -280,6 +278,7 @@ class GUI:
 
         self.__model_var = tk.IntVar(self.__root)
         self.__model_var.set(0)
+        self.__model_var.trace('w', self.__on_model_var_update)
 
         self.__learning_label = tk.Label(self.__learning_frame,
                                          font=('Arial Black', 10),
@@ -312,14 +311,14 @@ class GUI:
         self.__mode_label.pack(side='left')
         self.__mode_optionmenu.pack()
 
-        self.__test_var = tk.IntVar(self.__root)
-        self.__test_var.set(0)
+        self.__test_var = tk.BooleanVar(self.__root)
+        self.__test_var.set(False)
 
         self.__test_checkbutton = tk.Checkbutton(self.__learning_frame,
                                                  text='Test Only?',
                                                  variable=self.__test_var,
-                                                 onvalue=1,
-                                                 offvalue=0)
+                                                 onvalue=True,
+                                                 offvalue=False)
 
         self.__mode_frame.grid(sticky='w', row=1, column=1)
         self.__test_checkbutton.grid(sticky='w', row=2, column=1)
@@ -333,7 +332,7 @@ class GUI:
                                        text='Epochs: ')
 
         self.__epochs_var = tk.StringVar()
-        self.__epochs_var.set('10')
+        self.__epochs_var.set('1')
         self.__epochs_entry = tk.Entry(self.__epochs_frame,
                                        textvariable=self.__epochs_var)
 
@@ -367,18 +366,18 @@ class GUI:
         self.__learning_rate_entry.pack(expand=True, fill='both')
         self.__learning_rate_frame.grid(sticky='nesw', row=6, column=0, columnspan=2)
 
-        self.__discount_frame = tk.Frame(self.__learning_frame)
-        self.__discount_label = tk.Label(self.__discount_frame,
-                                         text='Discount Rate: ')
+        self.__discount_rate_frame = tk.Frame(self.__learning_frame)
+        self.__discount_rate_label = tk.Label(self.__discount_rate_frame,
+                                              text='Discount Rate: ')
 
-        self.__discount_var = tk.StringVar()
-        self.__discount_var.set('0.05')
-        self.__discount_entry = tk.Entry(self.__discount_frame,
-                                         textvariable=self.__discount_var)
+        self.__discount_rate_var = tk.StringVar()
+        self.__discount_rate_var.set('0.05')
+        self.__discount_rate_entry = tk.Entry(self.__discount_rate_frame,
+                                              textvariable=self.__discount_rate_var)
 
-        self.__discount_label.pack(side='left')
-        self.__discount_entry.pack(expand=True, fill='both')
-        self.__discount_frame.grid(sticky='nesw', row=7, column=0, columnspan=2)
+        self.__discount_rate_label.pack(side='left')
+        self.__discount_rate_entry.pack(expand=True, fill='both')
+        self.__discount_rate_frame.grid(sticky='nesw', row=7, column=0, columnspan=2)
 
         self.__exploration_rate_frame = tk.Frame(self.__learning_frame)
         self.__exploration_rate_label = tk.Label(self.__exploration_rate_frame,
@@ -396,13 +395,14 @@ class GUI:
         self.__path_frame = tk.Frame(self.__learning_frame)
         self.__path_button = tk.Button(self.__path_frame,
                                        text='Select Model: ',
+                                       state='disabled',
                                        command=self.__select_model_path)
 
         self.__model_path_var = tk.StringVar()
         self.__model_path_var.set('')
         self.__path_entry = tk.Entry(self.__path_frame,
-                                     textvariable=self.__model_path_var,
-                                     state=tk.DISABLED)
+                                     state='disabled',
+                                     textvariable=self.__model_path_var)
 
         self.__path_button.pack(side='left')
         self.__path_entry.pack(expand=True, fill='both')
@@ -417,12 +417,52 @@ class GUI:
 
         self.__learning_frame.grid(row=2, column=0)
 
-    def __train(self):
-        if self.__mode_var.get() == 'Offline':
-            pass
+    def __on_model_var_update(self, *args):
+        if self.__model_var.get() == 0:
+            self.__path_button.configure(state='disabled')
+            self.__path_entry.configure(state='disabled')
+            self.__model_path_var.set('')
+        elif self.__model_var.get() == 1:
+            self.__path_button.configure(state='normal')
+            self.__path_entry.configure(state='normal')
 
-        elif self.__mode_var.get() == 'Online':
-            pass
+    def __train(self):
+        try:
+            epochs = int(self.__epochs_var.get())
+            batch_size = int(self.__batch_size_var.get())
+            learning_rate = float(self.__learning_rate_var.get())
+            discount_rate = float(self.__discount_rate_var.get())
+            exploration_rate = float(self.__exploration_rate_var.get())
+            model_path = self.__model_path_var.get()
+            model_path = None if model_path == '' else model_path
+            
+            assert epochs > 0
+            assert batch_size > 0
+            assert learning_rate > 0
+            assert 0 <= discount_rate <= 1
+            assert 0 <= exploration_rate <= 1
+
+        except (ValueError, AssertionError):
+            messagebox.showerror('Error', 'Invalid hyperparameter value(s) given')
+            return
+
+        from learn import Trainer
+
+        try:
+            if self.__mode_var.get() == 'Offline':
+                Trainer.train_offline(test_only=self.__mode_var.get(),
+                                      epochs=epochs,
+                                      batch_size=batch_size,
+                                      learning_rate=learning_rate,
+                                      discount_rate=discount_rate,
+                                      exploration_rate=exploration_rate,
+                                      model_path=model_path)
+
+            elif self.__mode_var.get() == 'Online':
+                raise NotImplementedError
+
+        except (FileNotFoundError, IOError):
+            messagebox.showerror('Error', 'Invalid model path given')
 
     def __select_model_path(self):
         file_path = os.path.dirname(os.path.realpath(__file__))
