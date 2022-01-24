@@ -12,6 +12,7 @@ from navigate import Navigator
 from parse import GameParser, MenuParser, RESOLUTIONS
 from solve import Solver
 
+
 # Turn off steam overlay
 
 class Generator:
@@ -38,8 +39,8 @@ class Generator:
         with open(options_path, 'w') as file:
             json.dump(data, file)
 
-        Popen([self.__steam_path, r'steam://rungameid/'+GAMEIDS[game]],
-               shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
+        Popen([self.__steam_path, r'steam://rungameid/' + GAMEIDS[game]],
+              shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
 
         time.sleep(8)
         menu = Navigator()
@@ -48,13 +49,14 @@ class Generator:
 
         return menu
 
+
 class LearningData(Generator):
     def __init__(self, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources/levels'):
         super().__init__(steam_path, save_path)
 
     def make_dataset(self, num_levels=2000):
         file_path = os.path.join(self._save_path, 'levels.pickle')
-        
+
         menu = self._load_game('Hexcells Infinite', (1920, 1080))
 
         menu_parser = MenuParser(menu.window)
@@ -63,9 +65,9 @@ class LearningData(Generator):
         menu.window.click(generator_button)
         menu.window.move_mouse()
         time.sleep(2)
-        
-        seeds = ['0'*(8-len(str(i)))+str(i) for i in range(num_levels)]
-        
+
+        seeds = ['0' * (8 - len(str(i))) + str(i) for i in range(num_levels)]
+
         i = 0
         while i < num_levels:
             pyperclip.copy(seeds[i])
@@ -89,7 +91,7 @@ class LearningData(Generator):
             grid_initial = game_parser.parse_grid()
             while True:
                 left_click_cells, right_click_cells = solver.solve_single_step(grid, menu.window, None)
-                if len(left_click_cells)+len(right_click_cells)-len(grid.unknown_cells()) == 0:
+                if len(left_click_cells) + len(right_click_cells) - len(grid.unknown_cells()) == 0:
                     skip = False
                     if len(left_click_cells) + len(right_click_cells) == 1:
                         skip = True
@@ -99,7 +101,7 @@ class LearningData(Generator):
                     elif len(right_click_cells) > 0:
                         game_parser.parse_clicked(grid, left_click_cells, right_click_cells[1:])
                         left_click_cells, right_click_cells = [], [right_click_cells[0]]
-                        
+
                     game_parser.click_cells(left_click_cells, 'left')
                     game_parser.click_cells(right_click_cells, 'right')
 
@@ -110,9 +112,9 @@ class LearningData(Generator):
                     menu.window.click(menu_button)
                     menu.window.move_mouse()
                     time.sleep(2)
-                    
+
                     if skip:
-                        print('>>> Skipping {0}/{1}'.format(i+1, num_levels))
+                        print('>>> Skipping {0}/{1}'.format(i + 1, num_levels))
                         break
 
                     buttons = menu_parser.parse_generator()
@@ -131,25 +133,26 @@ class LearningData(Generator):
                     menu.window.click(exit_button)
                     menu.window.move_mouse()
                     time.sleep(2)
-                    
+
                     if os.path.isfile(file_path):
                         with open(file_path, 'rb') as file:
                             levels, labels = pickle.load(file)
                     else:
                         levels, labels = [], []
-        
+
                     levels.append((grid_initial, grid))
                     labels.append(seeds[i])
-        
+
                     with open(file_path, 'wb') as file:
                         pickle.dump((levels, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
-                    
+
                     i += 1
                     print('>>> {0}/{1}'.format(i, num_levels))
                     break
 
                 _, remaining = game_parser.parse_clicked(grid, left_click_cells, right_click_cells)
                 grid.remaining = remaining
+
 
 class ImageData(Generator):
     def __init__(self, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources'):
@@ -161,7 +164,7 @@ class ImageData(Generator):
         if digit_type == 'blue_special':
             hash_path = os.path.join(self._save_path, 'blue', 'hashes.pickle')
             game = 'Hexcells Plus'
-        
+
         hashes, labels = [], []
         for resolution in RESOLUTIONS:
             menu = self._load_game(game, resolution)
@@ -172,7 +175,7 @@ class ImageData(Generator):
                     level_path = os.path.join(self._save_path, digit_type, '{}_level.hexcells'.format(hint))
                     menu.load_custom_level(level_path)
 
-                    hashes_hint, labels_hint = self.__get_hashes(menu.window, digit_type+'_'+hint)
+                    hashes_hint, labels_hint = self.__get_hashes(menu.window, digit_type + '_' + hint)
                     hashes_res += hashes_hint
                     labels_res += labels_hint
 
@@ -180,10 +183,12 @@ class ImageData(Generator):
                 hashes_res, labels_res = [], []
                 for part in ['1', '2']:
                     for hint in ['normal', 'consecutive', 'non-consecutive']:
-                        level_path = os.path.join(self._save_path, digit_type, '{0}_{1}_level.hexcells'.format(hint, part))
+                        level_path = os.path.join(self._save_path, digit_type,
+                                                  '{0}_{1}_level.hexcells'.format(hint, part))
                         menu.load_custom_level(level_path)
 
-                        hashes_hint, labels_hint = self.__get_hashes(menu.window, digit_type+'_{0}_{1}'.format(hint, part))
+                        hashes_hint, labels_hint = self.__get_hashes(menu.window,
+                                                                     digit_type + '_{0}_{1}'.format(hint, part))
                         hashes_res += hashes_hint
                         labels_res += labels_hint
 
@@ -254,7 +259,8 @@ class ImageData(Generator):
                     options = menu.window.screenshot()
 
                     hashes = [main_screen, level_select, level_exit, level_end, level_generator, user_levels, options]
-                    labels = ['main_menu', 'level_select', 'level_exit', 'level_end', 'level_generator', 'user_levels', 'options']
+                    labels = ['main_menu', 'level_select', 'level_exit', 'level_end', 'level_generator', 'user_levels',
+                              'options']
 
                     hash_path = os.path.join(self._save_path, digit_type, '{0}x{1}'.format(*resolution))
                     if not os.path.exists(hash_path):
@@ -292,7 +298,7 @@ class ImageData(Generator):
                 break
 
         if digit_type != 'screen':
-            #if not delete_existing:
+            # if not delete_existing:
             #    with open(hash_path, 'rb') as file:
             #        existing_hashes, existing_labels = pickle.load(file)
             #        hashes += existing_hashes
@@ -351,10 +357,10 @@ class ImageData(Generator):
                 labels = [str(i) for i in range(0, 17)]
 
             elif digit_type == 'column_consecutive':
-                labels = ['{'+str(i)+'}' for i in range(0, 17)]
+                labels = ['{' + str(i) + '}' for i in range(0, 17)]
 
             elif digit_type == 'column_non-consecutive':
-                labels = ['-'+str(i)+'-' for i in range(2, 16)]
+                labels = ['-' + str(i) + '-' for i in range(2, 16)]
 
             elif digit_type == 'diagonal_normal_1':
                 labels = [str(i) for i in range(1, 16)] + ['0', '0'] + [str(i) for i in range(15, 0, -1)]
@@ -365,7 +371,8 @@ class ImageData(Generator):
                           '20', '23', '21', '24', '26', '27', '25', '22']
 
             elif digit_type == 'diagonal_consecutive_1':
-                labels = ['{'+str(i)+'}' for i in range(1, 16)] + ['{0}', '{0}'] + ['{'+str(i)+'}' for i in range(15, 0, -1)]
+                labels = ['{' + str(i) + '}' for i in range(1, 16)] + ['{0}', '{0}'] + ['{' + str(i) + '}' for i in
+                                                                                        range(15, 0, -1)]
 
             elif digit_type == 'diagonal_consecutive_2':
                 labels = ['{24}', '{25}', '{27}', '{26}', '{23}', '{22}',
@@ -374,7 +381,7 @@ class ImageData(Generator):
                           '{21}', '{24}', '{26}', '{27}', '{25}', '{22}']
 
             elif digit_type == 'diagonal_non-consecutive_1':
-                labels = ['-'+str(i)+'-' for i in range(2, 16)] + ['-'+str(i)+'-' for i in range(15, 1, -1)]
+                labels = ['-' + str(i) + '-' for i in range(2, 16)] + ['-' + str(i) + '-' for i in range(15, 1, -1)]
 
             elif digit_type == 'diagonal_non-consecutive_2':
                 labels = ['-23-', '-24-', '-27-', '-26-', '-25-', '-22-',
@@ -390,17 +397,18 @@ class ImageData(Generator):
         assert len(hashes) == len(labels)
         return hashes, labels
 
+
 if __name__ == '__main__':
     level_generator = LearningData()
     level_generator.make_dataset()
 
     # Do not change the ordering.
-    #image_generator = ImageData()
-    #image_generator.make_dataset('level_select')
-    #image_generator.make_dataset('screen')
-    #image_generator.make_dataset('black')
-    #image_generator.make_dataset('blue')
-    #image_generator.make_dataset('blue_special')
-    #image_generator.make_dataset('counter')
-    #image_generator.make_dataset('column')
-    #image_generator.make_dataset('diagonal')
+    # image_generator = ImageData()
+    # image_generator.make_dataset('level_select')
+    # image_generator.make_dataset('screen')
+    # image_generator.make_dataset('black')
+    # image_generator.make_dataset('blue')
+    # image_generator.make_dataset('blue_special')
+    # image_generator.make_dataset('counter')
+    # image_generator.make_dataset('column')
+    # image_generator.make_dataset('diagonal')

@@ -1,6 +1,7 @@
 from pulp import GLPK_CMD, LpProblem, LpMinimize, LpVariable, lpSum, value
 from parse import Cell
 
+
 class Solver:
     __GLPK_PATH = r'resources/winglpk-4.65/glpk-4.65/w64/glpsol.exe'
 
@@ -12,7 +13,7 @@ class Solver:
 
         while True:
             left_click_cells, right_click_cells = self.solve_single_step(grid, game, level)
-            if len(left_click_cells)+len(right_click_cells)-len(self.__unknown) == 0:
+            if len(left_click_cells) + len(right_click_cells) - len(self.__unknown) == 0:
                 self.__parser.click_cells(left_click_cells, 'left')
                 self.__parser.click_cells(right_click_cells, 'right')
                 break
@@ -30,7 +31,7 @@ class Solver:
             true_sum = lpSum(self.__get_var(true) for true in true_class)
             false_sum = lpSum(self.__get_var(false) for false in false_class)
 
-            self.__problem.setObjective(true_sum-false_sum)
+            self.__problem.setObjective(true_sum - false_sum)
             self.__problem.solve(self.__solver)
 
             if value(self.__problem.objective) == sum(self.__classes[rep] for rep in true_class):
@@ -50,7 +51,7 @@ class Solver:
             false_class = false_class.intersection(false_new)
 
         raise RuntimeError('solver failed to finish puzzle')
-        
+
     def __get_true_false_classes(self):
         true_set, false_set = set(), set()
 
@@ -99,16 +100,16 @@ class Solver:
                     if cell2 is not None and cell2.colour == Cell.ORANGE:
                         try:
                             self.__constraints[cell2].add(cell1)
-                        except:
-                            self.__constraints[cell2] = set([cell1])
+                        except KeyError:
+                            self.__constraints[cell2] = {cell1}
 
         for constraint in grid.constraints:
             for cell in constraint.members:
-                if cell is not None and cell.colour == Cell.ORANGE:  
+                if cell is not None and cell.colour == Cell.ORANGE:
                     try:
                         self.__constraints[cell].add(constraint)
-                    except:
-                        self.__constraints[cell] = set([constraint])
+                    except KeyError:
+                        self.__constraints[cell] = {constraint}
 
     def __get_reps(self, level):
         self.__rep_of = {}
@@ -158,22 +159,24 @@ class Solver:
 
             if constraint.hint == 'consecutive':
                 for span in range(constraint.size, len(constraint.members)):
-                    for start in range(len(constraint.members)-span):
-                        self.__problem += lpSum([self.__get_var(constraint.members[start]), self.__get_var(constraint.members[start+span])]) <= 1
+                    for start in range(len(constraint.members) - span):
+                        self.__problem += lpSum([self.__get_var(constraint.members[start]),
+                                                 self.__get_var(constraint.members[start + span])]) <= 1
 
             elif constraint.hint == 'non-consecutive':
-                for offset in range(len(constraint.members)-constraint.size+1):
-                    self.__problem += lpSum(self.__get_var(constraint.members[offset+i]) for i in range(constraint.size)) <= constraint.size-1
+                for offset in range(len(constraint.members) - constraint.size + 1):
+                    self.__problem += lpSum(self.__get_var(constraint.members[offset + i]) for i in
+                                            range(constraint.size)) <= constraint.size - 1
 
     def __add_cell_constraints(self, grid):
         for cell in self.__known:
-            if cell.digit != None and cell.digit != '?':
+            if cell.digit is not None and cell.digit != '?':
                 neighbours = grid.neighbours(cell)
                 self.__problem += lpSum(self.__get_var(neighbour) for neighbour in neighbours) == cell.digit
 
                 if (cell.hint != 'normal' and
-                   ((cell.colour == Cell.BLACK and 2 <= cell.digit <= 4) or
-                   (cell.colour == Cell.BLUE and 2 <= cell.digit <= 10))):
+                        ((cell.colour == Cell.BLACK and 2 <= cell.digit <= 4) or
+                         (cell.colour == Cell.BLUE and 2 <= cell.digit <= 10))):
 
                     if cell.colour == Cell.BLUE:
                         neighbours = grid.outer_neighbours(cell)
@@ -182,24 +185,29 @@ class Solver:
                     if cell.hint == 'consecutive':
                         if cell.colour == Cell.BLUE:
                             for i in range(n):
-                                for j in range(i+1, n):
+                                for j in range(i + 1, n):
                                     if self.__dist(neighbours, i, j) in range(cell.digit, n):
-                                        self.__problem += lpSum([self.__get_var(neighbours[i]), self.__get_var(neighbours[j])]) <= 1
+                                        self.__problem += lpSum([self.__get_var(neighbours[i]),
+                                                                 self.__get_var(neighbours[j])]) <= 1
 
                         elif cell.colour == Cell.BLACK:
                             for i in range(n):
-                                cond = self.__get_var(neighbours[i]) - self.__get_var(neighbours[(i+1)%n]) - self.__get_var(neighbours[(i-1)%n])
+                                cond = (self.__get_var(neighbours[i]) -
+                                        self.__get_var(neighbours[(i + 1) % n]) -
+                                        self.__get_var(neighbours[(i - 1) % n]))
+
                                 self.__problem += -1 <= cond <= 0
 
                     if cell.hint == 'non-consecutive':
                         for i in range(n):
-                            if all(neighbours[(i+j)%n] != None for j in range(cell.digit-1)):
-                                self.__problem += lpSum(self.__get_var(neighbours[(i+j)%n]) for j in range(cell.digit)) <= cell.digit-1
-                                
+                            if all(neighbours[(i + j) % n] is not None for j in range(cell.digit - 1)):
+                                self.__problem += lpSum(self.__get_var(neighbours[(i + j) % n])
+                                                        for j in range(cell.digit)) <= cell.digit - 1
+
     def __dist(self, neighbours, i, j):
         dist1 = 0
-        for k in range(i+1, j+1):
-            if neighbours[k] != None:
+        for k in range(i + 1, j + 1):
+            if neighbours[k] is not None:
                 dist1 += 1
             else:
                 dist1 = float('inf')
@@ -207,15 +215,15 @@ class Solver:
 
         dist2 = 0
         n = len(neighbours)
-        for k in range(i-1, j-n-1, -1):
-            if neighbours[k%n] != None:
+        for k in range(i - 1, j - n - 1, -1):
+            if neighbours[k % n] is not None:
                 dist2 += 1
             else:
                 dist2 = float('inf')
                 break
 
         return min(dist1, dist2)
-    
+
     def __add_plus_end_level_constraints(self, grid):
         letters = [[0, 1, 2],
                    [5],
@@ -231,22 +239,22 @@ class Solver:
 
             letters[i] = cells
 
-        self.__problem += lpSum(letters[1]+letters[3]) == 5
-        self.__problem += lpSum(letters[0]+letters[5]) == 16
+        self.__problem += lpSum(letters[1] + letters[3]) == 5
+        self.__problem += lpSum(letters[0] + letters[5]) == 16
 
         xs = []
         for i, letter in enumerate(letters):
-            x = LpVariable('x_'+str(i), 0, 1, 'Integer')
-            self.__problem += lpSum(letter) <= x*len(letter)
+            x = LpVariable('x_' + str(i), 0, 1, 'Integer')
+            self.__problem += lpSum(letter) <= x * len(letter)
             xs.append(x)
 
-        self.__problem += lpSum(xs) == len(letters)-1
-    
+        self.__problem += lpSum(xs) == len(letters) - 1
+
     def __add_infinite_end_level_constraints(self, grid):
         for col in range(grid.cols):
             column = grid.get_column(col)
-            x = LpVariable('x_'+str(col), 0, (len(column)-1)//2, 'Integer')
-            self.__problem += lpSum(self.__get_var(cell) for cell in column) == 2*x+1
+            x = LpVariable('x_' + str(col), 0, (len(column) - 1) // 2, 'Integer')
+            self.__problem += lpSum(self.__get_var(cell) for cell in column) == 2 * x + 1
 
         centre_1, centre_2 = grid[8, 4], grid[8, 12]
 

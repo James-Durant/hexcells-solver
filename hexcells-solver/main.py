@@ -35,7 +35,7 @@ class GUI:
         except RuntimeError:  # Make custom error
             self.__update_status(False)
             self.__menu = None
-            self.__game_var.set(-1)
+            self.__game_var.set('')
 
     def __update_status(self, status):
         self.__game_running = status
@@ -85,7 +85,7 @@ class GUI:
                                      text='-' * 70 + '\n' + 'Game Options\n' + '-' * 70)
 
         self.__game_var = tk.StringVar(self.__root)
-        self.__game_var.set(-1)
+        self.__game_var.set('')
         self.__game_var.trace('w', self.__on_game_var_update)
 
         self.__game_1_radiobutton = tk.Radiobutton(self.__info_frame,
@@ -427,9 +427,7 @@ class GUI:
     def __select_model_path(self, *args):
         file_path = os.path.dirname(os.path.realpath(__file__))
         models_dir = os.path.join(file_path, 'resources', 'models')
-        model_path = filedialog.askopenfilename(parent=self.__root,
-                                                initialdir=models_dir,
-                                                title='Model Selection',
+        model_path = filedialog.askopenfilename(parent=self.__root, initialdir=models_dir, title='Model Selection',
                                                 filetypes=[('HDF5 file', '.h5')])
         self.__model_path_var.set(model_path)
 

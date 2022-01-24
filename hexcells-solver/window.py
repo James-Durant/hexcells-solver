@@ -5,10 +5,11 @@ import pyautogui
 import win32com.client
 import numpy as np
 
+
 class Window:
     def __init__(self, title):
         self.__title = title
-        self.__hwnd  = win32gui.FindWindow(None, title)
+        self.__hwnd = win32gui.FindWindow(None, title)
         if not self.__hwnd:
             raise RuntimeError('Hexcells window not found')
 
@@ -33,27 +34,30 @@ class Window:
         image = pyautogui.screenshot(region=(x1, y1, x2, y2))
         return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
-    def press_key(self, key):
+    @staticmethod
+    def press_key(key):
         pyautogui.press(key)
-        
-    def paste(self):
+
+    @staticmethod
+    def paste():
         pyautogui.hotkey('ctrl', 'v')
 
     def click(self, coords, button='left'):
         x, y, _, _ = self._get_position()
-        pyautogui.click(x=x+coords[0], y=y+coords[1], button=button)
+        pyautogui.click(x=x + coords[0], y=y + coords[1], button=button)
 
     def click_cell(self, cell, button):
         x1, y1, _, _ = self._get_position()
         x2, y2 = cell.image_coords
-        pyautogui.click(x=x1+x2, y=y1+y2, button=button)
+        pyautogui.click(x=x1 + x2, y=y1 + y2, button=button)
 
     def move_mouse(self):
         x, y, w, h = self._get_position()
-        pyautogui.moveTo(x+w-1, y+h-1)
+        pyautogui.moveTo(x + w - 1, y + h - 1)
 
     def close(self):
         win32gui.PostMessage(self.__hwnd, win32con.WM_CLOSE, 0, 0)
+
 
 def get_window():
     try:
