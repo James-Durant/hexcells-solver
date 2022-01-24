@@ -150,6 +150,27 @@ class Solver:
             return self.__variables[cell]
         return 0
 
+    @staticmethod
+    def __dist(neighbours, i, j):
+        dist1 = 0
+        for k in range(i + 1, j + 1):
+            if neighbours[k] is not None:
+                dist1 += 1
+            else:
+                dist1 = float('inf')
+                break
+
+        dist2 = 0
+        n = len(neighbours)
+        for k in range(i - 1, j - n - 1, -1):
+            if neighbours[k % n] is not None:
+                dist2 += 1
+            else:
+                dist2 = float('inf')
+                break
+
+        return min(dist1, dist2)
+
     def __add_remaining_constraint(self, grid):
         self.__problem += lpSum(self.__get_var(cell) for cell in self.__unknown) == grid.remaining
 
@@ -186,7 +207,7 @@ class Solver:
                         if cell.colour == Cell.BLUE:
                             for i in range(n):
                                 for j in range(i + 1, n):
-                                    if self.__dist(neighbours, i, j) in range(cell.digit, n):
+                                    if Solver.__dist(neighbours, i, j) in range(cell.digit, n):
                                         self.__problem += lpSum([self.__get_var(neighbours[i]),
                                                                  self.__get_var(neighbours[j])]) <= 1
 
@@ -203,26 +224,6 @@ class Solver:
                             if all(neighbours[(i + j) % n] is not None for j in range(cell.digit - 1)):
                                 self.__problem += lpSum(self.__get_var(neighbours[(i + j) % n])
                                                         for j in range(cell.digit)) <= cell.digit - 1
-
-    def __dist(self, neighbours, i, j):
-        dist1 = 0
-        for k in range(i + 1, j + 1):
-            if neighbours[k] is not None:
-                dist1 += 1
-            else:
-                dist1 = float('inf')
-                break
-
-        dist2 = 0
-        n = len(neighbours)
-        for k in range(i - 1, j - n - 1, -1):
-            if neighbours[k % n] is not None:
-                dist2 += 1
-            else:
-                dist2 = float('inf')
-                break
-
-        return min(dist1, dist2)
 
     def __add_plus_end_level_constraints(self, grid):
         letters = [[0, 1, 2],

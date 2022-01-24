@@ -1,10 +1,11 @@
 import numpy as np
 
-class Grid:
-    __DIRECT = [(0,-2), (1,-1), (1,1), (0,2), (-1,1), (-1,-1)]
 
-    __OUTER = [(0,-4), (1,-3), (2,-2), (2,0), (2,2), (1,3), (0,4),
-               (-1,3), (-2,2), (-2,0), (-2,-2), (-1,-3)]
+class Grid:
+    __DIRECT = [(0, -2), (1, -1), (1, 1), (0, 2), (-1, 1), (-1, -1)]
+
+    __OUTER = [(0, -4), (1, -3), (2, -2), (2, 0), (2, 2), (1, 3), (0, 4),
+               (-1, 3), (-2, 2), (-2, 0), (-2, -2), (-1, -3)]
 
     __FLOWER = __DIRECT + __OUTER
 
@@ -45,7 +46,7 @@ class Grid:
         return self.__cells
 
     def nearest_cell(self, query_coords):
-        nearest = np.argmin(np.sum((self.__cell_image_coords - query_coords)**2, axis=1))
+        nearest = np.argmin(np.sum((self.__cell_image_coords - query_coords) ** 2, axis=1))
         return self.__cells[nearest]
 
     def add_constraint(self, row, col, digit, angle):
@@ -69,7 +70,7 @@ class Grid:
         cells = []
         while 0 <= row < self.__rows and 0 <= col < self.__cols:
             cell = self[(row, col)]
-            if cell != None:
+            if cell is not None:
                 cells.append(cell)
 
             if angle == 0:
@@ -112,7 +113,7 @@ class Grid:
         deltas = []
         if cell.colour == Cell.BLACK and cell.digit != '?':
             deltas = Grid.__DIRECT
-        elif cell.colour == Cell.BLUE and cell.digit != None:
+        elif cell.colour == Cell.BLUE and cell.digit is not None:
             deltas = Grid.__FLOWER
 
         return self.__find_neighbours(cell, deltas)
@@ -128,7 +129,7 @@ class Grid:
 
     def __find_neighbours(self, cell, deltas):
         row, col = cell.grid_coords
-        return [self[row+d_row, col+d_col] for d_col, d_row in deltas]
+        return [self[row + d_row, col + d_col] for d_col, d_row in deltas]
 
     def get_column(self, col):
         return [self.__grid[i][col] for i in range(self.__rows) if self.__grid[i][col] is not None]
@@ -139,7 +140,7 @@ class Grid:
             return self.__grid[row][col]
         return None
 
-    #Make this better
+    # Make this better
     def __str__(self):
         return_str = ''
         for row in range(self.__rows):
@@ -152,11 +153,12 @@ class Grid:
                 return_str = return_str + cell_str + '|'
 
             return_str = return_str[:-1] + '\n'
-            if row != self.__rows-1:
-                return_str = return_str + '_'*self.__cols*5 + '\n'
+            if row != self.__rows - 1:
+                return_str = return_str + '_' * self.__cols * 5 + '\n'
 
         return_str = return_str + 'Remaining: ' + str(self.remaining) + '\n'
         return return_str
+
 
 class Cell:
     BLUE = (235, 164, 5)
@@ -167,12 +169,12 @@ class Cell:
 
     def __init__(self, image_coords, width, height, colour, digit=None):
         self.__image_coords = image_coords
-        self.__grid_coords  = None
-        self.__width  = width
+        self.__grid_coords = None
+        self.__width = width
         self.__height = height
         self.__hint = 'normal'
         self.colour = colour
-        self.digit  = digit
+        self.digit = digit
 
     @property
     def image_coords(self):
@@ -221,7 +223,7 @@ class Cell:
     @digit.setter
     def digit(self, digit):
         if self.__colour == Cell.BLUE:
-            if digit == None:
+            if digit is None:
                 self.__digit = None
                 return
 
@@ -243,7 +245,7 @@ class Cell:
                 raise RuntimeError('blue cell digit parsed incorrectly')
 
         elif self.__colour == Cell.BLACK:
-            if digit == None:
+            if digit is None:
                 raise RuntimeError('OCR missed black cell digit')
             elif digit == '?':
                 self.__digit = '?'
@@ -266,7 +268,7 @@ class Cell:
                     raise RuntimeError('black cell digit parsed incorrectly')
 
         elif self.__colour == Cell.ORANGE:
-            if digit != None:
+            if digit is not None:
                 raise RuntimeError('orange cells cannot have digits')
             else:
                 self.__digit = None
@@ -278,6 +280,8 @@ class Cell:
             colour = 'O'
         elif self.__colour == Cell.ORANGE:
             colour = '?'
+        else:
+            raise RuntimeError('invalid cell colour')
 
         if self.__hint == 'consecutive':
             digit = '{' + str(self.__digit) + '}'
@@ -288,8 +292,11 @@ class Cell:
                 digit = '   '
             else:
                 digit = ' ' + str(self.__digit) + ' '
+        else:
+            raise RuntimeError('invalid cell digit/hint')
 
         return colour + digit
+
 
 class Constraint:
     def __init__(self, size, hint, angle, members):

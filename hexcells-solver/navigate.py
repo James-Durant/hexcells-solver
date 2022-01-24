@@ -5,6 +5,7 @@ from solve import Solver
 from window import get_window
 from parse import MenuParser, GameParser
 
+
 class Navigator:
     def __init__(self):
         self.__window = get_window()
@@ -26,8 +27,8 @@ class Navigator:
         buttons = self.__menu_parser.parse_main_menu()
         save_slot_buttons = buttons['save_slots']
 
-        if slot in [1,2,3]:
-            self.__window.click(save_slot_buttons[slot-1])
+        if slot in [1, 2, 3]:
+            self.__window.click(save_slot_buttons[slot - 1])
             self.__window.move_mouse()
             self.__menu_parser.wait_until_loaded()
             time.sleep(0.25)
@@ -56,6 +57,7 @@ class Navigator:
             self.back()
 
     def exit_level(self):
+        exit_button = None
         while True:
             try:
                 _, _, exit_button = self.__menu_parser.parse_level_exit()
@@ -108,7 +110,7 @@ class Navigator:
             time.sleep(1.6)
 
             if level is not None:
-                level = level[:-1] + str(int(level[-1])+1)
+                level = level[:-1] + str(int(level[-1]) + 1)
             self.solve(continuous, level)
         else:
             self.__window.click(menu_button)
@@ -136,7 +138,7 @@ class Navigator:
         if set_str not in ['1', '2', '3', '4', '5', '6']:
             raise RuntimeError('Set must be between 1-6 (inclusive)')
 
-        level = set_str+'-1'
+        level = set_str + '-1'
         self.__window.click(levels[level])
         self.__window.move_mouse()
         self.__menu_parser.wait_until_loaded()
@@ -145,10 +147,10 @@ class Navigator:
     def solve_game(self, save):
         self.__transition_to_level_select(save)
 
-        for world in ['1', '2', '3', '4', '5', '6']:
-            self.solve_set(world)
+        for set_str in ['1', '2', '3', '4', '5', '6']:
+            self.solve_set(save, set_str)
             self.__menu_parser.wait_until_loaded()
-            
+
     def level_generator(self, func=None):
         if self.__window.title != 'Hexcells Infinite':
             raise RuntimeError('Only Hexcells Infinite has level generator')
@@ -181,7 +183,7 @@ class Navigator:
                 time.sleep(1.2)
             else:
                 self.solve(False)
-                
+
     def back(self):
         self.__window.press_key('esc')
         time.sleep(2)
@@ -197,7 +199,7 @@ class Navigator:
 
         pyperclip.copy(level)
 
-        buttons = self.__menu_parser.parse_user_levels()
+        buttons = self.__menu_parser.parse_main_menu()
         user_level_button = buttons['user_levels']
         self.__window.click(user_level_button)
         self.__window.move_mouse()

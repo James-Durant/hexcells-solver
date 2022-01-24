@@ -73,7 +73,7 @@ class GUI:
 
         self.__menu.wait_until_loaded()
 
-    def __on_game_var_update(self, *args):
+    def __on_game_var_update(self):
         state = tk.NORMAL if self.__game_var.get() == 'Hexcells Infinite' else tk.DISABLED
         self.__generator_radiobutton.configure(state=state)
 
@@ -219,7 +219,7 @@ class GUI:
 
         self.__solver_frame.grid(row=1, column=0)
 
-    def __solver_radiobutton_callback(self, *args):
+    def __solver_radiobutton_callback(self):
         if self.__solve_var.get() == 0:
             if self.__game_running:
                 self.__set_optionmenu.configure(state=tk.NORMAL)
@@ -242,7 +242,7 @@ class GUI:
     def __on_save_change(self, *args):
         pass
 
-    def __on_set_change(self, *args):
+    def __on_set_change(self):
         levels = ['1', '2', '3', '4', '5', '6']
         if self.__game_var.get() == 'Hexcells':
             if self.__set_var.get() != '1':
@@ -257,7 +257,7 @@ class GUI:
         self.__level_var.set('-')
         self.__check_ready_to_solve()
 
-    def __check_ready_to_solve(self, *args):
+    def __check_ready_to_solve(self):
         if ((not self.__game_running) or
                 (self.__solve_var.get() == 0 and (self.__set_var.get() == '-' or self.__level_var.get() == '-')) or
                 (self.__solve_var.get() == 1 and self.__set_var.get() == '-')):
@@ -424,7 +424,7 @@ class GUI:
         elif self.__mode_var.get() == 'Online':
             pass
 
-    def __select_model_path(self, *args):
+    def __select_model_path(self):
         file_path = os.path.dirname(os.path.realpath(__file__))
         models_dir = os.path.join(file_path, 'resources', 'models')
         model_path = filedialog.askopenfilename(parent=self.__root, initialdir=models_dir, title='Model Selection',

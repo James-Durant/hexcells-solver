@@ -96,10 +96,10 @@ class LearningData(Generator):
                     if len(left_click_cells) + len(right_click_cells) == 1:
                         skip = True
                     elif len(left_click_cells) > 0:
-                        game_parser.parse_clicked(grid, left_click_cells[1:], right_click_cells)
+                        game_parser.parse_clicked(left_click_cells[1:], right_click_cells)
                         left_click_cells, right_click_cells = [left_click_cells[0]], []
                     elif len(right_click_cells) > 0:
-                        game_parser.parse_clicked(grid, left_click_cells, right_click_cells[1:])
+                        game_parser.parse_clicked(left_click_cells, right_click_cells[1:])
                         left_click_cells, right_click_cells = [], [right_click_cells[0]]
 
                     game_parser.click_cells(left_click_cells, 'left')
@@ -123,7 +123,7 @@ class LearningData(Generator):
                     menu.window.move_mouse()
                     menu_parser.wait_until_loaded()
 
-                    game_parser.parse_clicked(grid, left_click_cells, right_click_cells)
+                    game_parser.parse_clicked(left_click_cells, right_click_cells)
 
                     menu.window.press_key('esc')
                     menu.window.move_mouse()
@@ -150,7 +150,7 @@ class LearningData(Generator):
                     print('>>> {0}/{1}'.format(i, num_levels))
                     break
 
-                _, remaining = game_parser.parse_clicked(grid, left_click_cells, right_click_cells)
+                _, remaining = game_parser.parse_clicked(left_click_cells, right_click_cells)
                 grid.remaining = remaining
 
 
@@ -307,7 +307,8 @@ class ImageData(Generator):
             with open(hash_path, 'wb') as file:
                 pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def __get_hashes(self, window, digit_type):
+    @staticmethod
+    def __get_hashes(window, digit_type):
         if digit_type == 'level_select':
             parser = MenuParser(window)
             labels = ['3-3', '3-2', '2-3', '2-2', '3-4', '3-1',
@@ -328,6 +329,7 @@ class ImageData(Generator):
                 labels = list(range(remaining, -1, -1))
 
                 hashes = []
+                mistakes_hash = None
                 for cell in parser.parse_cells(screenshot, Cell.ORANGE):
                     mistakes_hash, remaining_hash = parser.parse_counters(screenshot, training=True)
 
@@ -337,6 +339,7 @@ class ImageData(Generator):
                     remaining -= 1
                     screenshot = window.screenshot()
 
+                assert mistakes_hash is not None
                 hashes.append(mistakes_hash)
 
             elif digit_type == 'black':
@@ -351,6 +354,9 @@ class ImageData(Generator):
             elif digit_type == 'blue_special':
                 hashes = parser.parse_cells(screenshot, Cell.BLUE, training=True)
                 labels = ['{5}', '-2-', '5', '4', '2', '4', '5', '{4}', '{2}', '5', '3', '10', '10']
+
+            else:
+                raise RuntimeError('invalid digit type')
 
         else:
             if digit_type == 'column_normal':
@@ -399,8 +405,8 @@ class ImageData(Generator):
 
 
 if __name__ == '__main__':
-    level_generator = LearningData()
-    level_generator.make_dataset()
+    generator = LearningData()
+    generator.make_dataset()
 
     # Do not change the ordering.
     # image_generator = ImageData()
