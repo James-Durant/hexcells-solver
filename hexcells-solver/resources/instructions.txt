@@ -1,11 +1,26 @@
-1. Close any currently running Hexcells windows.
-2. Download dnSpy assembly editor (https://github.com/dnSpy/dnSpy) - dnSpy-net.win64.zip
-3. Extract the zip file and execute dySpy.exe
-4. Go to File -> Open and select C:\Program Files (x86)\Steam\steamapps\common\Hexcells Infinite\Hexcells Infinite_Data\Managed\Assembly-CSharp.dll
-5. On the left-hand panel, expand the "Assembly-CSharp" dropdown, then expand "Assembly-CSharp.dll", then expand "{}".
-6. Expand "HexBehaviour" and click on "DestroyClick()".
-7. You should now be able to see some code. Right-click on the code and select "Edit Method (C#)...". A new window should appear.
-8. Deletes line 13 and 18 ("ParticleSystem particleSystem = UnityEngine.Object.Instantiate<ParticleSystem>(this.blockDestroy, base.transform.position, this.blockDestroy.transform.rotation);" and "UnityEngine.Object.Destroy(particleSystem.gameObject, 3f);")
-9. Click the "Compile" button in the bottom right-hand corner of the window containing the code.
-10. Go to File -> Save Module. A new window will appear and should should click the "OK" button.
-11. You can now close the dnSpy editor and run Hexcells.
+1. Download the dnSpy assembly editor (https://github.com/dnSpy/dnSpy).
+2. Extract the zip file (dnSpy-net.win64.zip) and execute "dySpy.exe".
+3. Close any Hexcells windows currently running.
+4. In the dnSpy window, go to "File -> Open" and select "C:\Program Files (x86)\Steam\steamapps\common\Hexcells Infinite\Hexcells Infinite_Data\Managed\Assembly-CSharp.dll"
+5. On the left-hand panel, expand the "Assembly-CSharp" dropdown, then expand "Assembly-CSharp.dll", and finally expand "{}".
+6. On the left-hand panel, right click on "OldLevelGenerator" and select "Edit Class (C#)...".
+
+7. In the "SpawnAHex()" method, delete "if (num < this.chanceOfBlackHex)" from line 33.
+
+8. In the "GenerateLevel()" method, delete line 173 ("this.marvinHexcellsSolver.AddDiagonalColumnNumbers();").
+
+9. In the "SetRandomVariables()" method:
+	(i) Replace lines 90-101 with "this.heightLimiter = 12;",
+	(ii) replace line 89 with "this.numberOfTilesToSpawn = 15;"
+	(iii) Replace line 85 with "this.chanceOfFlowerHex = 0f;"
+
+10. In the "Start()" method:
+	(i) Replace line 52 with "this.SetupLevelNoTagging;"
+ 	(ii) replace lines 39-51 with "this.GenerateLevel();"
+
+11. Click the "Compile" button in the bottom right-hand corner of the window containing the code.
+12. On the left-hand panel, expand "HexBehaviour", right click on "DestroyClick()", and select "Edit Method (C#)...".
+13. Deletes line 18 and 13.
+14. Click the "Compile" button in the bottom right-hand corner of the window containing the code.
+15. In the dnSpy window, go to "File -> Save Module". A new window will appear and should click the "OK" button.
+16. You can now close the dnSpy editor and run Hexcells.
