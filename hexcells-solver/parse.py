@@ -105,14 +105,17 @@ class MenuParser(Parser):
 
     def wait_until_loaded(self):
         time.sleep(0.5)
-        while True:
+        for _ in range(100):
             image = self.__window.screenshot()
             mask = cv2.inRange(image, Cell.ORANGE, Cell.ORANGE) + cv2.inRange(image, Cell.BLUE, Cell.BLUE)
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             if contours:
                 time.sleep(0.5)
-                break
+                return
+
             time.sleep(0.1)
+
+        raise RuntimeError('wait until loaded failed')
 
     def parse_main_menu(self):
         image = self.__window.screenshot()
@@ -444,7 +447,7 @@ class GameParser(Parser):
         # diff =  grid[1][1].image_coords[0] - grid[0][0].image_coords[0]
         # for col in range(cols):
         #    x = int(round(self.__x_min+col*diff))
-        #    cv2.line(temp, (x, 0), (x, img_height), (0,255,0), 2) 
+        #    cv2.line(temp, (x, 0), (x, img_height), (0,255,0), 2)
 
         # for cell in cells:
         #    x, y = cell.image_coords
@@ -592,7 +595,7 @@ class GameParser(Parser):
                     parsed.append(match)
 
         if len(parsed) != 2:
-            raise RuntimeError('counters parsed incorrectly')
+            raise RuntimeError('counters parsed incorrectly: {}/2'.format(len(parsed)))
 
         # cv2.imwrite(IMAGE_PATH+'\Counters\implementation_parsing_counters_filtered.png', temp)
 

@@ -17,9 +17,6 @@ class GUI:
         self.__root = tk.Tk()
         self.__root.title('HexSolver')
         self.__root.resizable(width=False, height=False)
-        # self.__window_width = 300
-        # self.__window_height = 600
-        # self.__root.geometry('{0}x{1}+0+0'.format(self.__window_width, self.__window_height))
 
         self.__create_info_frame()
         self.__create_solver_frame()
@@ -37,7 +34,7 @@ class GUI:
         except RuntimeError:  # Make custom error
             self.__update_status(False)
             self.__menu = None
-            self.__game_var.set('')
+            self.__game_var.set('None')
 
     def __update_status(self, status):
         self.__game_running = status
@@ -87,7 +84,7 @@ class GUI:
                                      text='-' * 70 + '\n' + 'Game Options\n' + '-' * 70)
 
         self.__game_var = tk.StringVar(self.__root)
-        self.__game_var.set('')
+        self.__game_var.set('None')
         self.__game_var.trace('w', self.__on_game_var_update)
 
         self.__game_1_radiobutton = tk.Radiobutton(self.__info_frame,
@@ -255,7 +252,7 @@ class GUI:
         self.__level_var.set('-')
         self.__check_ready_to_solve()
 
-    def __check_ready_to_solve(self):
+    def __check_ready_to_solve(self, *args):
         if ((not self.__game_running) or
                 (self.__solve_var.get() == 0 and (self.__set_var.get() == '-' or self.__level_var.get() == '-')) or
                 (self.__solve_var.get() == 1 and self.__set_var.get() == '-')):
@@ -435,7 +432,7 @@ class GUI:
             exploration_rate = float(self.__exploration_rate_var.get())
             model_path = self.__model_path_var.get()
             model_path = None if model_path == '' else model_path
-            
+
             assert epochs > 0
             assert batch_size > 0
             assert learning_rate > 0

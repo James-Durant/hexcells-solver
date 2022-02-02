@@ -55,7 +55,7 @@ class LearningData(Generator):
         super().__init__(steam_path, save_path)
 
     def make_dataset(self, num_levels=2000):
-        file_path = os.path.join(self._save_path, 'levels.pickle')
+        file_path = os.path.join(self._save_path, 'levels_small.pickle')
 
         menu = self._load_game('Hexcells Infinite', (1920, 1080))
 
@@ -66,9 +66,9 @@ class LearningData(Generator):
         menu.window.move_mouse()
         time.sleep(2)
 
-        seeds = ['0' * (8 - len(str(i))) + str(i) for i in range(num_levels)]
+        seeds = ['0' * (8 - len(str(i))) + str(i) for i in range(1, num_levels+1)]
 
-        i = 0
+        i = 623
         while i < num_levels:
             pyperclip.copy(seeds[i])
 
@@ -80,6 +80,9 @@ class LearningData(Generator):
             menu.window.paste()
             time.sleep(0.2)
 
+            menu.window.click(play_button)
+            time.sleep(0.1)
+            menu.window.click(play_button)
             menu.window.click(play_button)
             menu.window.move_mouse()
             menu_parser.wait_until_loaded()
@@ -111,7 +114,7 @@ class LearningData(Generator):
 
                     menu.window.click(menu_button)
                     menu.window.move_mouse()
-                    time.sleep(2)
+                    time.sleep(3)
 
                     if skip:
                         print('>>> Skipping {0}/{1}'.format(i + 1, num_levels))
@@ -119,6 +122,9 @@ class LearningData(Generator):
 
                     buttons = menu_parser.parse_generator()
                     play_button = buttons['play']
+                    menu.window.click(play_button)
+                    time.sleep(0.1)
+                    menu.window.click(play_button)
                     menu.window.click(play_button)
                     menu.window.move_mouse()
                     menu_parser.wait_until_loaded()

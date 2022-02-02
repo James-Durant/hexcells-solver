@@ -214,7 +214,8 @@ class Agent:
 
         self.__replay_memory.append(transition)
 
-        batch = random.sample(self.__replay_memory, min(self.__batch_size, len(self.__replay_memory)))
+        #batch = random.sample(self.__replay_memory, min(self.__batch_size, len(self.__replay_memory)))
+        batch = self.__replay_memory
 
         current_states = np.array([np.expand_dims(s, -1) for s, _, _, _, _ in batch])
         rewards = np.array([r for _, _, r, _, _ in batch])
@@ -286,7 +287,7 @@ class Trainer:
 
     @staticmethod
     def train_offline(test_only=False, epochs=50, batch_size=64, learning_rate=0.01, discount_rate=0.05,
-                      exploration_rate=0.95, max_replay_memory=10000, model_path=None):
+                      exploration_rate=0, max_replay_memory=10000, model_path=None):
         num_train = 100
         num_test = 20
 
