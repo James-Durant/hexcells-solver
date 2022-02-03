@@ -55,7 +55,7 @@ class LearningData(Generator):
         super().__init__(steam_path, save_path)
 
     def make_dataset(self, num_levels=2000):
-        file_path = os.path.join(self._save_path, 'levels_small.pickle')
+        file_path = os.path.join(self._save_path, 'levels_large.pickle')
 
         menu = self._load_game('Hexcells Infinite', (1920, 1080))
 
@@ -68,7 +68,7 @@ class LearningData(Generator):
 
         seeds = ['0' * (8 - len(str(i))) + str(i) for i in range(1, num_levels+1)]
 
-        i = 623
+        i = 0
         while i < num_levels:
             pyperclip.copy(seeds[i])
 
