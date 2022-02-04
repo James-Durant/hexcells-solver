@@ -408,6 +408,7 @@ class GUI:
         self.__train_button = tk.Button(self.__learning_frame,
                                         text='Run',
                                         font=('Arial', 10),
+                                        state='disabled',
                                         command=self.__train)
 
         self.__train_button.grid(sticky='nesw', row=10, column=0, columnspan=2, pady=(10, 0))

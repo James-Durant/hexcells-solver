@@ -10,6 +10,7 @@ class Solver:
 
     def solve(self, level=None, game=None):
         grid = self.__parser.parse_grid()
+        print(grid)
 
         while True:
             left_click_cells, right_click_cells = self.solve_single_step(grid, game, level)

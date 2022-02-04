@@ -166,8 +166,8 @@ class ImageData(Generator):
         super().__init__(steam_path, save_path)
 
     def make_dataset(self, digit_type):
-        if digit_type == 'screens':
-            self.__make_dataset_screens()
+        if digit_type == 'screen':
+            return self.__make_dataset_screen()
         
         hash_path = os.path.join(self._save_path, digit_type, 'hashes.pickle')
         game = 'Hexcells Infinite'
@@ -334,7 +334,7 @@ class ImageData(Generator):
         assert len(hashes) == len(labels)
         return hashes, labels
 
-    def __make_dataset_screens(self):
+    def __make_dataset_screen(self):
         images, labels = [], []
         #for resolution in RESOLUTIONS:
         for resolution in [(1920, 1080)]:
@@ -424,7 +424,7 @@ class ImageData(Generator):
             hashes = [average_hash(cv2.resize(image, (480, 270), interpolation=cv2.INTER_AREA))
                       for image in images]
 
-            hash_dir = os.path.join(self._save_path, 'screens', '{0}x{1}'.format(*resolution))
+            hash_dir = os.path.join(self._save_path, 'screen', '{0}x{1}'.format(*resolution))
             if not os.path.exists(hash_dir):
                 os.makedirs(hash_dir)
 
@@ -435,16 +435,16 @@ class ImageData(Generator):
             menu.close_game()
 
 if __name__ == '__main__':
-    generator = LearningData()
-    generator.make_dataset()
+    #generator = LearningData()
+    #generator.make_dataset()
 
     # Do not change the ordering.
     image_generator = ImageData()
-    image_generator.make_dataset('level_select')
-    # image_generator.make_dataset('screen')
-    # image_generator.make_dataset('black')
-    # image_generator.make_dataset('blue')
-    # image_generator.make_dataset('blue_special')
-    # image_generator.make_dataset('counter')
-    # image_generator.make_dataset('column')
-    # image_generator.make_dataset('diagonal')
+    #image_generator.make_dataset('level_select')
+    image_generator.make_dataset('screen')
+    #image_generator.make_dataset('black')
+    #image_generator.make_dataset('blue')
+    #image_generator.make_dataset('blue_special')
+    #image_generator.make_dataset('counter')
+    #image_generator.make_dataset('column')
+    #image_generator.make_dataset('diagonal')

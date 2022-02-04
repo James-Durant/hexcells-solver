@@ -63,7 +63,7 @@ class Parser:
         return merged
 
     @staticmethod
-    def __find_match(hashes, labels, hashed):
+    def _find_match(hashes, labels, hashed):
         similarities = [np.sum(hashed != h) for h in hashes]
         return labels[np.argmin(similarities)]
 
@@ -96,11 +96,14 @@ class MenuParser(Parser):
         
         for label, sim in zip(labels, similarities):
             print(label, sim)
-        print(labels[np.argmin(similarities)])
         
-        if min(similarities) > 0.1:
+        if min(similarities) > 25000:
+            print('in_level')
+            print()
             return 'in_level'
-
+        
+        print(labels[np.argmin(similarities)])
+        print()
         return labels[np.argmin(similarities)]
 
     def wait_until_loaded(self):
@@ -230,7 +233,7 @@ class MenuParser(Parser):
     def parse_levels(self, training=False):
         image = self.__window.screenshot()
 
-        mask = cv2.inRange(image, (245, 245, 245), (255, 255, 255))
+        mask = cv2.inRange(image, (244, 244, 244), (255, 255, 255))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
         # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_selection_mask.png', mask)
@@ -248,7 +251,9 @@ class MenuParser(Parser):
         boxes.sort(key=lambda box: box[:2], reverse=True)
 
         # for x, y, w, h in boxes:
-        #    cv2.rectangle(temp, (x,y), (x+w,y+h), (0,0,255), 2)
+        #   cv2.rectangle(temp, (x,y), (x+w,y+h), (0,0,255), 2)
+        # cv2.imshow('test', temp)
+        # cv2.waitKey(0)
         # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_selection_boxes.png', temp)
         # temp = image.copy()
 
@@ -408,18 +413,22 @@ class GameParser(Parser):
         self.__y_min, self.__y_max = np.min(ys), np.max(ys)
         self.__hex_width = int(np.median(widths))
         self.__hex_height = int(np.median(heights))
-
+        
+        
         if self.__hex_width > 70:
             x_spacing = self.__hex_width * 1.085
         elif 54 <= self.__hex_width <= 70:
             x_spacing = self.__hex_width * 1.098
         else:
             x_spacing = self.__hex_width * 1.105
-
-        if self.__hex_height > 70:
-            y_spacing = self.__hex_height * 0.70
-        else:
+        
+        print(self.__hex_height)
+        # 67 - 0.69
+        # 43 - 0.72
+        if self.__hex_height < 65:
             y_spacing = self.__hex_height * 0.72
+        else:
+            y_spacing = self.__hex_height * 0.69
 
         cols = int(round((self.__x_max - self.__x_min) / x_spacing) + 1)
         rows = int(round((self.__y_max - self.__y_min) / y_spacing) + 1)
@@ -526,9 +535,9 @@ class GameParser(Parser):
         else:
             raise RuntimeError('invalid cell colour')
 
-        match = Parser.__find_match(hashes, labels, hashed)
+        match = Parser._find_match(hashes, labels, hashed)
 
-        if match[0] == '{' and match[-1] == '}':
+        if cell_colour == Cell.BLACK and match[0] == '{' and match[-1] == '}':
             temp = thresh.copy()
             temp[:, :15] = 255
             temp[:, -15:] = 255
@@ -538,7 +547,7 @@ class GameParser(Parser):
             # cv2.imshow('test', temp)
             # cv2.waitKey(0)
 
-            digit = Parser.__find_match(hashes, labels, average_hash(temp))
+            digit = Parser._find_match(hashes, labels, average_hash(temp))
             match = '{' + digit + '}'
 
         # print(match)
@@ -615,7 +624,7 @@ class GameParser(Parser):
                 coords = np.asarray([x + w // 2, y + h // 2])
                 if (self.__x_min - 2 * self.__hex_width < x < self.__x_max + 2 * self.__hex_width and
                         self.__y_min - 2 * self.__hex_height < y < self.__y_max + self.__hex_height and
-                        np.linalg.norm(coords - grid.nearest_cell(coords).image_coords) < 140):
+                        np.linalg.norm(coords - grid.nearest_cell(coords).image_coords) < 130):
                     rects.append((x, y, w, h))
                     # cv2.drawContours(temp1, [contour], -1, (0,255,0), 1)
                     # cv2.rectangle(temp1, (x-1, y-1), (x+w, y+h), (0,0,255), 1)
@@ -680,7 +689,7 @@ class GameParser(Parser):
         else:
             hashes, labels = self.__diagonal_data
 
-        match = Parser.__find_match(hashes, labels, hashed)
+        match = Parser._find_match(hashes, labels, hashed)
 
         if match[0] == '{' and match[-1] == '}' and match[1] in ['3', '5', '8']:
             temp = thresh.copy()
@@ -697,7 +706,7 @@ class GameParser(Parser):
             temp = GameParser.__process_image(temp)
 
             hashes, labels = self.__column_data
-            match = Parser.__find_match(hashes, labels, average_hash(temp))
+            match = Parser._find_match(hashes, labels, average_hash(temp))
 
             if angle in [0, 360]:
                 match = '{' + match + '}'
