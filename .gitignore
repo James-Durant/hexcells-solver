@@ -1,4 +1,5 @@
 /hexcells-solver/__pycache__
 /venv
+/.spyproject
 /.idea
 /resources/glpk-4.65

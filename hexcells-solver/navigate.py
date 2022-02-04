@@ -30,8 +30,7 @@ class Navigator:
         if slot in [1, 2, 3]:
             self.__window.click(save_slot_buttons[slot - 1])
             self.__window.move_mouse()
-            self.__menu_parser.wait_until_loaded()
-            time.sleep(0.25)
+            self.wait_until_loaded()
         else:
             raise RuntimeError('invalid save given')
 
@@ -67,10 +66,12 @@ class Navigator:
 
         self.__window.click(exit_button)
         self.__window.move_mouse()
-        self.__menu_parser.wait_until_loaded()
+        self.__menu_parser()
 
     def __transition_to_level_select(self, save):
+        print('test1')
         screen = self.__menu_parser.get_screen()
+        print(screen)
 
         if screen == 'level_select':
             pass
@@ -84,7 +85,7 @@ class Navigator:
             _, menu_button = self.__menu_parser.parse_level_end()
             self.__window.click(menu_button)
             self.__window.move_mouse()
-            self.__menu_parser.wait_until_loaded()
+            self.__menu_parser()
 
         elif screen == 'level_exit':
             self.exit_level()
@@ -92,7 +93,7 @@ class Navigator:
         else:
             if screen != 'main_menu':
                 self.back()
-
+            
             self.load_save(int(save) if save != '-' else 1)
 
     def solve(self, continuous, level=None):
@@ -127,7 +128,7 @@ class Navigator:
 
         self.__window.click(coords)
         self.__window.move_mouse()
-        self.__menu_parser.wait_until_loaded()
+        self.wait_until_loaded()
 
         self.solve(False, level_str)
 
@@ -141,7 +142,7 @@ class Navigator:
         level = set_str + '-1'
         self.__window.click(levels[level])
         self.__window.move_mouse()
-        self.__menu_parser.wait_until_loaded()
+        self.wait_until_loaded()
         self.solve(True, level)
 
     def solve_game(self, save):
@@ -149,7 +150,7 @@ class Navigator:
 
         for set_str in ['1', '2', '3', '4', '5', '6']:
             self.solve_set(save, set_str)
-            self.__menu_parser.wait_until_loaded()
+            self.wait_until_loaded()
 
     def level_generator(self, func=None):
         if self.__window.title != 'Hexcells Infinite':
@@ -162,7 +163,7 @@ class Navigator:
             buttons = self.__menu_parser.parse_main_menu()
             generator_button = buttons['level_generator']
             self.__window.click(generator_button)
-            self.__menu_parser.wait_until_loaded()
+            self.wait_until_loaded()
 
         while True:
             buttons = self.__menu_parser.parse_generator()
@@ -171,7 +172,7 @@ class Navigator:
             self.__window.click(play_button)
 
             self.__window.move_mouse()
-            self.__menu_parser.wait_until_loaded()
+            self.wait_until_loaded()
             if func:
                 func()
                 # make this code better

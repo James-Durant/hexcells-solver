@@ -24,7 +24,6 @@ class Solver:
 
     def solve_single_step(self, grid, game=None, level=None):
         self.__setup_problem(grid, game, level)
-
         left_click_cells, right_click_cells = [], []
         true_class, false_class = self.__get_true_false_classes()
         while true_class or false_class:

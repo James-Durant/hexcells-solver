@@ -101,7 +101,7 @@ class OfflineEnvironment(Environment):
                     ((row - self._row_offset, col) in right_click_coords and button == 1)):
                 rewards.append(1)
             else:
-                rewards.append(-0.5)
+                rewards.append(-1)
 
             if action == agent_action:
                 cell_curr = self._grid[row - self._row_offset, col]
@@ -144,9 +144,9 @@ class OnlineEnvironment(Environment):
                 left_click_cells = [cell] if button == 0 else []
                 right_click_cells = [cell] if button == 1 else []
                 mistakes_new, remaining = self.__parser.parse_clicked(self._grid, left_click_cells, right_click_cells)
-                
+
                 self._grid.remaining = remaining
-                
+
                 if mistakes_old == mistakes_new:
                     reward = 1
                     if len(self._grid.unknown_cells()) == 0:
@@ -230,6 +230,8 @@ class Agent:
         #        current_state_rewards[i][action] += self.__discount*np.max(new_state_rewards[i])
 
         #    y.append(current_state_rewards[i])
+
+        # Decrease epsilion
 
         self.__model.fit(current_states, np.array(rewards), batch_size=self.__batch_size, shuffle=False, verbose=False)
 

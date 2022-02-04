@@ -62,6 +62,11 @@ class Parser:
 
         return merged
 
+    @staticmethod
+    def __find_match(hashes, labels, hashed):
+        similarities = [np.sum(hashed != h) for h in hashes]
+        return labels[np.argmin(similarities)]
+
 
 class MenuParser(Parser):
     def __init__(self, window, steam_path=r'C:\Program Files (x86)\Steam'):
@@ -72,8 +77,7 @@ class MenuParser(Parser):
         self.__level_data = Parser._load_hashes('level_select')
 
     def __load_data(self):
-        options_path = os.path.join(self.__steam_path,
-                                    r'steamapps\common\{}\saves\options.txt'.format(self.__window.title))
+        options_path = os.path.join(self.__steam_path, r'steamapps\common\{}\saves\options.txt'.format(self.__window.title))
         with open(options_path, 'r') as file:
             data = json.load(file)
 
@@ -84,20 +88,16 @@ class MenuParser(Parser):
         self.__screen_data = Parser._load_hashes('screen', self.__resolution)
 
     def get_screen(self):
-        image = cv2.inRange(self.__window.screenshot(), (230, 230, 230), (255, 255, 255))
-        if image.shape[0] != self.__resolution[1] or image.shape[1] != self.__resolution[0]:
-            self.__load_data()
-            if image.shape[0] != self.__resolution[1] or image.shape[1] != self.__resolution[0]:
-                image = cv2.resize(image, tuple(reversed(self.__resolution)), interpolation=cv2.INTER_AREA)
-
-        # Using image hashing I think
-        images, labels = self.__screen_data
-        similarities = [np.square(image - cv2.inRange(x, (230, 230, 230), (255, 255, 255))).mean() for x in images]
-
-        # for label, sim in zip(labels, similarities):
-        #    print(label, sim)
-        # print(labels[np.argmin(similarities)])
-
+        image = cv2.resize(self.__window.screenshot(), (480, 270), interpolation=cv2.INTER_AREA)
+        hashed = average_hash(image)
+        
+        hashes, labels = self.__screen_data
+        similarities = [np.sum(hashed != h) for h in hashes]
+        
+        for label, sim in zip(labels, similarities):
+            print(label, sim)
+        print(labels[np.argmin(similarities)])
+        
         if min(similarities) > 0.1:
             return 'in_level'
 
@@ -526,7 +526,7 @@ class GameParser(Parser):
         else:
             raise RuntimeError('invalid cell colour')
 
-        match = GameParser.__find_match(hashes, labels, hashed)
+        match = Parser.__find_match(hashes, labels, hashed)
 
         if match[0] == '{' and match[-1] == '}':
             temp = thresh.copy()
@@ -538,7 +538,7 @@ class GameParser(Parser):
             # cv2.imshow('test', temp)
             # cv2.waitKey(0)
 
-            digit = GameParser.__find_match(hashes, labels, average_hash(temp))
+            digit = Parser.__find_match(hashes, labels, average_hash(temp))
             match = '{' + digit + '}'
 
         # print(match)
@@ -615,7 +615,7 @@ class GameParser(Parser):
                 coords = np.asarray([x + w // 2, y + h // 2])
                 if (self.__x_min - 2 * self.__hex_width < x < self.__x_max + 2 * self.__hex_width and
                         self.__y_min - 2 * self.__hex_height < y < self.__y_max + self.__hex_height and
-                        np.linalg.norm(coords - grid.nearest_cell(coords).image_coords) < 144):
+                        np.linalg.norm(coords - grid.nearest_cell(coords).image_coords) < 140):
                     rects.append((x, y, w, h))
                     # cv2.drawContours(temp1, [contour], -1, (0,255,0), 1)
                     # cv2.rectangle(temp1, (x-1, y-1), (x+w, y+h), (0,0,255), 1)
@@ -680,7 +680,7 @@ class GameParser(Parser):
         else:
             hashes, labels = self.__diagonal_data
 
-        match = GameParser.__find_match(hashes, labels, hashed)
+        match = Parser.__find_match(hashes, labels, hashed)
 
         if match[0] == '{' and match[-1] == '}' and match[1] in ['3', '5', '8']:
             temp = thresh.copy()
@@ -697,7 +697,7 @@ class GameParser(Parser):
             temp = GameParser.__process_image(temp)
 
             hashes, labels = self.__column_data
-            match = GameParser.__find_match(hashes, labels, average_hash(temp))
+            match = Parser.__find_match(hashes, labels, average_hash(temp))
 
             if angle in [0, 360]:
                 match = '{' + match + '}'
@@ -767,8 +767,3 @@ class GameParser(Parser):
         image = cv2.medianBlur(image, 3)
 
         return image
-
-    @staticmethod
-    def __find_match(hashes, labels, hashed):
-        similarities = [np.sum(hashed != h) for h in hashes]
-        return labels[np.argmin(similarities)]

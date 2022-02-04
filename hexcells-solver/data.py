@@ -1,4 +1,5 @@
 import os
+import cv2
 import json
 import time
 import pickle
@@ -9,7 +10,7 @@ from subprocess import Popen
 from grid import Cell
 from main import GAMEIDS
 from navigate import Navigator
-from parse import GameParser, MenuParser, RESOLUTIONS
+from parse import average_hash, GameParser, MenuParser, RESOLUTIONS
 from solve import Solver
 
 
@@ -165,6 +166,9 @@ class ImageData(Generator):
         super().__init__(steam_path, save_path)
 
     def make_dataset(self, digit_type):
+        if digit_type == 'screens':
+            self.__make_dataset_screens()
+        
         hash_path = os.path.join(self._save_path, digit_type, 'hashes.pickle')
         game = 'Hexcells Infinite'
         if digit_type == 'blue_special':
@@ -203,81 +207,8 @@ class ImageData(Generator):
                         menu.exit_level()
 
             else:
-                level_path = os.path.join(self._save_path, digit_type, 'level.hexcells')
-
                 if digit_type == 'level_select':
                     menu.load_save(1)
-
-                elif digit_type == 'screen':
-                    main_screen = menu.window.screenshot()
-
-                    menu_parser = MenuParser(menu.window)
-                    buttons = menu_parser.parse_main_menu()
-                    save_slot_buttons = buttons['save_slots']
-                    menu.window.click(save_slot_buttons[0])
-                    menu.window.move_mouse()
-                    menu_parser.wait_until_loaded()
-                    level_select = menu.window.screenshot()
-
-                    levels = menu_parser.parse_levels()
-                    coords = levels['1-1']
-                    menu.window.click(coords)
-                    menu.window.move_mouse()
-                    time.sleep(2)
-                    menu.back()
-                    level_exit = menu.window.screenshot()
-
-                    menu.back()
-                    game_parser = GameParser(menu.window)
-                    solver = Solver(game_parser)
-                    solver.solve('1-1', menu.window.title)
-
-                    menu.window.move_mouse()
-                    time.sleep(1.2)
-                    level_end = menu.window.screenshot()
-                    _, menu_button = menu_parser.parse_level_end()
-                    menu.window.click(menu_button)
-                    menu.window.move_mouse()
-                    time.sleep(1)
-
-                    menu.back()
-                    buttons = menu_parser.parse_main_menu()
-                    generator_button = buttons['level_generator']
-                    menu.window.click(generator_button)
-                    menu.window.move_mouse()
-                    time.sleep(2)
-                    level_generator = menu.window.screenshot()
-
-                    menu.back()
-                    buttons = menu_parser.parse_main_menu()
-                    user_levels_button = buttons['user_levels']
-                    menu.window.click(user_levels_button)
-                    menu.window.move_mouse()
-                    time.sleep(2)
-                    user_levels = menu.window.screenshot()
-
-                    menu.back()
-                    buttons = menu_parser.parse_main_menu()
-                    options_button = buttons['options']
-                    menu.window.click(options_button)
-                    menu.window.move_mouse()
-                    time.sleep(2)
-                    options = menu.window.screenshot()
-
-                    hashes = [main_screen, level_select, level_exit, level_end, level_generator, user_levels, options]
-                    labels = ['main_menu', 'level_select', 'level_exit', 'level_end', 'level_generator', 'user_levels',
-                              'options']
-
-                    hash_path = os.path.join(self._save_path, digit_type, '{0}x{1}'.format(*resolution))
-                    if not os.path.exists(hash_path):
-                        os.makedirs(hash_path)
-
-                    hash_path = os.path.join(hash_path, 'hashes.pickle')
-                    with open(hash_path, 'wb') as file:
-                        pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
-
-                    menu.close_game()
-                    continue
 
                 elif digit_type == 'blue_special':
                     menu.load_save(1)
@@ -290,6 +221,7 @@ class ImageData(Generator):
                     menu.wait_until_loaded()
 
                 else:
+                    level_path = os.path.join(self._save_path, digit_type, 'level.hexcells')
                     menu.load_custom_level(level_path)
 
                 hashes_res, labels_res = self.__get_hashes(menu.window, digit_type)
@@ -303,15 +235,8 @@ class ImageData(Generator):
             if digit_type == 'counter':
                 break
 
-        if digit_type != 'screen':
-            # if not delete_existing:
-            #    with open(hash_path, 'rb') as file:
-            #        existing_hashes, existing_labels = pickle.load(file)
-            #        hashes += existing_hashes
-            #        labels += existing_labels
-
-            with open(hash_path, 'wb') as file:
-                pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(hash_path, 'wb') as file:
+            pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
     def __get_hashes(window, digit_type):
@@ -409,14 +334,113 @@ class ImageData(Generator):
         assert len(hashes) == len(labels)
         return hashes, labels
 
+    def __make_dataset_screens(self):
+        images, labels = [], []
+        #for resolution in RESOLUTIONS:
+        for resolution in [(1920, 1080)]:
+            menu = self._load_game('Hexcells', resolution)
+            main_menu = menu.window.screenshot()
+            images.append(main_menu)
+            labels.append('main_menu')
+            menu.close_game()
+            
+            menu = self._load_game('Hexcells Plus', resolution)
+            main_menu = menu.window.screenshot()
+            images.append(main_menu)
+            labels.append('main_menu')
+            menu.close_game()
+            
+            menu = self._load_game('Hexcells Infinite', resolution)
+            main_menu = menu.window.screenshot()
+            images.append(main_menu)
+            labels.append('main_menu')
+        
+            menu_parser = MenuParser(menu.window)
+            buttons = menu_parser.parse_main_menu()
+            save_slot_buttons = buttons['save_slots']
+            menu.window.click(save_slot_buttons[0])
+            menu.window.move_mouse()
+            menu_parser.wait_until_loaded()
+            level_select = menu.window.screenshot()
+            images.append(level_select)
+            labels.append('level_select')
+
+            levels = menu_parser.parse_levels()
+            coords = levels['1-1']
+            menu.window.click(coords)
+            menu.window.move_mouse()
+            time.sleep(2)
+            menu.back()
+            level_exit = menu.window.screenshot()
+            images.append(level_exit)
+            labels.append('level_exit')
+
+            menu.back()
+            game_parser = GameParser(menu.window)
+            solver = Solver(game_parser)
+            solver.solve('1-1', menu.window.title)
+
+            menu.window.move_mouse()
+            time.sleep(1.2)
+            level_completion = menu.window.screenshot()
+            images.append(level_completion)
+            labels.append('level_completion')
+            
+            _, menu_button = menu_parser.parse_level_end()
+            menu.window.click(menu_button)
+            menu.window.move_mouse()
+            time.sleep(1)
+
+            menu.back()
+            buttons = menu_parser.parse_main_menu()
+            generator_button = buttons['level_generator']
+            menu.window.click(generator_button)
+            menu.window.move_mouse()
+            time.sleep(2)
+            level_generator = menu.window.screenshot()
+            images.append(level_generator)
+            labels.append('level_generator')
+            
+            menu.back()
+            buttons = menu_parser.parse_main_menu()
+            user_levels_button = buttons['user_levels']
+            menu.window.click(user_levels_button)
+            menu.window.move_mouse()
+            time.sleep(2)
+            user_levels = menu.window.screenshot()
+            images.append(user_levels)
+            labels.append('user_levels')
+
+            menu.back()
+            buttons = menu_parser.parse_main_menu()
+            options_button = buttons['options']
+            menu.window.click(options_button)
+            menu.window.move_mouse()
+            time.sleep(2)
+            options = menu.window.screenshot()
+            images.append(options)
+            labels.append('options')
+            
+            hashes = [average_hash(cv2.resize(image, (480, 270), interpolation=cv2.INTER_AREA))
+                      for image in images]
+
+            hash_dir = os.path.join(self._save_path, 'screens', '{0}x{1}'.format(*resolution))
+            if not os.path.exists(hash_dir):
+                os.makedirs(hash_dir)
+
+            hash_path = os.path.join(hash_dir, 'hashes.pickle')
+            with open(hash_path, 'wb') as file:
+                pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
+
+            menu.close_game()
 
 if __name__ == '__main__':
     generator = LearningData()
     generator.make_dataset()
 
     # Do not change the ordering.
-    # image_generator = ImageData()
-    # image_generator.make_dataset('level_select')
+    image_generator = ImageData()
+    image_generator.make_dataset('level_select')
     # image_generator.make_dataset('screen')
     # image_generator.make_dataset('black')
     # image_generator.make_dataset('blue')
