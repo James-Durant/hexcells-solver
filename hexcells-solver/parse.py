@@ -94,16 +94,16 @@ class MenuParser(Parser):
         hashes, labels = self.__screen_data
         similarities = [np.sum(hashed != h) for h in hashes]
         
-        for label, sim in zip(labels, similarities):
-            print(label, sim)
+        #for label, sim in zip(labels, similarities):
+        #    print(label, sim)
         
         if min(similarities) > 25000:
-            print('in_level')
-            print()
+            #print('in_level')
+            #print()
             return 'in_level'
         
-        print(labels[np.argmin(similarities)])
-        print()
+        #print(labels[np.argmin(similarities)])
+        #print()
         return labels[np.argmin(similarities)]
 
     def wait_until_loaded(self):
@@ -237,10 +237,12 @@ class MenuParser(Parser):
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
         # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_selection_mask.png', mask)
-        # temp = image.copy()
-        # cv2.drawContours(temp, contours, -1, (0,255,0), 2)
+        #temp = image.copy()
+        #cv2.drawContours(temp, contours, -1, (0,255,0), 2)
+        #cv2.imshow('test', temp)
+        #cv2.waitKey(0)
         # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_selection_contours.png', temp)
-        # temp = image.copy()
+        #temp = image.copy()
 
         areas = [cv2.contourArea(contour) for contour in contours]
         median_area = np.median(areas)
@@ -250,10 +252,10 @@ class MenuParser(Parser):
 
         boxes.sort(key=lambda box: box[:2], reverse=True)
 
-        # for x, y, w, h in boxes:
-        #   cv2.rectangle(temp, (x,y), (x+w,y+h), (0,0,255), 2)
-        # cv2.imshow('test', temp)
-        # cv2.waitKey(0)
+        #for x, y, w, h in boxes:
+        #    cv2.rectangle(temp, (x,y), (x+w,y+h), (0,0,255), 2)
+        #cv2.imshow('test', temp)
+        #cv2.waitKey(0)
         # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_selection_boxes.png', temp)
         # temp = image.copy()
 
@@ -283,16 +285,13 @@ class MenuParser(Parser):
 
             else:
                 hashes, labels = self.__level_data
-
-                similarities = [np.sum(hashed != h) for h in hashes]
-                best_matches = np.array(labels)[np.argsort(similarities)[:3]].tolist()
-                match = max(set(best_matches), key=best_matches.count)
-
+                match = Parser._find_match(hashes, labels, hashed)
+                    
                 levels[match] = (x + w // 2, y + h // 2)
 
-                # print(match, best_matches)
-                # cv2.imshow('test', thresh)
-                # cv2.waitKey(0)
+                #print(match)
+                #cv2.imshow('test', thresh)
+                #cv2.waitKey(0)
 
         # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_selection_parsed.png', temp)
 
@@ -422,7 +421,7 @@ class GameParser(Parser):
         else:
             x_spacing = self.__hex_width * 1.105
         
-        print(self.__hex_height)
+        #print(self.__hex_height)
         # 67 - 0.69
         # 43 - 0.72
         if self.__hex_height < 65:
@@ -668,6 +667,8 @@ class GameParser(Parser):
     def __parse_grid_digit(self, thresh, angle, training=False):
         if np.count_nonzero(thresh == 0) < 20:
             return None
+        
+        thresh = GameParser.__process_image(thresh)
 
         if angle in [120, 240]:
             thresh = cv2.flip(cv2.flip(thresh, 1), 0)
@@ -677,8 +678,7 @@ class GameParser(Parser):
             rotation_matrix = cv2.getRotationMatrix2D(centre, angle, 1.0)
             thresh = cv2.warpAffine(thresh, rotation_matrix, thresh.shape[1::-1],
                                     flags=cv2.INTER_LINEAR, borderValue=(255, 255, 255))
-
-        thresh = GameParser.__process_image(thresh)
+       
         hashed = average_hash(thresh)
 
         if training:
@@ -710,14 +710,14 @@ class GameParser(Parser):
 
             if angle in [0, 360]:
                 match = '{' + match + '}'
-
-        # print(match)
-        # cv2.imshow('test', thresh)
-        # cv2.waitKey(0)
+                
+        #print(match, angle)
+        #cv2.imshow('test2', thresh)
+        #cv2.waitKey(0)
 
         return match
 
-    def parse_clicked(self, left_click_cells, right_click_cells):
+    def parse_clicked(self, grid, left_click_cells, right_click_cells, delay=False):
         image = None
         if left_click_cells:
             self.click_cells(left_click_cells, 'left')
@@ -728,10 +728,13 @@ class GameParser(Parser):
 
         if right_click_cells:
             self.click_cells(right_click_cells, 'right')
+            
+            if delay:
+                min_row = min(right_click_cells, key=lambda cell: cell.grid_coords[0]).grid_coords[0]
+                time.sleep(max(1.5, 0.12*(grid.rows-min_row)))
+            else:
+                time.sleep(0.1)
 
-            # min_row = min(right_click_cells, key=lambda cell: cell.grid_coords[0]).grid_coords[0]
-            time.sleep(0.1)
-            # time.sleep(max(1.5, 0.12*(grid.rows-min_row)))
             image = self.__window.screenshot()
             self.__parse_clicked_cells(image, right_click_cells)
 

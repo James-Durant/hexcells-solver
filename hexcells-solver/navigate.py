@@ -94,10 +94,10 @@ class Navigator:
             
             self.load_save(int(save) if save != '-' else 1)
 
-    def solve(self, continuous, level=None):
+    def solve(self, continuous, level=None, delay=False):
         game_parser = GameParser(self.__window)
         solver = Solver(game_parser)
-        solver.solve(level, self.__window.title)
+        solver.solve(level, self.__window.title, delay)
 
         self.__window.move_mouse()
         time.sleep(1.2)
@@ -110,44 +110,48 @@ class Navigator:
 
             if level is not None:
                 level = level[:-1] + str(int(level[-1]) + 1)
-            self.solve(continuous, level)
+            self.solve(continuous, level, delay)
         else:
             self.__window.click(menu_button)
             self.__window.move_mouse()
 
-    def solve_level(self, save, level_str):
+    def solve_level(self, save, level_str, delay=False):
         self.__transition_to_level_select(save)
 
         levels = self.__menu_parser.parse_levels()
         try:
             coords = levels[level_str]
         except KeyError:
-            raise RuntimeError('invalid level given')
+            raise RuntimeError('Selected level is not unlocked yet')
 
         self.__window.click(coords)
         self.__window.move_mouse()
         self.wait_until_loaded()
 
-        self.solve(False, level_str)
+        self.solve(False, level_str, delay)
 
-    def solve_set(self, save, set_str):
+    def solve_set(self, save, set_str, delay=False):
         self.__transition_to_level_select(save)
 
         levels = self.__menu_parser.parse_levels()
         if set_str not in ['1', '2', '3', '4', '5', '6']:
             raise RuntimeError('Set must be between 1-6 (inclusive)')
-
-        level = set_str + '-1'
-        self.__window.click(levels[level])
+        
+        try:
+            level = set_str + '-1'
+            self.__window.click(levels[level])
+        except KeyError:
+            raise RuntimeError('Selected level is not unlocked yet')
+            
         self.__window.move_mouse()
         self.wait_until_loaded()
-        self.solve(True, level)
+        self.solve(True, level, delay)
 
-    def solve_game(self, save):
+    def solve_game(self, save, delay=False):
         self.__transition_to_level_select(save)
 
         for set_str in ['1', '2', '3', '4', '5', '6']:
-            self.solve_set(save, set_str)
+            self.solve_set(save, set_str, delay)
             self.wait_until_loaded()
 
     def level_generator(self, func=None):
@@ -185,7 +189,7 @@ class Navigator:
 
     def back(self):
         self.__window.press_key('esc')
-        time.sleep(2)
+        time.sleep(1.5)
 
     def close_game(self):
         self.__window.close()

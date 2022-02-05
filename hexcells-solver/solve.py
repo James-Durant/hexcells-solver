@@ -8,9 +8,8 @@ class Solver:
     def __init__(self, parser):
         self.__parser = parser
 
-    def solve(self, level=None, game=None):
+    def solve(self, level=None, game=None, delay=False):
         grid = self.__parser.parse_grid()
-        print(grid)
 
         while True:
             left_click_cells, right_click_cells = self.solve_single_step(grid, game, level)
@@ -19,11 +18,12 @@ class Solver:
                 self.__parser.click_cells(right_click_cells, 'right')
                 break
 
-            _, remaining = self.__parser.parse_clicked(left_click_cells, right_click_cells)
+            _, remaining = self.__parser.parse_clicked(grid, left_click_cells, right_click_cells, delay)
             if remaining is not None:
                 grid.remaining = remaining
 
     def solve_single_step(self, grid, game=None, level=None):
+        #print(grid)
         self.__setup_problem(grid, game, level)
         left_click_cells, right_click_cells = [], []
         true_class, false_class = self.__get_true_false_classes()

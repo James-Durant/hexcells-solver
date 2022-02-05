@@ -100,10 +100,10 @@ class LearningData(Generator):
                     if len(left_click_cells) + len(right_click_cells) == 1:
                         skip = True
                     elif len(left_click_cells) > 0:
-                        game_parser.parse_clicked(left_click_cells[1:], right_click_cells)
+                        game_parser.parse_clicked(grid, left_click_cells[1:], right_click_cells)
                         left_click_cells, right_click_cells = [left_click_cells[0]], []
                     elif len(right_click_cells) > 0:
-                        game_parser.parse_clicked(left_click_cells, right_click_cells[1:])
+                        game_parser.parse_clicked(grid, left_click_cells, right_click_cells[1:])
                         left_click_cells, right_click_cells = [], [right_click_cells[0]]
 
                     game_parser.click_cells(left_click_cells, 'left')
@@ -130,7 +130,7 @@ class LearningData(Generator):
                     menu.window.move_mouse()
                     menu_parser.wait_until_loaded()
 
-                    game_parser.parse_clicked(left_click_cells, right_click_cells)
+                    game_parser.parse_clicked(grid, left_click_cells, right_click_cells)
 
                     menu.window.press_key('esc')
                     menu.window.move_mouse()
@@ -157,7 +157,7 @@ class LearningData(Generator):
                     print('>>> {0}/{1}'.format(i, num_levels))
                     break
 
-                _, remaining = game_parser.parse_clicked(left_click_cells, right_click_cells)
+                _, remaining = game_parser.parse_clicked(grid, left_click_cells, right_click_cells)
                 grid.remaining = remaining
 
 

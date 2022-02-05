@@ -122,6 +122,15 @@ class GUI:
                                                *save_slots)
         self.__save_label.pack(side='left')
         self.__save_optionmenu.pack()
+        
+        self.__delay_var = tk.BooleanVar(self.__root)
+        self.__delay_var.set(False)
+
+        self.__delay_checkbutton = tk.Checkbutton(self.__info_frame,
+                                                 text='Particles?',
+                                                 variable=self.__delay_var,
+                                                 onvalue=True,
+                                                 offvalue=False)
 
         self.__info_label.grid(sticky='w', row=0, column=0, columnspan=2)
         self.__game_1_radiobutton.grid(sticky='w', row=1, column=0)
@@ -129,6 +138,7 @@ class GUI:
         self.__game_3_radiobutton.grid(sticky='w', row=3, column=0)
 
         self.__save_frame.grid(sticky='w', row=1, column=1)
+        self.__delay_checkbutton.grid(sticky='w', row=2, column=1)
 
         self.__info_frame.grid(row=0, column=0)
 
@@ -261,14 +271,27 @@ class GUI:
             self.__solve_button.configure(state='normal')
 
     def __solve(self):
-        if self.__solve_var.get() == 0:
-            self.__menu.solve_level(self.__save_var.get(), self.__set_var.get() + '-' + self.__level_var.get())
-        elif self.__solve_var.get() == 1:
-            self.__menu.solve_set(self.__save_var.get(), self.__set_var.get())
-        elif self.__solve_var.get() == 2:
-            self.__menu.solve_game(self.__save_var.get())
-        elif self.__solve_var.get() == 3:
-            self.__menu.level_generator()
+        try:
+            if self.__solve_var.get() == 0:
+                level = self.__set_var.get() + '-' + self.__level_var.get()
+                self.__menu.solve_level(self.__save_var.get(),
+                                        level,
+                                        self.__delay_var.get())
+                
+            elif self.__solve_var.get() == 1:
+                self.__menu.solve_set(self.__save_var.get(),
+                                      self.__set_var.get(),
+                                      self.__delay_var.get())
+                
+            elif self.__solve_var.get() == 2:
+                self.__menu.solve_game(self.__save_var.get(),
+                                       self.__delay_var.get())
+                
+            elif self.__solve_var.get() == 3:
+                self.__menu.level_generator(self.__delay_var.get())
+
+        except RuntimeError as e:
+            messagebox.showerror('Error', str(e))
 
     def __create_learning_frame(self):
         self.__learning_frame = tk.Frame(self.__root)
@@ -420,6 +443,7 @@ class GUI:
             self.__path_button.configure(state='disabled')
             self.__path_entry.configure(state='disabled')
             self.__model_path_var.set('')
+            
         elif self.__model_var.get() == 1:
             self.__path_button.configure(state='normal')
             self.__path_entry.configure(state='normal')
