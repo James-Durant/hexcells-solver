@@ -21,17 +21,13 @@ def average_hash(image):
 
 class Parser:
     @staticmethod
-    def _load_hashes(digit_type, resolution=None):
-        path = os.path.join('resources', digit_type)
-        if resolution:
-            path = os.path.join(path, '{0}x{1}'.format(*resolution))
-
-        path = os.path.join(path, 'hashes.pickle')
+    def _load_hashes(digit_type):
+        path = os.path.join('resources', digit_type, 'hashes.pickle')
         try:
             with open(path, 'rb') as file:
                 return pickle.load(file)
         except FileNotFoundError:
-            return None
+            raise RuntimeError(f'Reference hashes missing for {digit_type}')
 
     @staticmethod
     def _merge_rects(rects, xdist, ydist):
@@ -69,23 +65,24 @@ class Parser:
 
 
 class MenuParser(Parser):
-    def __init__(self, window, steam_path=r'C:\Program Files (x86)\Steam'):
+    def __init__(self, window, training=False, steam_path=r'C:\Program Files (x86)\Steam'):
         self.__window = window
         self.__steam_path = steam_path
-
-        self.__load_data()
         self.__level_data = Parser._load_hashes('level_select')
+        if not training:
+            self.__load_hashes()
 
-    def __load_data(self):
+    def __load_hashes(self):
         options_path = os.path.join(self.__steam_path, r'steamapps\common\{}\saves\options.txt'.format(self.__window.title))
         with open(options_path, 'r') as file:
             data = json.load(file)
 
-        self.__resolution = data['screenWidth'], data['screenHeight']
-        if self.__resolution not in RESOLUTIONS:
-            self.__resolution = (1920, 1080)
-
-        hashes, labels = Parser._load_hashes('screen', self.__resolution)
+        resolution = data['screenWidth'], data['screenHeight']
+        if resolution not in RESOLUTIONS:
+            resolution = (1920, 1080)
+        
+        digit_type = os.path.join('screen', '{0}x{1}'.format(*resolution))
+        hashes, labels = Parser._load_hashes(digit_type)
         self.__level_exit = hashes.pop(-1)
         labels.pop(-1)
         self.__screen_data = hashes, labels

@@ -8,9 +8,9 @@ from parse import MenuParser, GameParser
 
 
 class Navigator:
-    def __init__(self):
+    def __init__(self, training=False):
         self.__window = get_window()
-        self.__menu_parser = MenuParser(self.__window)
+        self.__menu_parser = MenuParser(self.__window, training=training)
 
     @property
     def window(self):

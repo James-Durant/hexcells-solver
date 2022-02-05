@@ -7,6 +7,7 @@ from tkinter import messagebox
 
 from subprocess import Popen
 from navigate import Navigator
+from window import WindowNotFoundError
 
 GAMEIDS = {'Hexcells': '265890',
            'Hexcells Plus': '271900',
@@ -31,15 +32,20 @@ class GUI:
             self.__menu = Navigator()
             self.__update_status(True)
             self.__game_var.set(self.__menu.title)
-                
+            
         except KeyboardInterrupt:
             sys.exit()
             pass
         
-        except Exception:
+        except WindowNotFoundError:
             self.__update_status(False)
             self.__menu = None
             self.__game_var.set('None')
+        
+        except RuntimeError as e:
+            messagebox.showerror('Error', str(e))
+            sys.exit()
+            pass
 
     def __update_status(self, status):
         self.__game_running = status
@@ -49,6 +55,7 @@ class GUI:
         self.__save_optionmenu.configure(state=state)
         self.__set_optionmenu.configure(state=state)
         self.__level_optionmenu.configure(state=state)
+        self.__train_button.configure(state=state)
 
     def __load_game(self):
         try:
@@ -67,7 +74,7 @@ class GUI:
         Popen([r'C:\Program Files (x86)\Steam\steam.exe',
                r'steam://rungameid/' + GAMEIDS[self.__game_var.get()]],
               shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
-
+        
         while True:
             try:
                 self.__menu = Navigator()
@@ -81,7 +88,7 @@ class GUI:
                 sys.exit()
                 pass
             
-            except RuntimeError:
+            except WindowNotFoundError:
                 self.__update_status(False)
 
         self.__menu.wait_until_loaded()
@@ -99,7 +106,6 @@ class GUI:
                                      text='-' * 70 + '\n' + 'Game Options\n' + '-' * 70)
 
         self.__game_var = tk.StringVar(self.__root)
-        self.__game_var.set('None')
         self.__game_var.trace('w', self.__on_game_var_update)
 
         self.__game_1_radiobutton = tk.Radiobutton(self.__info_frame,
@@ -142,7 +148,7 @@ class GUI:
         self.__delay_var.set(False)
 
         self.__delay_checkbutton = tk.Checkbutton(self.__info_frame,
-                                                 text='Particles?',
+                                                 text='Particles',
                                                  variable=self.__delay_var,
                                                  onvalue=True,
                                                  offvalue=False)
@@ -286,6 +292,11 @@ class GUI:
             self.__solve_button.configure(state='normal')
 
     def __solve(self):
+        self.__check_game_running()
+        if not self.__game_running:
+            messagebox.showerror('Error', 'Hexcells window not found')
+            return
+        
         try:
             if self.__solve_var.get() == 0:
                 level = self.__set_var.get() + '-' + self.__level_var.get()
@@ -331,32 +342,36 @@ class GUI:
                                                  text='Load Model',
                                                  font=('Arial Black', 9))
 
-        modes = ['Online', 'Offline']
-        self.__mode_var = tk.StringVar(self.__root)
-        self.__mode_var.set('Online')
-
-        self.__mode_frame = tk.Frame(self.__learning_frame)
-        self.__mode_label = tk.Label(self.__mode_frame,
-                                     font=('Arial', 9),
-                                     text='Select Mode:')
-
-        self.__mode_optionmenu = tk.OptionMenu(self.__mode_frame,
-                                               self.__mode_var,
-                                               *modes)
-        self.__mode_label.pack(side='left')
-        self.__mode_optionmenu.pack()
-
         self.__test_var = tk.BooleanVar(self.__root)
         self.__test_var.set(False)
-
+        
         self.__test_checkbutton = tk.Checkbutton(self.__learning_frame,
-                                                 text='Test Only?',
+                                                 text='Test Mode',
                                                  variable=self.__test_var,
                                                  onvalue=True,
                                                  offvalue=False)
 
-        self.__mode_frame.grid(sticky='w', row=1, column=1)
-        self.__test_checkbutton.grid(sticky='w', row=2, column=1)
+        self.__replay_var = tk.BooleanVar(self.__root)
+        self.__replay_var.set(False)
+        
+        self.__replay_checkbutton = tk.Checkbutton(self.__learning_frame,
+                                                   text='Experience Replay',
+                                                   variable=self.__replay_var,
+                                                   onvalue=True,
+                                                   offvalue=False)
+        
+        self.__double_var = tk.BooleanVar(self.__root)
+        self.__double_var.set(False)
+        
+        self.__double_checkbutton = tk.Checkbutton(self.__learning_frame,
+                                                   text='Double DQN',
+                                                   variable=self.__double_var,
+                                                   onvalue=True,
+                                                   offvalue=False)
+
+        self.__test_checkbutton.grid(sticky='w', row=1, column=1)
+        self.__replay_checkbutton.grid(sticky='w', row=2, column=1)
+        self.__double_checkbutton.grid(sticky='w', row=3, column=1)
 
         self.__learning_label.grid(sticky='w', row=0, column=0, columnspan=2)
         self.__new_radiobutton.grid(sticky='w', row=1, column=0)
@@ -442,14 +457,28 @@ class GUI:
         self.__path_button.pack(side='left')
         self.__path_entry.pack(expand=True, fill='both')
         self.__path_frame.grid(sticky='nesw', row=9, column=0, columnspan=2, pady=10)
+        
+        
+        self.__run_frame = tk.Frame(self.__learning_frame)
+        
+        modes = ['Online', 'Offline']
+        self.__mode_var = tk.StringVar(self.__root)
+        self.__mode_var.set('Online')
+        self.__mode_var.trace('w', self.__on_mode_var_update)
 
-        self.__train_button = tk.Button(self.__learning_frame,
+        self.__mode_optionmenu = tk.OptionMenu(self.__run_frame,
+                                               self.__mode_var,
+                                               *modes)
+
+        self.__train_button = tk.Button(self.__run_frame,
                                         text='Run',
                                         font=('Arial', 10),
                                         state='disabled',
                                         command=self.__train)
 
-        self.__train_button.grid(sticky='nesw', row=10, column=0, columnspan=2, pady=(10, 0))
+        self.__mode_optionmenu.pack(side='right')
+        self.__train_button.pack(expand=True, fill='x')
+        self.__run_frame.grid(sticky='nesw', row=10, column=0, columnspan=2, pady=(10, 0))
 
         self.__learning_frame.grid(row=2, column=0)
 
@@ -463,6 +492,13 @@ class GUI:
             self.__path_button.configure(state='normal')
             self.__path_entry.configure(state='normal')
 
+    def __on_mode_var_update(self, *args):
+        if self.__mode_var.get() == 'Online':
+            self.__check_game_running()
+            
+        elif self.__mode_var.get() == 'Offline':
+            self.__train_button.configure(state='normal')
+            
     def __train(self):
         try:
             epochs = int(self.__epochs_var.get())
@@ -483,20 +519,27 @@ class GUI:
             messagebox.showerror('Error', 'Invalid hyperparameter value(s) given')
             return
 
-        from learn import Trainer
-
         try:
             if self.__mode_var.get() == 'Offline':
-                Trainer.train_offline(test_only=self.__mode_var.get(),
+                from learn import Trainer
+                Trainer.train_offline(test_only=self.__test_var.get(),
                                       epochs=epochs,
                                       batch_size=batch_size,
                                       learning_rate=learning_rate,
                                       discount_rate=discount_rate,
                                       exploration_rate=exploration_rate,
+                                      replay=self.__replay_var.get(),
+                                      double=self.__double_var.get(),
                                       model_path=model_path)
 
             elif self.__mode_var.get() == 'Online':
-                raise NotImplementedError
+                self.__check_game_running()
+                if not self.__game_running:
+                    messagebox.showerror('Error', 'Hexcells window not found')
+                    return
+                
+                from learn import Trainer
+                
 
         except (FileNotFoundError, IOError):
             messagebox.showerror('Error', 'Invalid model path given')

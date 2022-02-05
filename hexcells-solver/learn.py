@@ -158,14 +158,15 @@ class OnlineEnvironment(Environment):
 
 class Agent:
     def __init__(self, environment, batch_size, learning_rate, discount_rate, exploration_rate, max_replay_memory,
-                 model_path=None, save_path=r'resources/models'):
+                 replay=True, double=False, model_path=None, save_path=r'resources/models'):
         self.__environment = environment
         self.__batch_size = batch_size
         self.__learning_rate = learning_rate
         self.__discount_rate = discount_rate
         self.__exploration_rate = exploration_rate
-        self.__max_replay_memory = max_replay_memory
+        
         self.__replay_memory = []
+        self.__max_replay_memory = max_replay_memory if replay else 1
 
         if model_path:
             if os.path.isfile(model_path):
@@ -223,8 +224,7 @@ class Agent:
 
         self.__replay_memory.append(transition)
 
-        #batch = random.sample(self.__replay_memory, min(self.__batch_size, len(self.__replay_memory)))
-        batch = self.__replay_memory
+        batch = random.sample(self.__replay_memory, min(self.__batch_size, len(self.__replay_memory)))
 
         current_states = np.array([np.expand_dims(s, -1) for s, _, _, _, _ in batch])
         rewards = np.array([r for _, _, r, _, _ in batch])
@@ -242,7 +242,8 @@ class Agent:
 
         # Decrease epsilion
 
-        self.__model.fit(current_states, np.array(rewards), batch_size=self.__batch_size, shuffle=False, verbose=False)
+        self.__model.fit(current_states, np.array(rewards),
+                         batch_size=self.__batch_size, shuffle=False, verbose=False)
 
     def save_model(self):
         self.__model.save(self.__save_path)
@@ -298,11 +299,12 @@ class Trainer:
 
     @staticmethod
     def train_offline(test_only=False, epochs=50, batch_size=64, learning_rate=0.01, discount_rate=0.05,
-                      exploration_rate=0, max_replay_memory=10000, model_path=None):
+                      exploration_rate=0, max_replay_memory=10000, replay=True, double=False, model_path=None):
         num_train = 100
         num_test = 20
 
-        agent = Agent(None, batch_size, learning_rate, discount_rate, exploration_rate, max_replay_memory, model_path)
+        agent = Agent(None, batch_size, learning_rate, discount_rate, exploration_rate,
+                      max_replay_memory, replay, double, model_path)
         Trainer.__train_test_accuracy(agent, num_train, num_test)
 
         for epoch in range(epochs):

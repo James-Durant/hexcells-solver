@@ -6,6 +6,10 @@ import win32com.client
 import numpy as np
 
 
+class WindowNotFoundError(Exception):
+    pass
+
+
 class Window:
     def __init__(self, title):
         self.__title = title
@@ -69,6 +73,6 @@ def get_window():
             try:
                 window = Window('Hexcells Infinite')
             except RuntimeError:
-                raise RuntimeError('Hexcells client not found')
+                raise WindowNotFoundError('Hexcells client not found')
 
     return window

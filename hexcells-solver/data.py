@@ -23,10 +23,10 @@ class Generator:
         self.__steam_path = os.path.join(steam_path, 'steam.exe')
         self._save_path = save_path
 
-    def _load_game(self, game, resolution):
+    def _load_game(self, game, resolution, training=False):
         # Close game if open already
         try:
-            menu = Navigator()
+            menu = Navigator(training=training)
             menu.close_game()
             
         except KeyboardInterrupt:
@@ -50,7 +50,7 @@ class Generator:
               shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
 
         time.sleep(8)
-        menu = Navigator()
+        menu = Navigator(training=training)
         menu.window.move_mouse()
         menu.wait_until_loaded()
 
@@ -344,24 +344,24 @@ class ImageData(Generator):
         images, labels = [], []
         #for resolution in RESOLUTIONS:
         for resolution in [(1920, 1080)]:
-            menu = self._load_game('Hexcells', resolution)
+            menu = self._load_game('Hexcells', resolution, training=True)
             main_menu = menu.window.screenshot()
             images.append(main_menu)
             labels.append('main_menu')
             menu.close_game()
             
-            menu = self._load_game('Hexcells Plus', resolution)
+            menu = self._load_game('Hexcells Plus', resolution, training=True)
             main_menu = menu.window.screenshot()
             images.append(main_menu)
             labels.append('main_menu')
             menu.close_game()
             
-            menu = self._load_game('Hexcells Infinite', resolution)
+            menu = self._load_game('Hexcells Infinite', resolution, training=True)
             main_menu = menu.window.screenshot()
             images.append(main_menu)
             labels.append('main_menu')
         
-            menu_parser = MenuParser(menu.window)
+            menu_parser = MenuParser(menu.window, training=True)
             buttons = menu_parser.parse_main_menu()
             save_slot_buttons = buttons['save_slots']
             menu.window.click(save_slot_buttons[0])
