@@ -371,7 +371,7 @@ class MenuParser(Parser):
         return None, menu_button
 
 
-class GameParser(Parser):
+class LevelParser(Parser):
     __hex_mask_path = 'resources/hex_mask.png'
     __counter_mask_path = 'resources/counter_mask.png'
     __hex_match_threshold = 0.08
@@ -390,11 +390,11 @@ class GameParser(Parser):
         self.__column_data = Parser._load_hashes('column')
         self.__diagonal_data = Parser._load_hashes('diagonal')
 
-        hex_image = cv2.imread(GameParser.__hex_mask_path)
+        hex_image = cv2.imread(LevelParser.__hex_mask_path)
         hex_mask = cv2.inRange(hex_image, Cell.ORANGE, Cell.ORANGE)
         hex_contour, _ = cv2.findContours(hex_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        counter_image = cv2.imread(GameParser.__counter_mask_path)
+        counter_image = cv2.imread(LevelParser.__counter_mask_path)
         counter_mask = cv2.inRange(counter_image, Cell.BLUE, Cell.BLUE)
         counter_contour, _ = cv2.findContours(counter_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -492,8 +492,8 @@ class GameParser(Parser):
 
         cells = []
         for contour in contours:
-            if (cv2.contourArea(contour) > GameParser.__area_threshold and
-                    cv2.matchShapes(contour, self.__hex_contour, 1, 0) < GameParser.__hex_match_threshold):
+            if (cv2.contourArea(contour) > LevelParser.__area_threshold and
+                    cv2.matchShapes(contour, self.__hex_contour, 1, 0) < LevelParser.__hex_match_threshold):
                 x, y, w, h = cv2.boundingRect(contour)
 
                 x_crop, y_crop = round(w * 0.18), round(h * 0.18)
@@ -530,7 +530,7 @@ class GameParser(Parser):
         if np.count_nonzero(thresh == 0) < 20:
             return None
 
-        thresh = GameParser.__process_image(thresh)
+        thresh = LevelParser.__process_image(thresh)
         hashed = average_hash(thresh)
 
         if not use_hashes:
@@ -552,7 +552,7 @@ class GameParser(Parser):
             temp[:, :15] = 255
             temp[:, -15:] = 255
 
-            temp = GameParser.__process_image(temp)
+            temp = LevelParser.__process_image(temp)
 
             # cv2.imshow('test', temp)
             # cv2.waitKey(0)
@@ -582,8 +582,8 @@ class GameParser(Parser):
 
         parsed = []
         for contour in contours:
-            if (cv2.contourArea(contour) > GameParser.__area_threshold and
-                    cv2.matchShapes(contour, self.__counter_contour, 1, 0) < GameParser.__counter_match_threshold):
+            if (cv2.contourArea(contour) > LevelParser.__area_threshold and
+                    cv2.matchShapes(contour, self.__counter_contour, 1, 0) < LevelParser.__counter_match_threshold):
 
                 x, y, w, h = cv2.boundingRect(contour)
                 y = round(y + h * 0.35)
@@ -596,7 +596,7 @@ class GameParser(Parser):
 
                 # cv2.imwrite(IMAGE_PATH+'\Counters\implementation_parsing_counters_thresh_{}.png'.format(len(parsed)), thresh)
 
-                thresh = cv2.resize(thresh, GameParser.__counter_dims, interpolation=cv2.INTER_AREA)
+                thresh = cv2.resize(thresh, LevelParser.__counter_dims, interpolation=cv2.INTER_AREA)
                 hashed = average_hash(thresh)
 
                 if not use_hashes:
@@ -653,7 +653,7 @@ class GameParser(Parser):
             delta_x = box_coords[0] - nearest_coords[0]
             delta_y = nearest_coords[1] - box_coords[1]
             theta = (90 - np.degrees(np.arctan2(delta_y, delta_x))) % 360
-            angle = GameParser.__angles[np.argmin(np.abs(GameParser.__angles - theta))]
+            angle = LevelParser.__angles[np.argmin(np.abs(LevelParser.__angles - theta))]
 
             cropped = 255 - thresh[y:y + h, x:x + w]
             number = self.__parse_grid_number(cropped, angle, use_hashes)
@@ -679,7 +679,7 @@ class GameParser(Parser):
         if np.count_nonzero(thresh == 0) < 20:
             return None
         
-        thresh = GameParser.__process_image(thresh)
+        thresh = LevelParser.__process_image(thresh)
 
         if angle in [120, 240]:
             thresh = cv2.flip(cv2.flip(thresh, 1), 0)
@@ -714,7 +714,7 @@ class GameParser(Parser):
                 temp = cv2.warpAffine(temp, rotation_matrix, temp.shape[1::-1],
                                       flags=cv2.INTER_LINEAR, borderValue=(255, 255, 255))
 
-            temp = GameParser.__process_image(temp)
+            temp = LevelParser.__process_image(temp)
 
             hashes, labels = self.__column_data
             match = Parser._find_match(hashes, labels, average_hash(temp))

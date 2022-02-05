@@ -11,7 +11,7 @@ from subprocess import Popen
 from grid import Cell
 from main import GAMEIDS
 from navigate import Navigator
-from parse import average_hash, GameParser, MenuParser, RESOLUTIONS
+from parse import average_hash, LevelParser, MenuParser, RESOLUTIONS
 from solve import Solver
 
 
@@ -61,8 +61,8 @@ class LearningData(Generator):
     def __init__(self, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources/levels'):
         super().__init__(steam_path, save_path)
 
-    def make_dataset(self, num_levels=2000):
-        file_path = os.path.join(self._save_path, 'levels_large.pickle')
+    def make_dataset(self, num_levels=1):
+        file_path = os.path.join(self._save_path, 'levels.pickle')
 
         menu = self._load_game('Hexcells Infinite', (1920, 1080))
 
@@ -94,7 +94,7 @@ class LearningData(Generator):
             menu.window.move_mouse()
             menu_parser.wait_until_loaded()
 
-            game_parser = GameParser(menu.window)
+            game_parser = LevelParser(menu.window)
             solver = Solver(game_parser)
 
             grid = game_parser.parse_grid()
@@ -259,7 +259,7 @@ class ImageData(Generator):
 
         elif dataset_type in ['black', 'blue', 'blue_special', 'counter']:
             screenshot = window.screenshot()
-            parser = GameParser(window)
+            parser = LevelParser(window)
 
             if dataset_type == 'counter':
                 remaining = 476
@@ -334,7 +334,7 @@ class ImageData(Generator):
             else:
                 raise RuntimeError('invalid dataset type')
 
-            parser = GameParser(window)
+            parser = LevelParser(window)
             hashes = parser.parse_grid(use_hashes=False)
 
         assert len(hashes) == len(labels)
@@ -381,7 +381,7 @@ class ImageData(Generator):
             level_exit = cv2.inRange(level_exit, (180, 180, 180), (255, 255, 255))
 
             menu.back()
-            game_parser = GameParser(menu.window)
+            game_parser = LevelParser(menu.window)
             solver = Solver(game_parser)
             solver.solve('1-1', menu.window.title)
 
@@ -443,13 +443,13 @@ class ImageData(Generator):
             menu.close_game()
 
 if __name__ == '__main__':
-    #generator = LearningData()
-    #generator.make_dataset()
+    generator = LearningData()
+    generator.make_dataset()
 
     # Do not change the ordering.
-    image_generator = ImageData()
+    #image_generator = ImageData()
     #image_generator.make_dataset('level_select')
-    image_generator.make_dataset('screen')
+    #image_generator.make_dataset('screen')
     #image_generator.make_dataset('black')
     #image_generator.make_dataset('blue')
     #image_generator.make_dataset('blue_special')

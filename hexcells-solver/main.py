@@ -30,8 +30,9 @@ class GUI:
     def __check_game_running(self):
         try:
             self.__menu = Navigator()
-            self.__update_status(True)
+            self.__game_running = True
             self.__game_var.set(self.__menu.title)
+            self.__update_status(True)
             
         except KeyboardInterrupt:
             sys.exit()
@@ -51,11 +52,15 @@ class GUI:
         self.__game_running = status
         self.__check_ready_to_solve()
 
-        state = tk.NORMAL if status else tk.DISABLED
+        state = 'normal' if status else 'disabled'
         self.__save_optionmenu.configure(state=state)
         self.__set_optionmenu.configure(state=state)
         self.__level_optionmenu.configure(state=state)
-        self.__train_button.configure(state=state)
+        
+        if status and self.__game_var.get() == 'Hexcells Infinite':
+            self.__train_button.configure(state='normal')
+        else:
+            self.__train_button.configure(state='disabled')
 
     def __load_game(self):
         try:
@@ -95,7 +100,7 @@ class GUI:
 
     def __on_game_var_update(self, *args):
         self.__solve_var.set(0)
-        state = tk.NORMAL if self.__game_var.get() == 'Hexcells Infinite' else tk.DISABLED
+        state = 'normal' if self.__game_var.get() == 'Hexcells Infinite' else 'disabled'
         self.__generator_radiobutton.configure(state=state)
 
     def __create_info_frame(self):
@@ -520,16 +525,17 @@ class GUI:
             return
 
         try:
+            from learn import Trainer
+            
             if self.__mode_var.get() == 'Offline':
-                from learn import Trainer
-                Trainer.train_offline(test_only=self.__test_var.get(),
-                                      epochs=epochs,
+                Trainer.train_offline(epochs=epochs,
+                                      test_only=self.__test_var.get(),
                                       batch_size=batch_size,
                                       learning_rate=learning_rate,
                                       discount_rate=discount_rate,
                                       exploration_rate=exploration_rate,
-                                      replay=self.__replay_var.get(),
-                                      double=self.__double_var.get(),
+                                      experience_replay=self.__replay_var.get(),
+                                      double_dqn=self.__double_var.get(),
                                       model_path=model_path)
 
             elif self.__mode_var.get() == 'Online':
@@ -538,8 +544,19 @@ class GUI:
                     messagebox.showerror('Error', 'Hexcells window not found')
                     return
                 
-                from learn import Trainer
+                training_func = lambda agent: Trainer.train_online(agent,
+                                                                   self.__menu.window,
+                                                                   delay=self.__delay_var.get(),
+                                                                   test_only=self.__test_var.get(),
+                                                                   batch_size=batch_size,
+                                                                   learning_rate=learning_rate,
+                                                                   discount_rate=discount_rate,
+                                                                   exploration_rate=exploration_rate,
+                                                                   experience_replay=self.__replay_var.get(),
+                                                                   double_dqn=self.__double_var.get(),
+                                                                   model_path=model_path)
                 
+                self.__menu.level_generator(self.__delay_var.get(), epochs, training_func)
 
         except (FileNotFoundError, IOError):
             messagebox.showerror('Error', 'Invalid model path given')
@@ -549,7 +566,7 @@ class GUI:
         models_dir = os.path.join(file_path, 'resources', 'models')
         model_path = filedialog.askopenfilename(parent=self.__root, initialdir=models_dir, 
                                                 title='Model Selection',
-                                                filetypes=[('HDF5 file', '.h5')])
+                                                filetypes=[('protbuf file', '.pb')])
         self.__model_path_var.set(model_path)
 
 

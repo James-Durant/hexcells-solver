@@ -4,7 +4,7 @@ import pyperclip
 
 from solve import Solver
 from window import get_window
-from parse import MenuParser, GameParser
+from parse import MenuParser, LevelParser
 
 
 class Navigator:
@@ -99,7 +99,7 @@ class Navigator:
             self.load_save(int(save) if save != '-' else 1)
 
     def solve(self, continuous, level=None, delay=False):
-        game_parser = GameParser(self.__window)
+        game_parser = LevelParser(self.__window)
         solver = Solver(game_parser)
         solver.solve(level, self.__window.title, delay)
 
@@ -158,9 +158,9 @@ class Navigator:
             self.solve_set(save, set_str, delay)
             self.wait_until_loaded()
 
-    def level_generator(self, func=None):
+    def level_generator(self, delay=False, num_levels=10, training_func=None):
         if self.__window.title != 'Hexcells Infinite':
-            raise RuntimeError('Only Hexcells Infinite has level generator')
+            raise RuntimeError('Only Hexcells Infinite has the level generator')
 
         screen = self.__menu_parser.get_screen()
         if screen != 'level_generator':
@@ -169,28 +169,34 @@ class Navigator:
             buttons = self.__menu_parser.parse_main_menu()
             generator_button = buttons['level_generator']
             self.__window.click(generator_button)
-            self.wait_until_loaded()
-
-        while True:
-            buttons = self.__menu_parser.parse_generator()
-            play_button, random_button = buttons['play'], buttons['random']
-            self.__window.click(random_button)
-            self.__window.click(play_button)
-
             self.__window.move_mouse()
             self.wait_until_loaded()
-            if func:
-                func()
-                # make this code better
+        
+        try:
+            agent = None
+            for _ in range(num_levels):
+                buttons = self.__menu_parser.parse_generator()
+                play_button, random_button = buttons['play'], buttons['random']
+                self.__window.click(random_button)
+                self.__window.click(play_button)
                 self.__window.move_mouse()
-                time.sleep(1.2)
-                next_button, menu_button = self.__menu_parser.parse_level_end()
-                self.__window.click(menu_button)
-                self.__window.move_mouse()
-                time.sleep(1.2)
-            else:
-                self.solve(False)
-
+                self.wait_until_loaded()
+                
+                if training_func:
+                    agent = training_func(agent)
+                    self.__window.move_mouse()
+                    time.sleep(1.6)
+                    next_button, menu_button = self.__menu_parser.parse_level_end()
+                    self.__window.click(menu_button)
+                    self.__window.move_mouse()
+                    self.wait_until_loaded()
+                    
+                else:
+                    self.solve(False, delay=delay)
+                
+        except KeyboardInterrupt:
+            return
+        
     def back(self):
         self.__window.press_key('esc')
         time.sleep(1.5)
