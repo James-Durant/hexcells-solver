@@ -94,28 +94,28 @@ class MenuParser(Parser):
         hashes, labels = self.__screen_data
         similarities = [np.sum(hashed != h) for h in hashes]
             
-        for label, sim in zip(labels, similarities):
-            print(label, sim)
+        #for label, sim in zip(labels, similarities):
+        #    print(label, sim)
         
         if min(similarities) > 25000:
             # Check for level_exit
             image = cv2.inRange(image, (180, 180, 180), (255, 255, 255))
-            cv2.imshow('test1', self.__level_exit)
-            cv2.imshow('test2', image)
-            cv2.waitKey(0)
+            #cv2.imshow('test1', self.__level_exit)
+            #cv2.imshow('test2', image)
+            #cv2.waitKey(0)
             sim = np.sum(self.__level_exit != image) 
-            print(sim)
+            #print(sim)
             if sim > 25000:
-                print('in_level')
-                print()
+                #print('in_level')
+                #print()
                 return 'in_level'
             else:
-                print('level_exit')
-                print()
+                #print('level_exit')
+                #print()
                 return 'level_exit'
         
-        print(labels[np.argmin(similarities)])
-        print()
+        #print(labels[np.argmin(similarities)])
+        #print()
         return labels[np.argmin(similarities)]
 
     def wait_until_loaded(self):

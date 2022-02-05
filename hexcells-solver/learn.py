@@ -158,7 +158,7 @@ class OnlineEnvironment(Environment):
 
 class Agent:
     def __init__(self, environment, batch_size, learning_rate, discount_rate, exploration_rate, max_replay_memory,
-                 replay=True, double=False, model_path=None, save_path=r'resources/models'):
+                 replay=True, double=False, target_update_interval=5, model_path=None, save_path=r'resources/models'):
         self.__environment = environment
         self.__batch_size = batch_size
         self.__learning_rate = learning_rate
@@ -185,6 +185,14 @@ class Agent:
                 i += 1
             
             self.__save_path = os.path.join(save_path, filename)
+        
+        if double:
+            self.__target_model = self.__create_model((*Environment.STATE_DIMS, 1), Environment.MAX_HEXES * 2)
+            self.__target_model.set_weights(self.__model.get_weights())
+            self.__target_update_interval = target_update_interval
+            self.__target_update_counter = 0
+        else:
+            self.__target_model = None
 
     @property
     def environment(self):
@@ -227,23 +235,29 @@ class Agent:
         batch = random.sample(self.__replay_memory, min(self.__batch_size, len(self.__replay_memory)))
 
         current_states = np.array([np.expand_dims(s, -1) for s, _, _, _, _ in batch])
-        rewards = np.array([r for _, _, r, _, _ in batch])
+        current_state_rewards = np.array([r for _, _, r, _, _ in batch])
 
-        # new_states = np.array([t[3] for t in self.__replay_memory])
-        # new_state_rewards = self.__model.predict(np.expand_dims(new_states, -1))
-
-        # y = []
-        # for i, (current_state, action, rewards, new_current_state, solved) in enumerate(self.__replay_memory):
-        #    current_state_rewards[i] = rewards
-        #    if not solved:
-        #        current_state_rewards[i][action] += self.__discount*np.max(new_state_rewards[i])
-
-        #    y.append(current_state_rewards[i])
-
-        # Decrease epsilion
-
-        self.__model.fit(current_states, np.array(rewards),
+        predictor = self.__target_model if self.__target_model else self.__model
+        next_states = np.array([np.expand_dims(s, -1) for _, _, _, s, _ in batch])
+        next_state_rewards = predictor.predict(np.expand_dims(next_states, -1))
+            
+        for i, (_, action, _, _, solved) in enumerate(batch):
+           if not solved:
+               current_state_rewards[i][action] += self.__discount_rate*np.max(next_state_rewards[i])
+           
+        self.__model.fit(current_states, np.array(current_state_rewards),
                          batch_size=self.__batch_size, shuffle=False, verbose=False)
+        
+        if self.__target_model:
+            # If solved
+            if transition[4]:
+                self.__target_update_counter += 1
+                
+            if self.__target_update_counter > self.__target_update_interval:
+                self.__target_model.set_weights(self.__model.get_weights())
+                self.__target_update_counter = 0
+               
+        # Decrease epsilion
 
     def save_model(self):
         self.__model.save(self.__save_path)
@@ -299,12 +313,13 @@ class Trainer:
 
     @staticmethod
     def train_offline(test_only=False, epochs=50, batch_size=64, learning_rate=0.01, discount_rate=0.05,
-                      exploration_rate=0, max_replay_memory=10000, replay=True, double=False, model_path=None):
+                      exploration_rate=0, max_replay_memory=10000, replay=True,
+                      double=False, target_update_interval=5, model_path=None):
         num_train = 100
         num_test = 20
 
         agent = Agent(None, batch_size, learning_rate, discount_rate, exploration_rate,
-                      max_replay_memory, replay, double, model_path)
+                      max_replay_memory, replay, double, target_update_interval, model_path)
         Trainer.__train_test_accuracy(agent, num_train, num_test)
 
         for epoch in range(epochs):

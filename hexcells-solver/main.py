@@ -516,7 +516,7 @@ class GUI:
             assert 0 <= exploration_rate <= 1
 
         except (ValueError, AssertionError):
-            messagebox.showerror('Error', 'Invalid hyperparameter value(s) given')
+            messagebox.showerror('Error', 'Invalid hyperparameter value given')
             return
 
         try:
@@ -547,7 +547,8 @@ class GUI:
     def __select_model_path(self):
         file_path = os.path.dirname(os.path.realpath(__file__))
         models_dir = os.path.join(file_path, 'resources', 'models')
-        model_path = filedialog.askopenfilename(parent=self.__root, initialdir=models_dir, title='Model Selection',
+        model_path = filedialog.askopenfilename(parent=self.__root, initialdir=models_dir, 
+                                                title='Model Selection',
                                                 filetypes=[('HDF5 file', '.h5')])
         self.__model_path_var.set(model_path)
 
