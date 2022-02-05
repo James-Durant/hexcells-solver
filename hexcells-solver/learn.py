@@ -324,27 +324,16 @@ class Agent:
 
 class Trainer:
     @staticmethod
-    def __load_levels(num_training=float('inf'), num_testing=float('inf'), levels_path='resources/levels/levels.pickle'):
+    def __load_levels(levels_path, test_train_split):
         with open(levels_path, 'rb') as file:
             levels, _ = pickle.load(file)
-
-            if num_training == float('inf'):
-                train_levels = levels
-            else:
-                assert num_training <= len(levels)
-                train_levels = levels[:num_training]
-
-            if num_testing == float('inf'):
-                test_levels = levels
-            else:
-                assert num_training + num_testing <= len(levels)
-                test_levels = levels[num_training:num_training + num_testing]
-
-        return train_levels, test_levels
+            
+        split = round(len(levels) * test_train_split)
+        return levels[:split], levels[split:]
 
     @staticmethod
-    def __train_test_accuracy(agent, num_train, num_test):
-        train_levels, test_levels = Trainer.__load_levels(num_train, num_test)
+    def __train_test_accuracy(agent, levels_path, test_train_split):
+        train_levels, test_levels = Trainer.__load_levels(levels_path, test_train_split)
         train_accuracy = Trainer.__accuracy_offline(agent, train_levels)
         test_accuracy = Trainer.__accuracy_offline(agent, test_levels)
         print(f'Training Accuracy: {train_accuracy}')
@@ -352,6 +341,10 @@ class Trainer:
 
     @staticmethod
     def __accuracy_offline(agent, levels):
+        if len(levels) == 0:
+            raise RuntimeWarning('Calculating accuracy on zero levels')
+            return 1
+        
         actions = 0
         mistakes = 0
         for grid, grid_solved in levels:
@@ -367,11 +360,7 @@ class Trainer:
                 if rewards[action] != 1:
                     mistakes += 1
                     
-        if actions == 0:
-            raise RuntimeWarning('No actions were taken when computing accuracy')
-            return 1
-        else:
-            return 1 - (mistakes / actions)
+        return 1 - (mistakes / actions)
 
     @staticmethod
     def train_offline(epochs,
@@ -382,22 +371,21 @@ class Trainer:
                       exploration_rate=EXPLORATION_RATE,
                       experience_replay=EXPERIENCE_REPLAY,
                       double_dqn=DOUBLE_DQN,
-                      model_path=None):
+                      model_path=None,
+                      levels_path='resources/levels/levels_small.pickle',
+                      test_train_split=0.9):
         
-        # Remove this!!!!!
-        num_train = 1
-        num_test = 0
-        
-        train_levels, _ = Trainer.__load_levels(1, 0)
+        train_levels, _ = Trainer.__load_levels(levels_path, 1)
         environment = OfflineEnvironment(*train_levels[0])
         
         agent = Agent(environment, batch_size, learning_rate, discount_rate, exploration_rate,
                       experience_replay, double_dqn, model_path=model_path)
-        Trainer.__train_test_accuracy(agent, num_train, num_test)
+        
+        Trainer.__train_test_accuracy(agent, levels_path, test_train_split)
 
         for epoch in range(epochs):
             print('Epoch {}'.format(epoch + 1))
-            train_levels, _ = Trainer.__load_levels(num_train, 0)
+            train_levels, _ = Trainer.__load_levels(levels_path, test_train_split)
 
             for i, (grid, grid_solved) in enumerate(train_levels, 1):
                 agent.environment = environment = OfflineEnvironment(grid, grid_solved)
@@ -411,12 +399,12 @@ class Trainer:
                     if not test_only:
                         agent.train((current_state, action, rewards, new_state, solved))
 
-                if i % 100 == 0:
+                if i % 10 == 0:
                     print('>>> {0}/{1}'.format(i, len(train_levels)))
                     agent.save_model()
 
             agent.save_model()
-            Trainer.__train_test_accuracy(agent, num_train, num_test)
+            Trainer.__train_test_accuracy(agent, levels_path, test_train_split)
 
     @staticmethod
     def train_online(agent,
@@ -455,5 +443,5 @@ class Trainer:
         return agent
 
 if __name__ == '__main__':
-    epochs = 5
+    epochs = 1
     Trainer.train_offline(epochs)
