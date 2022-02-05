@@ -49,7 +49,7 @@ class Generator:
         Popen([self.__steam_path, r'steam://rungameid/' + GAMEIDS[game]],
               shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
 
-        time.sleep(8)
+        time.sleep(7)
         menu = Navigator(use_hashes=use_hashes)
         menu.window.move_mouse()
         menu.wait_until_loaded()
@@ -342,8 +342,7 @@ class ImageData(Generator):
 
     def __make_dataset_screen(self):
         images, labels = [], []
-        #for resolution in RESOLUTIONS:
-        for resolution in [(1920, 1080)]:
+        for resolution in RESOLUTIONS:
             menu = self._load_game('Hexcells', resolution, use_hashes=False)
             main_menu = menu.window.screenshot()
             images.append(main_menu)
@@ -411,7 +410,7 @@ class ImageData(Generator):
             user_levels_button = buttons['user_levels']
             menu.window.click(user_levels_button)
             menu.window.move_mouse()
-            time.sleep(3)
+            time.sleep(3.5)
             user_levels = menu.window.screenshot()
             images.append(user_levels)
             labels.append('user_levels')
@@ -443,13 +442,13 @@ class ImageData(Generator):
             menu.close_game()
 
 if __name__ == '__main__':
-    generator = LearningData()
-    generator.make_dataset()
+    #generator = LearningData()
+    #generator.make_dataset()
 
     # Do not change the ordering.
-    #image_generator = ImageData()
+    image_generator = ImageData()
     #image_generator.make_dataset('level_select')
-    #image_generator.make_dataset('screen')
+    image_generator.make_dataset('screen')
     #image_generator.make_dataset('black')
     #image_generator.make_dataset('blue')
     #image_generator.make_dataset('blue_special')

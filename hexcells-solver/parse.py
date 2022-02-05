@@ -176,7 +176,7 @@ class MenuParser(Parser):
         #        cv2.rectangle(temp1, (x, y), (x+w, y+h), (0,0,255), 2)
         # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_main_contours.png', temp1)
 
-        bounding_boxes = Parser._merge_rects(rects, image.shape[1], 20)
+        bounding_boxes = Parser._merge_rects(rects, image.shape[1], 50)
         buttons = [(x + w // 2, y + h // 2) for x, y, w, h in bounding_boxes if y > threshold]
 
         # for x, y, w, h in bounding_boxes:
