@@ -1,4 +1,5 @@
 import os
+import sys
 
 import tkinter as tk
 from tkinter import filedialog
@@ -30,8 +31,12 @@ class GUI:
             self.__menu = Navigator()
             self.__update_status(True)
             self.__game_var.set(self.__menu.title)
-
-        except RuntimeError:  # Make custom error
+                
+        except KeyboardInterrupt:
+            sys.exit()
+            pass
+        
+        except Exception:
             self.__update_status(False)
             self.__menu = None
             self.__game_var.set('None')
@@ -48,7 +53,12 @@ class GUI:
     def __load_game(self):
         try:
             self.__menu.close_game()
-        except:
+            
+        except KeyboardInterrupt:
+            sys.exit()
+            pass
+            
+        except Exception:
             pass
 
         self.__update_status(False)
@@ -66,13 +76,18 @@ class GUI:
                     break
                 else:
                     self.__update_status(False)
-
+                    
+            except KeyboardInterrupt:
+                sys.exit()
+                pass
+            
             except RuntimeError:
                 self.__update_status(False)
 
         self.__menu.wait_until_loaded()
 
     def __on_game_var_update(self, *args):
+        self.__solve_var.set(0)
         state = tk.NORMAL if self.__game_var.get() == 'Hexcells Infinite' else tk.DISABLED
         self.__generator_radiobutton.configure(state=state)
 

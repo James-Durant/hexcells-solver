@@ -1,3 +1,4 @@
+import sys
 import time
 import pyperclip
 
@@ -61,7 +62,10 @@ class Navigator:
             try:
                 _, _, exit_button = self.__menu_parser.parse_level_exit()
                 break
-            except:
+            except KeyboardInterrupt:
+                sys.exit()
+                pass
+            except Exception:
                 continue
 
         self.__window.click(exit_button)

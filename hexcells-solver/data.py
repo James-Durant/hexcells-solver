@@ -3,6 +3,7 @@ import cv2
 import json
 import time
 import pickle
+import sys
 import pyperclip
 
 from subprocess import Popen
@@ -27,7 +28,12 @@ class Generator:
         try:
             menu = Navigator()
             menu.close_game()
-        except:
+            
+        except KeyboardInterrupt:
+            sys.exit()
+            pass
+        
+        except Exception:
             pass
 
         options_path = self.__options_path.format(game)
@@ -372,8 +378,7 @@ class ImageData(Generator):
             time.sleep(2)
             menu.back()
             level_exit = menu.window.screenshot()
-            images.append(level_exit)
-            labels.append('level_exit')
+            level_exit = cv2.inRange(level_exit, (180, 180, 180), (255, 255, 255))
 
             menu.back()
             game_parser = GameParser(menu.window)
@@ -406,7 +411,7 @@ class ImageData(Generator):
             user_levels_button = buttons['user_levels']
             menu.window.click(user_levels_button)
             menu.window.move_mouse()
-            time.sleep(2)
+            time.sleep(3)
             user_levels = menu.window.screenshot()
             images.append(user_levels)
             labels.append('user_levels')
@@ -420,9 +425,12 @@ class ImageData(Generator):
             options = menu.window.screenshot()
             images.append(options)
             labels.append('options')
-            
+                                      
             hashes = [average_hash(cv2.resize(image, (480, 270), interpolation=cv2.INTER_AREA))
                       for image in images]
+            
+            hashes.append(cv2.resize(level_exit, (480, 270)))
+            labels.append('level_exit')   
 
             hash_dir = os.path.join(self._save_path, 'screen', '{0}x{1}'.format(*resolution))
             if not os.path.exists(hash_dir):

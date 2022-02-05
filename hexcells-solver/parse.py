@@ -85,7 +85,10 @@ class MenuParser(Parser):
         if self.__resolution not in RESOLUTIONS:
             self.__resolution = (1920, 1080)
 
-        self.__screen_data = Parser._load_hashes('screen', self.__resolution)
+        hashes, labels = Parser._load_hashes('screen', self.__resolution)
+        self.__level_exit = hashes.pop(-1)
+        labels.pop(-1)
+        self.__screen_data = hashes, labels
 
     def get_screen(self):
         image = cv2.resize(self.__window.screenshot(), (480, 270), interpolation=cv2.INTER_AREA)
@@ -93,17 +96,29 @@ class MenuParser(Parser):
         
         hashes, labels = self.__screen_data
         similarities = [np.sum(hashed != h) for h in hashes]
-        
-        #for label, sim in zip(labels, similarities):
-        #    print(label, sim)
+            
+        for label, sim in zip(labels, similarities):
+            print(label, sim)
         
         if min(similarities) > 25000:
-            #print('in_level')
-            #print()
-            return 'in_level'
+            # Check for level_exit
+            image = cv2.inRange(image, (180, 180, 180), (255, 255, 255))
+            cv2.imshow('test1', self.__level_exit)
+            cv2.imshow('test2', image)
+            cv2.waitKey(0)
+            sim = np.sum(self.__level_exit != image) 
+            print(sim)
+            if sim > 25000:
+                print('in_level')
+                print()
+                return 'in_level'
+            else:
+                print('level_exit')
+                print()
+                return 'level_exit'
         
-        #print(labels[np.argmin(similarities)])
-        #print()
+        print(labels[np.argmin(similarities)])
+        print()
         return labels[np.argmin(similarities)]
 
     def wait_until_loaded(self):
@@ -731,7 +746,7 @@ class GameParser(Parser):
             
             if delay:
                 min_row = min(right_click_cells, key=lambda cell: cell.grid_coords[0]).grid_coords[0]
-                time.sleep(max(1.5, 0.12*(grid.rows-min_row)))
+                time.sleep(max(1.5, 0.15*(grid.rows-min_row)))
             else:
                 time.sleep(0.1)
 

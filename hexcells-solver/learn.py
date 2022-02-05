@@ -158,23 +158,32 @@ class OnlineEnvironment(Environment):
 
 class Agent:
     def __init__(self, environment, batch_size, learning_rate, discount_rate, exploration_rate, max_replay_memory,
-                 model_path=None, save_path=r'resources/models/model.h5'):
+                 model_path=None, save_path=r'resources/models'):
         self.__environment = environment
         self.__batch_size = batch_size
         self.__learning_rate = learning_rate
         self.__discount_rate = discount_rate
         self.__exploration_rate = exploration_rate
         self.__max_replay_memory = max_replay_memory
-        self.__save_path = save_path
         self.__replay_memory = []
 
         if model_path:
             if os.path.isfile(model_path):
                 self.__model = load_model(model_path)
+                self.__save_path = model_path
             else:
                 raise FileNotFoundError
         else:
             self.__model = self.__create_model((*Environment.STATE_DIMS, 1), Environment.MAX_HEXES * 2)
+            
+            i = 1
+            while True:
+                filename = f'model_{i}'
+                if not os.path.isfile(os.path.join(save_path, filename)):
+                    break
+                i += 1
+            
+            self.__save_path = os.path.join(save_path, filename)
 
     @property
     def environment(self):
