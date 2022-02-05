@@ -192,19 +192,19 @@ class OnlineEnvironment(Environment):
                         solved = True
                 
                 else:
-                    mistakes_before, _ = self.__parser.parse_clicked(self._grid, [], [], self.__delay)
+                    mistakes_before, _ = self.__parser.parse_counters()
                     
                     if button == 0:
                         mistakes_after, remaining = self.__parser.parse_clicked(self._grid, [cell], [], self.__delay)
                         if mistakes_after > mistakes_before:
                             time.sleep(0.25)
-                            self.__parser.click_cells([cell], 'right')
+                            _, remaining = self.__parser.parse_clicked(self._grid, [], [cell], self.__delay)
                         
                     elif button == 1:
                         mistakes_after, remaining = self.__parser.parse_clicked(self._grid, [], [cell], self.__delay)
                         if mistakes_after > mistakes_before:
                             time.sleep(0.25)
-                            self.__parser.click_cells([cell], 'left')
+                            _, remaining = self.__parser.parse_clicked(self._grid, [cell], [], self.__delay)
                 
                 self._grid.remaining = remaining
                 self._state[row][col] = Environment._cell_to_rep(cell)

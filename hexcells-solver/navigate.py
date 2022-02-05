@@ -161,8 +161,15 @@ class Navigator:
     def level_generator(self, delay=False, num_levels=10, training_func=None):
         if self.__window.title != 'Hexcells Infinite':
             raise RuntimeError('Only Hexcells Infinite has the level generator')
-
+            
         screen = self.__menu_parser.get_screen()
+        
+        if screen == 'in_level':
+            self.back()
+            time.sleep(0.5)
+            self.exit_level()
+            screen = self.__menu_parser.get_screen()
+        
         if screen != 'level_generator':
             self.__transition_to_main_menu()
 
@@ -185,7 +192,6 @@ class Navigator:
                 if training_func:
                     agent = training_func(agent)
                     self.__window.move_mouse()
-                    time.sleep(1.6)
                     next_button, menu_button = self.__menu_parser.parse_level_end()
                     self.__window.click(menu_button)
                     self.__window.move_mouse()
