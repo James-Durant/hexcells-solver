@@ -8,6 +8,8 @@ from tkinter import messagebox
 from subprocess import Popen
 from navigate import Navigator
 from window import WindowNotFoundError
+from learn import Trainer, BATCH_SIZE, LEARNING_RATE, DISCOUNT_RATE, EXPLORATION_RATE
+
 
 GAMEIDS = {'Hexcells': '265890',
            'Hexcells Plus': '271900',
@@ -153,7 +155,7 @@ class GUI:
         self.__delay_var.set(False)
 
         self.__delay_checkbutton = tk.Checkbutton(self.__info_frame,
-                                                 text='Particles',
+                                                 text='Particle Effect',
                                                  variable=self.__delay_var,
                                                  onvalue=True,
                                                  offvalue=False)
@@ -348,7 +350,7 @@ class GUI:
                                                  font=('Arial Black', 9))
 
         self.__test_var = tk.BooleanVar(self.__root)
-        self.__test_var.set(False)
+        self.__test_var.set(True)
         
         self.__test_checkbutton = tk.Checkbutton(self.__learning_frame,
                                                  text='Test Mode',
@@ -400,7 +402,7 @@ class GUI:
                                            text='Batch Size: ')
 
         self.__batch_size_var = tk.StringVar()
-        self.__batch_size_var.set('64')
+        self.__batch_size_var.set(str(BATCH_SIZE))
         self.__batch_size_entry = tk.Entry(self.__batch_size_frame,
                                            textvariable=self.__batch_size_var)
 
@@ -413,7 +415,7 @@ class GUI:
                                               text='Learning Rate: ')
 
         self.__learning_rate_var = tk.StringVar()
-        self.__learning_rate_var.set('0.01')
+        self.__learning_rate_var.set(str(LEARNING_RATE))
         self.__learning_rate_entry = tk.Entry(self.__learning_rate_frame,
                                               textvariable=self.__learning_rate_var)
 
@@ -426,7 +428,7 @@ class GUI:
                                               text='Discount Rate: ')
 
         self.__discount_rate_var = tk.StringVar()
-        self.__discount_rate_var.set('0.05')
+        self.__discount_rate_var.set(str(DISCOUNT_RATE))
         self.__discount_rate_entry = tk.Entry(self.__discount_rate_frame,
                                               textvariable=self.__discount_rate_var)
 
@@ -439,7 +441,7 @@ class GUI:
                                                  text='Exploration Rate: ')
 
         self.__exploration_rate_var = tk.StringVar()
-        self.__exploration_rate_var.set('0.95')
+        self.__exploration_rate_var.set(str(EXPLORATION_RATE))
         self.__exploration_rate_entry = tk.Entry(self.__exploration_rate_frame,
                                                  textvariable=self.__exploration_rate_var)
 
@@ -525,8 +527,6 @@ class GUI:
             return
 
         try:
-            from learn import Trainer
-            
             if self.__mode_var.get() == 'Offline':
                 Trainer.train_offline(epochs=epochs,
                                       test_only=self.__test_var.get(),
@@ -566,7 +566,7 @@ class GUI:
         models_dir = os.path.join(file_path, 'resources', 'models')
         model_path = filedialog.askopenfilename(parent=self.__root, initialdir=models_dir, 
                                                 title='Model Selection',
-                                                filetypes=[('protbuf file', '.pb')])
+                                                filetypes=[('HDF5 file', '.h5')])
         self.__model_path_var.set(model_path)
 
 

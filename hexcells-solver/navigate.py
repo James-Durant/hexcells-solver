@@ -169,6 +169,13 @@ class Navigator:
             time.sleep(0.5)
             self.exit_level()
             screen = self.__menu_parser.get_screen()
+            
+        elif screen == 'level_completion':
+            _, menu_button = self.__menu_parser.parse_level_end()
+            self.__window.click(menu_button)
+            self.__window.move_mouse()
+            self.wait_until_loaded()
+            screen = self.__menu_parser.get_screen()
         
         if screen != 'level_generator':
             self.__transition_to_main_menu()
@@ -185,6 +192,8 @@ class Navigator:
                 buttons = self.__menu_parser.parse_generator()
                 play_button, random_button = buttons['play'], buttons['random']
                 self.__window.click(random_button)
+                self.__window.click(random_button)
+                self.__window.click(play_button)
                 self.__window.click(play_button)
                 self.__window.move_mouse()
                 self.wait_until_loaded()
@@ -192,6 +201,7 @@ class Navigator:
                 if training_func:
                     agent = training_func(agent)
                     self.__window.move_mouse()
+                    time.sleep(1.2)
                     next_button, menu_button = self.__menu_parser.parse_level_end()
                     self.__window.click(menu_button)
                     self.__window.move_mouse()

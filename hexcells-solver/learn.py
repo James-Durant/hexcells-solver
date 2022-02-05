@@ -167,7 +167,7 @@ class OnlineEnvironment(Environment):
                 if (row - self._row_offset, col) in left_click_coords:
                     if rewards[-1] == -1:
                         self.__parser.click_cells([cell], 'right')
-                        time.sleep(0.25)
+                        time.sleep(0.1)
                         
                     if len(self._grid.unknown_cells()) > 1:
                         _, remaining = self.__parser.parse_clicked(self._grid, [cell], [], self.__delay)
@@ -180,7 +180,7 @@ class OnlineEnvironment(Environment):
                 elif (row - self._row_offset, col) in right_click_coords:
                     if rewards[-1] == -1:
                         self.__parser.click_cells([cell], 'left')
-                        time.sleep(0.25)
+                        time.sleep(0.1)
                         
                     if len(self._grid.unknown_cells()) > 1:  
                         _, remaining = self.__parser.parse_clicked(self._grid, [], [cell], self.__delay)
@@ -197,13 +197,13 @@ class OnlineEnvironment(Environment):
                     if button == 0:
                         mistakes_after, remaining = self.__parser.parse_clicked(self._grid, [cell], [], self.__delay)
                         if mistakes_after > mistakes_before:
-                            time.sleep(0.25)
+                            time.sleep(0.1)
                             _, remaining = self.__parser.parse_clicked(self._grid, [], [cell], self.__delay)
                         
                     elif button == 1:
                         mistakes_after, remaining = self.__parser.parse_clicked(self._grid, [], [cell], self.__delay)
                         if mistakes_after > mistakes_before:
-                            time.sleep(0.25)
+                            time.sleep(0.1)
                             _, remaining = self.__parser.parse_clicked(self._grid, [cell], [], self.__delay)
                 
                 self._grid.remaining = remaining
@@ -237,7 +237,7 @@ class Agent:
             
             i = 1
             while True:
-                filename = f'model_{i}'
+                filename = f'model_{i}.h5'
                 if not os.path.isfile(os.path.join(save_path, filename)):
                     break
                 i += 1
@@ -439,6 +439,8 @@ class Trainer:
             agent = Agent(environment, batch_size, learning_rate,
                           discount_rate, exploration_rate, experience_replay,
                           double_dqn, target_update_interval, model_path)
+        else:
+            agent.environment = environment
 
         solved = False
         while not solved:

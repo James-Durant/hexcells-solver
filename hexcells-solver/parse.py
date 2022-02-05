@@ -119,8 +119,8 @@ class MenuParser(Parser):
         return labels[np.argmin(similarities)]
 
     def wait_until_loaded(self):
-        time.sleep(0.5)
-        for _ in range(100):
+        time.sleep(0.75)
+        for _ in range(50):
             image = self.__window.screenshot()
             mask = cv2.inRange(image, Cell.ORANGE, Cell.ORANGE)
             mask += cv2.inRange(image, Cell.BLUE, Cell.BLUE)
