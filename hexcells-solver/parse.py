@@ -425,7 +425,6 @@ class GameParser(Parser):
         self.__hex_width = int(np.median(widths))
         self.__hex_height = int(np.median(heights))
         
-        
         if self.__hex_width > 70:
             x_spacing = self.__hex_width * 1.085
         elif 54 <= self.__hex_width <= 70:
