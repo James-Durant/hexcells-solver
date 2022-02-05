@@ -23,10 +23,10 @@ class Generator:
         self.__steam_path = os.path.join(steam_path, 'steam.exe')
         self._save_path = save_path
 
-    def _load_game(self, game, resolution, training=False):
+    def _load_game(self, game, resolution, use_hashes=True):
         # Close game if open already
         try:
-            menu = Navigator(training=training)
+            menu = Navigator(use_hashes=use_hashes)
             menu.close_game()
             
         except KeyboardInterrupt:
@@ -50,7 +50,7 @@ class Generator:
               shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
 
         time.sleep(8)
-        menu = Navigator(training=training)
+        menu = Navigator(use_hashes=use_hashes)
         menu.window.move_mouse()
         menu.wait_until_loaded()
 
@@ -171,13 +171,13 @@ class ImageData(Generator):
     def __init__(self, steam_path=r'C:\Program Files (x86)\Steam', save_path='resources'):
         super().__init__(steam_path, save_path)
 
-    def make_dataset(self, digit_type):
-        if digit_type == 'screen':
+    def make_dataset(self, dataset_type):
+        if dataset_type == 'screen':
             return self.__make_dataset_screen()
         
-        hash_path = os.path.join(self._save_path, digit_type, 'hashes.pickle')
+        hash_path = os.path.join(self._save_path, dataset_type, 'hashes.pickle')
         game = 'Hexcells Infinite'
-        if digit_type == 'blue_special':
+        if dataset_type == 'blue_special':
             hash_path = os.path.join(self._save_path, 'blue', 'hashes.pickle')
             game = 'Hexcells Plus'
 
@@ -185,26 +185,26 @@ class ImageData(Generator):
         for resolution in RESOLUTIONS:
             menu = self._load_game(game, resolution)
 
-            if digit_type == 'column':
+            if dataset_type == 'column':
                 hashes_res, labels_res = [], []
                 for hint in ['normal', 'consecutive', 'non-consecutive']:
-                    level_path = os.path.join(self._save_path, digit_type, '{}_level.hexcells'.format(hint))
+                    level_path = os.path.join(self._save_path, dataset_type, '{}_level.hexcells'.format(hint))
                     menu.load_custom_level(level_path)
 
-                    hashes_hint, labels_hint = self.__get_hashes(menu.window, digit_type + '_' + hint)
+                    hashes_hint, labels_hint = self.__get_hashes(menu.window, dataset_type + '_' + hint)
                     hashes_res += hashes_hint
                     labels_res += labels_hint
 
-            elif digit_type == 'diagonal':
+            elif dataset_type == 'diagonal':
                 hashes_res, labels_res = [], []
                 for part in ['1', '2']:
                     for hint in ['normal', 'consecutive', 'non-consecutive']:
-                        level_path = os.path.join(self._save_path, digit_type,
+                        level_path = os.path.join(self._save_path, dataset_type,
                                                   '{0}_{1}_level.hexcells'.format(hint, part))
                         menu.load_custom_level(level_path)
 
                         hashes_hint, labels_hint = self.__get_hashes(menu.window,
-                                                                     digit_type + '_{0}_{1}'.format(hint, part))
+                                                                     dataset_type + '_{0}_{1}'.format(hint, part))
                         hashes_res += hashes_hint
                         labels_res += labels_hint
 
@@ -213,10 +213,10 @@ class ImageData(Generator):
                         menu.exit_level()
 
             else:
-                if digit_type == 'level_select':
+                if dataset_type == 'level_select':
                     menu.load_save(1)
 
-                elif digit_type == 'blue_special':
+                elif dataset_type == 'blue_special':
                     menu.load_save(1)
 
                     menu_parser = MenuParser(menu.window)
@@ -227,10 +227,10 @@ class ImageData(Generator):
                     menu.wait_until_loaded()
 
                 else:
-                    level_path = os.path.join(self._save_path, digit_type, 'level.hexcells')
+                    level_path = os.path.join(self._save_path, dataset_type, 'level.hexcells')
                     menu.load_custom_level(level_path)
 
-                hashes_res, labels_res = self.__get_hashes(menu.window, digit_type)
+                hashes_res, labels_res = self.__get_hashes(menu.window, dataset_type)
 
             hashes += hashes_res
             labels += labels_res
@@ -238,15 +238,15 @@ class ImageData(Generator):
             menu.close_game()
 
             # Only run for one resolution.
-            if digit_type == 'counter':
+            if dataset_type == 'counter':
                 break
 
         with open(hash_path, 'wb') as file:
             pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
-    def __get_hashes(window, digit_type):
-        if digit_type == 'level_select':
+    def __get_hashes(window, dataset_type):
+        if dataset_type == 'level_select':
             parser = MenuParser(window)
             labels = ['3-3', '3-2', '2-3', '2-2', '3-4', '3-1',
                       '2-4', '2-1', '3-5', '3-6', '2-5', '2-6',
@@ -255,20 +255,20 @@ class ImageData(Generator):
                       '5-3', '5-2', '6-3', '6-2', '5-4', '5-1',
                       '6-4', '6-1', '5-5', '5-6', '6-5', '6-6']
 
-            hashes = parser.parse_levels(training=True)
+            hashes = parser.parse_levels(use_hashes=False)
 
-        elif digit_type in ['black', 'blue', 'blue_special', 'counter']:
+        elif dataset_type in ['black', 'blue', 'blue_special', 'counter']:
             screenshot = window.screenshot()
             parser = GameParser(window)
 
-            if digit_type == 'counter':
+            if dataset_type == 'counter':
                 remaining = 476
                 labels = list(range(remaining, -1, -1))
 
                 hashes = []
                 mistakes_hash = None
                 for cell in parser.parse_cells(screenshot, Cell.ORANGE):
-                    mistakes_hash, remaining_hash = parser.parse_counters(screenshot, training=True)
+                    mistakes_hash, remaining_hash = parser.parse_counters(screenshot, use_hashes=False)
 
                     hashes.append(remaining_hash)
 
@@ -279,63 +279,63 @@ class ImageData(Generator):
                 assert mistakes_hash is not None
                 hashes.append(mistakes_hash)
 
-            elif digit_type == 'black':
-                hashes = parser.parse_cells(screenshot, Cell.BLACK, training=True)
+            elif dataset_type == 'black':
+                hashes = parser.parse_cells(screenshot, Cell.BLACK, use_hashes=False)
                 labels = ['{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '1', '2', '3',
                           '4', '5', '6', '?', '-2-', '-3-', '-4-', '{0}', '0']
 
-            elif digit_type == 'blue':
-                hashes = parser.parse_cells(screenshot, Cell.BLUE, training=True)
+            elif dataset_type == 'blue':
+                hashes = parser.parse_cells(screenshot, Cell.BLUE, use_hashes=False)
                 labels = [str(i) for i in range(0, 19)]
 
-            elif digit_type == 'blue_special':
-                hashes = parser.parse_cells(screenshot, Cell.BLUE, training=True)
+            elif dataset_type == 'blue_special':
+                hashes = parser.parse_cells(screenshot, Cell.BLUE, use_hashes=False)
                 labels = ['{5}', '-2-', '5', '4', '2', '4', '5', '{4}', '{2}', '5', '3', '10', '10']
 
             else:
-                raise RuntimeError('invalid digit type')
+                raise RuntimeError('invalid dataset type')
 
         else:
-            if digit_type == 'column_normal':
+            if dataset_type == 'column_normal':
                 labels = [str(i) for i in range(0, 17)]
 
-            elif digit_type == 'column_consecutive':
+            elif dataset_type == 'column_consecutive':
                 labels = ['{' + str(i) + '}' for i in range(0, 17)]
 
-            elif digit_type == 'column_non-consecutive':
+            elif dataset_type == 'column_non-consecutive':
                 labels = ['-' + str(i) + '-' for i in range(2, 16)]
 
-            elif digit_type == 'diagonal_normal_1':
+            elif dataset_type == 'diagonal_normal_1':
                 labels = [str(i) for i in range(1, 16)] + ['0', '0'] + [str(i) for i in range(15, 0, -1)]
 
-            elif digit_type == 'diagonal_normal_2':
+            elif dataset_type == 'diagonal_normal_2':
                 labels = ['24', '25', '27', '26', '23', '22', '21', '20',
                           '19', '18', '17', '16', '16', '17', '18', '19',
                           '20', '23', '21', '24', '26', '27', '25', '22']
 
-            elif digit_type == 'diagonal_consecutive_1':
+            elif dataset_type == 'diagonal_consecutive_1':
                 labels = ['{' + str(i) + '}' for i in range(1, 16)] + ['{0}', '{0}'] + ['{' + str(i) + '}' for i in
                                                                                         range(15, 0, -1)]
 
-            elif digit_type == 'diagonal_consecutive_2':
+            elif dataset_type == 'diagonal_consecutive_2':
                 labels = ['{24}', '{25}', '{27}', '{26}', '{23}', '{22}',
                           '{21}', '{20}', '{19}', '{18}', '{17}', '{16}',
                           '{16}', '{17}', '{18}', '{19}', '{20}', '{23}',
                           '{21}', '{24}', '{26}', '{27}', '{25}', '{22}']
 
-            elif digit_type == 'diagonal_non-consecutive_1':
+            elif dataset_type == 'diagonal_non-consecutive_1':
                 labels = ['-' + str(i) + '-' for i in range(2, 16)] + ['-' + str(i) + '-' for i in range(15, 1, -1)]
 
-            elif digit_type == 'diagonal_non-consecutive_2':
+            elif dataset_type == 'diagonal_non-consecutive_2':
                 labels = ['-23-', '-24-', '-27-', '-26-', '-25-', '-22-',
                           '-21-', '-20-', '-19-', '-18-', '-17-', '-16-',
                           '-16-', '-17-', '-18-', '-19-', '-20-', '-21-',
                           '-24-', '-25-', '-26-', '-22-', '-23-']
             else:
-                raise RuntimeError('invalid digit type')
+                raise RuntimeError('invalid dataset type')
 
             parser = GameParser(window)
-            hashes = parser.parse_grid(training=True)
+            hashes = parser.parse_grid(use_hashes=False)
 
         assert len(hashes) == len(labels)
         return hashes, labels
@@ -344,24 +344,24 @@ class ImageData(Generator):
         images, labels = [], []
         #for resolution in RESOLUTIONS:
         for resolution in [(1920, 1080)]:
-            menu = self._load_game('Hexcells', resolution, training=True)
+            menu = self._load_game('Hexcells', resolution, use_hashes=False)
             main_menu = menu.window.screenshot()
             images.append(main_menu)
             labels.append('main_menu')
             menu.close_game()
             
-            menu = self._load_game('Hexcells Plus', resolution, training=True)
+            menu = self._load_game('Hexcells Plus', resolution, use_hashes=False)
             main_menu = menu.window.screenshot()
             images.append(main_menu)
             labels.append('main_menu')
             menu.close_game()
             
-            menu = self._load_game('Hexcells Infinite', resolution, training=True)
+            menu = self._load_game('Hexcells Infinite', resolution, use_hashes=False)
             main_menu = menu.window.screenshot()
             images.append(main_menu)
             labels.append('main_menu')
         
-            menu_parser = MenuParser(menu.window, training=True)
+            menu_parser = MenuParser(menu.window, use_hashes=False)
             buttons = menu_parser.parse_main_menu()
             save_slot_buttons = buttons['save_slots']
             menu.window.click(save_slot_buttons[0])

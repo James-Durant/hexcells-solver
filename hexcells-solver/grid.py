@@ -49,18 +49,18 @@ class Grid:
         nearest = np.argmin(np.sum((self.__cell_image_coords - query_coords) ** 2, axis=1))
         return self.__cells[nearest]
 
-    def add_constraint(self, row, col, digit, angle):
-        if digit[0] == '{' and digit[-1] == '}':
+    def add_constraint(self, row, col, number, angle):
+        if number[0] == '{' and number[-1] == '}':
             hint = 'consecutive'
-            digit = digit[1:-1]
-        elif digit[0] == '-' and digit[-1] == '-':
+            number = number[1:-1]
+        elif number[0] == '-' and number[-1] == '-':
             hint = 'non-consecutive'
-            digit = digit[1]
+            number = number[1]
         else:
             hint = 'normal'
 
         try:
-            size = int(digit)
+            size = int(number)
         except ValueError:
             raise RuntimeError('grid constraint parsed incorrectly')
 
@@ -111,9 +111,9 @@ class Grid:
 
     def neighbours(self, cell):
         deltas = []
-        if cell.colour == Cell.BLACK and cell.digit != '?':
+        if cell.colour == Cell.BLACK and cell.number != '?':
             deltas = Grid.__DIRECT
-        elif cell.colour == Cell.BLUE and cell.digit is not None:
+        elif cell.colour == Cell.BLUE and cell.number is not None:
             deltas = Grid.__FLOWER
 
         return self.__find_neighbours(cell, deltas)
@@ -167,14 +167,14 @@ class Cell:
     COLOURS = [BLUE, BLACK, ORANGE]
     HINT_TYPES = ['normal', 'consecutive', 'non-consecutive']
 
-    def __init__(self, image_coords, width, height, colour, digit=None):
+    def __init__(self, image_coords, width, height, colour, number=None):
         self.__image_coords = image_coords
         self.__grid_coords = None
         self.__width = width
         self.__height = height
         self.__hint = 'normal'
         self.colour = colour
-        self.digit = digit
+        self.number = number
 
     @property
     def image_coords(self):
@@ -217,61 +217,61 @@ class Cell:
             self.__colour = colour
 
     @property
-    def digit(self):
-        return self.__digit
+    def number(self):
+        return self.__number
 
-    @digit.setter
-    def digit(self, digit):
+    @number.setter
+    def number(self, number):
         if self.__colour == Cell.BLUE:
-            if digit is None:
-                self.__digit = None
+            if number is None:
+                self.__number = None
                 return
 
-            if digit[0] == '{' and digit[-1] == '}':
-                if len(digit) == 2:
-                    raise RuntimeError('consecutive blue cell missing digit')
+            if number[0] == '{' and number[-1] == '}':
+                if len(number) == 2:
+                    raise RuntimeError('consecutive blue cell missing number')
                 self.__hint = 'consecutive'
-                digit = digit[1:-1]
+                number = number[1:-1]
 
-            elif digit[0] == '-' and digit[-1] == '-':
-                if len(digit) == 2:
-                    raise RuntimeError('non-consecutive blue cell missing digit')
+            elif number[0] == '-' and number[-1] == '-':
+                if len(number) == 2:
+                    raise RuntimeError('non-consecutive blue cell missing number')
                 self.__hint = 'non-consecutive'
-                digit = digit[1:-1]
+                number = number[1:-1]
 
             try:
-                self.__digit = int(digit)
+                self.__number = int(number)
             except ValueError:
-                raise RuntimeError('blue cell digit parsed incorrectly')
+                raise RuntimeError('blue cell number parsed incorrectly')
 
         elif self.__colour == Cell.BLACK:
-            if digit is None:
-                raise RuntimeError('OCR missed black cell digit')
-            elif digit == '?':
-                self.__digit = '?'
+            if number is None:
+                raise RuntimeError('OCR missed black cell number')
+            elif number == '?':
+                self.__number = '?'
             else:
-                if digit[0] == '{' and digit[-1] == '}':
-                    if len(digit) == 2:
-                        raise RuntimeError('consecutive black cell missing digit')
+                if number[0] == '{' and number[-1] == '}':
+                    if len(number) == 2:
+                        raise RuntimeError('consecutive black cell missing number')
                     self.__hint = 'consecutive'
-                    digit = digit[1:-1]
+                    number = number[1:-1]
 
-                elif digit[0] == '-' and digit[-1] == '-':
-                    if len(digit) == 2:
-                        raise RuntimeError('non-consecutive black cell missing digit')
+                elif number[0] == '-' and number[-1] == '-':
+                    if len(number) == 2:
+                        raise RuntimeError('non-consecutive black cell missing number')
                     self.__hint = 'non-consecutive'
-                    digit = digit[1:-1]
+                    number = number[1:-1]
 
                 try:
-                    self.__digit = int(digit)
+                    self.__number = int(number)
                 except ValueError:
-                    raise RuntimeError('black cell digit parsed incorrectly')
+                    raise RuntimeError('black cell number parsed incorrectly')
 
         elif self.__colour == Cell.ORANGE:
-            if digit is not None:
-                raise RuntimeError('orange cells cannot have digits')
+            if number is not None:
+                raise RuntimeError('orange cells cannot have numbers')
             else:
-                self.__digit = None
+                self.__number = None
 
     def __str__(self):
         if self.__colour == Cell.BLUE:
@@ -284,18 +284,18 @@ class Cell:
             raise RuntimeError('invalid cell colour')
 
         if self.__hint == 'consecutive':
-            digit = '{' + str(self.__digit) + '}'
+            number = '{' + str(self.__number) + '}'
         elif self.__hint == 'non-consecutive':
-            digit = '-' + str(self.__digit) + '-'
-        elif self.__hint == 'normal' or self.__digit == '?':
-            if self.__digit is None:
-                digit = '   '
+            number = '-' + str(self.__number) + '-'
+        elif self.__hint == 'normal' or self.__number == '?':
+            if self.__number is None:
+                number = '   '
             else:
-                digit = ' ' + str(self.__digit) + ' '
+                number = ' ' + str(self.__number) + ' '
         else:
-            raise RuntimeError('invalid cell digit/hint')
+            raise RuntimeError('invalid cell number/hint')
 
-        return colour + digit
+        return colour + number
 
 
 class Constraint:

@@ -21,13 +21,13 @@ def average_hash(image):
 
 class Parser:
     @staticmethod
-    def _load_hashes(digit_type):
-        path = os.path.join('resources', digit_type, 'hashes.pickle')
+    def _load_hashes(dataset_type):
+        path = os.path.join('resources', dataset_type, 'hashes.pickle')
         try:
             with open(path, 'rb') as file:
                 return pickle.load(file)
         except FileNotFoundError:
-            raise RuntimeError(f'Reference hashes missing for {digit_type}')
+            raise RuntimeError(f'Reference hashes missing for {dataset_type}')
 
     @staticmethod
     def _merge_rects(rects, xdist, ydist):
@@ -65,11 +65,11 @@ class Parser:
 
 
 class MenuParser(Parser):
-    def __init__(self, window, training=False, steam_path=r'C:\Program Files (x86)\Steam'):
+    def __init__(self, window, use_hashes=True, steam_path=r'C:\Program Files (x86)\Steam'):
         self.__window = window
         self.__steam_path = steam_path
         self.__level_data = Parser._load_hashes('level_select')
-        if not training:
+        if use_hashes:
             self.__load_hashes()
 
     def __load_hashes(self):
@@ -81,8 +81,8 @@ class MenuParser(Parser):
         if resolution not in RESOLUTIONS:
             resolution = (1920, 1080)
         
-        digit_type = os.path.join('screen', '{0}x{1}'.format(*resolution))
-        hashes, labels = Parser._load_hashes(digit_type)
+        dataset_type = os.path.join('screen', '{0}x{1}'.format(*resolution))
+        hashes, labels = Parser._load_hashes(dataset_type)
         self.__level_exit = hashes.pop(-1)
         labels.pop(-1)
         self.__screen_data = hashes, labels
@@ -242,7 +242,7 @@ class MenuParser(Parser):
                 'random': random_button,
                 'seed': seed_button}
 
-    def parse_levels(self, training=False):
+    def parse_levels(self, use_hashes=True):
         image = self.__window.screenshot()
 
         mask = cv2.inRange(image, (244, 244, 244), (255, 255, 255))
@@ -272,7 +272,7 @@ class MenuParser(Parser):
         # temp = image.copy()
 
         levels = {}
-        training_hashes = []
+        hashes = []
         for x, y, w, h in boxes:
             x_crop, y_crop = round(w * 0.25), round(h * 0.3)
             cropped = image[y + y_crop:y + h - y_crop, x + x_crop:x + w - x_crop]
@@ -292,8 +292,8 @@ class MenuParser(Parser):
 
             hashed = average_hash(thresh)
 
-            if training:
-                training_hashes.append(hashed)
+            if not use_hashes:
+                hashes.append(hashed)
 
             else:
                 hashes, labels = self.__level_data
@@ -307,7 +307,7 @@ class MenuParser(Parser):
 
         # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_selection_parsed.png', temp)
 
-        return training_hashes if training else levels
+        return levels if use_hashes else hashes
 
     def parse_level_exit(self):
         image = self.__window.screenshot()
@@ -378,7 +378,7 @@ class GameParser(Parser):
     __counter_match_threshold = 0.1
     __area_threshold = 550
     __angles = np.asarray([0, 60, 90, 120, 240, 270, 300, 360])
-    __digit_dims = (45, 30)
+    __number_dims = (45, 30)
     __counter_dims = (200, 50)
 
     def __init__(self, window):
@@ -406,7 +406,7 @@ class GameParser(Parser):
         self.__hex_width = float('inf')
         self.__hex_height = float('inf')
 
-    def parse_grid(self, training=False):
+    def parse_grid(self, use_hashes=True):
         image = self.__window.screenshot()
 
         blue_cells = self.parse_cells(image, Cell.BLUE)
@@ -480,11 +480,11 @@ class GameParser(Parser):
         _, remaining = self.parse_counters(image)
 
         scene = Grid(grid, cells, remaining)
-        parsed = self.__parse_columns(image, scene, training=training)
+        parsed = self.__parse_columns(image, scene, use_hashes=use_hashes)
 
-        return parsed if training else scene
+        return scene if use_hashes else parsed
 
-    def parse_cells(self, image, cell_colour, training=False):
+    def parse_cells(self, image, cell_colour, use_hashes=True):
         mask = cv2.inRange(image, cell_colour, cell_colour)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -500,7 +500,7 @@ class GameParser(Parser):
                 x_crop, y_crop = round(w * 0.18), round(h * 0.18)
                 cropped = image[y + y_crop:y + h - y_crop, x + x_crop:x + w - x_crop]
 
-                parsed = self.__parse_cell_digit(cropped, cell_colour, training)
+                parsed = self.__parse_cell_number(cropped, cell_colour, use_hashes)
 
                 # cv2.drawContours(temp, [contour], -1, (0,255,0), 2)
                 # if parsed is not None:
@@ -509,19 +509,19 @@ class GameParser(Parser):
                 #    temp[y+y_crop:y+h-y_crop, x+x_crop:x+w-x_crop] = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
                 #    cv2.rectangle(temp, (x+x_crop+1, y+y_crop+1), (x+w-x_crop-1, y+h-y_crop-1), (0,0,255), 2)
 
-                if training:
-                    if parsed is not None:
-                        cells.append(parsed)
-                else:
+                if use_hashes:
                     centre = (x + w // 2, y + h // 2)
                     cell = Cell(centre, w, h, cell_colour, parsed)
                     cells.append(cell)
+                else:
+                    if parsed is not None:
+                        cells.append(parsed)
 
         # cv2.imwrite(IMAGE_PATH+'\Cells\implementation_parsing_cells_boxes_{}.png'.format(cell_colour), temp)
 
         return cells
 
-    def __parse_cell_digit(self, image, cell_colour, training=False):
+    def __parse_cell_number(self, image, cell_colour, use_hashes=True):
         if cell_colour == Cell.ORANGE:
             return None
 
@@ -534,7 +534,7 @@ class GameParser(Parser):
         thresh = GameParser.__process_image(thresh)
         hashed = average_hash(thresh)
 
-        if training:
+        if not use_hashes:
             return hashed
 
         if cell_colour == Cell.BLACK:
@@ -558,8 +558,8 @@ class GameParser(Parser):
             # cv2.imshow('test', temp)
             # cv2.waitKey(0)
 
-            digit = Parser._find_match(hashes, labels, average_hash(temp))
-            match = '{' + digit + '}'
+            number = Parser._find_match(hashes, labels, average_hash(temp))
+            match = '{' + number + '}'
 
         # print(match)
         # cv2.imshow('test', thresh)
@@ -567,7 +567,7 @@ class GameParser(Parser):
 
         return match
 
-    def parse_counters(self, image=None, training=False):
+    def parse_counters(self, image=None, use_hashes=True):
         if image is None:
             image = self.__window.screenshot()
 
@@ -600,7 +600,7 @@ class GameParser(Parser):
                 thresh = cv2.resize(thresh, GameParser.__counter_dims, interpolation=cv2.INTER_AREA)
                 hashed = average_hash(thresh)
 
-                if training:
+                if not use_hashes:
                     parsed.append(hashed)
 
                 else:
@@ -621,7 +621,7 @@ class GameParser(Parser):
 
         return parsed
 
-    def __parse_columns(self, image, grid, training=False):
+    def __parse_columns(self, image, grid, use_hashes=True):
         _, thresh = cv2.threshold(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 120, 255, cv2.THRESH_BINARY_INV)
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -657,7 +657,7 @@ class GameParser(Parser):
             angle = GameParser.__angles[np.argmin(np.abs(GameParser.__angles - theta))]
 
             cropped = 255 - thresh[y:y + h, x:x + w]
-            digit = self.__parse_grid_digit(cropped, angle, training)
+            number = self.__parse_grid_number(cropped, angle, use_hashes)
 
             # cv2.rectangle(temp2, (x-1, y-1), (x+w, y+h), (0,0,255), 2)
             # cv2.arrowedLine(temp2, (x+w//2, y+h//2), nearest_coords, (0,0,255), 2)
@@ -666,17 +666,17 @@ class GameParser(Parser):
             # cv2.putText(temp2, str(angle), (nearest_coords[0]+5,nearest_coords[1]+15), cv2.FONT_HERSHEY_DUPLEX, 0.6, (0,0,255), 1)
             # temp2[y:y+h, x:x+w] = cv2.cvtColor(cropped, cv2.COLOR_GRAY2BGR)
 
-            if training:
-                parsed.append(digit)
-            else:
+            if use_hashes:
                 row, col = nearest_cell.grid_coords
-                grid.add_constraint(row, col, digit, angle)
+                grid.add_constraint(row, col, number, angle)
+
+            parsed.append(number)
 
         # cv2.imwrite(IMAGE_PATH+'\Columns\implementation_parsing_columns_boxes_2.png', temp2)
 
         return parsed
 
-    def __parse_grid_digit(self, thresh, angle, training=False):
+    def __parse_grid_number(self, thresh, angle, use_hashes=True):
         if np.count_nonzero(thresh == 0) < 20:
             return None
         
@@ -693,7 +693,7 @@ class GameParser(Parser):
        
         hashed = average_hash(thresh)
 
-        if training:
+        if not use_hashes:
             return hashed
 
         if angle in [0, 90, 270, 360]:
@@ -779,7 +779,7 @@ class GameParser(Parser):
                 return
                 # raise RuntimeError('cell must be blue or black after click')
 
-            cell.digit = self.__parse_cell_digit(cropped, cell.colour)
+            cell.number = self.__parse_cell_number(cropped, cell.colour)
 
     @staticmethod
     def __process_image(image):

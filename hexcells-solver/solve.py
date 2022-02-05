@@ -95,7 +95,7 @@ class Solver:
     def __get_constraints(self, grid):
         self.__constraints = {}
         for cell1 in self.__known:
-            if cell1.digit is not None and cell1.digit != '?':
+            if cell1.number is not None and cell1.number != '?':
                 for cell2 in grid.neighbours(cell1):
                     if cell2 is not None and cell2.colour == Cell.ORANGE:
                         try:
@@ -191,13 +191,13 @@ class Solver:
 
     def __add_cell_constraints(self, grid):
         for cell in self.__known:
-            if cell.digit is not None and cell.digit != '?':
+            if cell.number is not None and cell.number != '?':
                 neighbours = grid.neighbours(cell)
-                self.__problem += lpSum(self.__get_var(neighbour) for neighbour in neighbours) == cell.digit
+                self.__problem += lpSum(self.__get_var(neighbour) for neighbour in neighbours) == cell.number
 
                 if (cell.hint != 'normal' and
-                        ((cell.colour == Cell.BLACK and 2 <= cell.digit <= 4) or
-                         (cell.colour == Cell.BLUE and 2 <= cell.digit <= 10))):
+                        ((cell.colour == Cell.BLACK and 2 <= cell.number <= 4) or
+                         (cell.colour == Cell.BLUE and 2 <= cell.number <= 10))):
 
                     if cell.colour == Cell.BLUE:
                         neighbours = grid.outer_neighbours(cell)
@@ -207,7 +207,7 @@ class Solver:
                         if cell.colour == Cell.BLUE:
                             for i in range(n):
                                 for j in range(i + 1, n):
-                                    if Solver.__dist(neighbours, i, j) in range(cell.digit, n):
+                                    if Solver.__dist(neighbours, i, j) in range(cell.number, n):
                                         self.__problem += lpSum([self.__get_var(neighbours[i]),
                                                                  self.__get_var(neighbours[j])]) <= 1
 
@@ -221,9 +221,9 @@ class Solver:
 
                     if cell.hint == 'non-consecutive':
                         for i in range(n):
-                            if all(neighbours[(i + j) % n] is not None for j in range(cell.digit - 1)):
+                            if all(neighbours[(i + j) % n] is not None for j in range(cell.number - 1)):
                                 self.__problem += lpSum(self.__get_var(neighbours[(i + j) % n])
-                                                        for j in range(cell.digit)) <= cell.digit - 1
+                                                        for j in range(cell.number)) <= cell.number - 1
 
     def __add_plus_end_level_constraints(self, grid):
         letters = [[0, 1, 2],

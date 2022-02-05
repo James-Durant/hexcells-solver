@@ -44,10 +44,10 @@ class Environment(ABC):
             return 0
 
         elif cell.colour == Cell.BLACK:
-            if cell.digit == '?':
+            if cell.number == '?':
                 return 0.8
             else:
-                return (cell.digit + 1) / 10
+                return (cell.number + 1) / 10
 
         elif cell.colour == Cell.BLUE:
             return 0.9
@@ -112,9 +112,9 @@ class OfflineEnvironment(Environment):
                         self._grid.remaining -= 1
 
                     cell_curr.colour = cell_true.colour
-                    if cell_true.digit is not None:
+                    if cell_true.number is not None:
                         cell_curr.hint = cell_true.hint
-                        cell_curr.digit = str(cell_true.digit)
+                        cell_curr.number = str(cell_true.number)
 
                     self._state[row][col] = Environment._cell_to_rep(cell_true)
                     if len(self._grid.unknown_cells()) == 0:
