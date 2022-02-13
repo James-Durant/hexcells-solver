@@ -389,20 +389,23 @@ class Trainer:
                       experience_replay=EXPERIENCE_REPLAY,
                       double_dqn=DOUBLE_DQN,
                       model_path=None,
-                      levels_path='resources/levels/levels_small.pickle',
+                      level_size='small',
                       test_train_split=0.9):
         
-        train_levels, _ = Trainer.__load_levels(levels_path, 1)
+        current_path = os.path.dirname(os.path.abspath(__file__))
+        level_path = os.path.join(current_path, f'resources/levels/levels_{level_size}.pickle')
+        
+        train_levels, _ = Trainer.__load_levels(level_path, 1)
         environment = OfflineEnvironment(*train_levels[0])
         
         agent = Agent(environment, batch_size, learning_rate, discount_rate, exploration_rate,
                       experience_replay, double_dqn, model_path=model_path)
         
-        Trainer.__train_test_accuracy(agent, levels_path, test_train_split, new_log=True)
+        Trainer.__train_test_accuracy(agent, level_path, test_train_split, new_log=True)
 
         for epoch in range(epochs):
             print('Epoch {}'.format(epoch + 1))
-            train_levels, _ = Trainer.__load_levels(levels_path, test_train_split)
+            train_levels, _ = Trainer.__load_levels(level_path, test_train_split)
 
             for i, (grid, grid_solved) in enumerate(train_levels, 1):
                 agent.environment = environment = OfflineEnvironment(grid, grid_solved)
@@ -421,7 +424,7 @@ class Trainer:
                     agent.save_model()
 
             agent.save_model()
-            Trainer.__train_test_accuracy(agent, levels_path, test_train_split)
+            Trainer.__train_test_accuracy(agent, level_path, test_train_split)
 
     @staticmethod
     def train_online(agent,
