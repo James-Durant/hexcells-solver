@@ -14,7 +14,6 @@ from grid import Cell
 from solve import Solver
 from parse import LevelParser
 
-
 # Default values
 BATCH_SIZE = 64 
 LEARNING_RATE = 0.01 
@@ -26,9 +25,10 @@ EXPLORATION_RATE_DECAY = 0.99975
 EXPLORATION_RATE_MIN = 0.01
 EXPERIENCE_REPLAY = True
 MAX_REPLAY_MEMORY = 10000
-DOUBLE_DQN = False, 
+DOUBLE_DQN = False
 TARGET_UPDATE_INTERVAL = 5 
 SAVE_PATH = 'resources/models'
+
 
 class Environment:
     def __init__(self, grid):
@@ -229,7 +229,7 @@ class Agent:
         if model_path is not None:
             if os.path.isfile(model_path):
                 self.__model = load_model(model_path)
-                self.__save_path = model_path
+                self.__model_path = model_path
             else:
                 raise FileNotFoundError
         else:
@@ -242,7 +242,7 @@ class Agent:
                     break
                 i += 1
             
-            self.__save_path = os.path.join(save_path, filename)
+            self.__model_path = os.path.join(save_path, filename)
         
         if double_dqn:
             self.__target_model = self.__create_model((*self.__environment.state_dims, 1), self.__environment.max_cells * 2)
@@ -259,15 +259,19 @@ class Agent:
     @environment.setter
     def environment(self, environment):
         self.__environment = environment
+        
+    @property 
+    def model_path(self):
+        return self.__model_path
 
     def __create_model(self, input_dims, num_actions):
-        model = Sequential([Conv2D(128, (3, 3), activation='relu', padding='same', input_shape=input_dims),
-                            Conv2D(128, (3, 3), activation='relu', padding='same'),
-                            Conv2D(128, (3, 3), activation='relu', padding='same'),
-                            Conv2D(128, (3, 3), activation='relu', padding='same'),
+        model = Sequential([Conv2D(64, (3, 3), activation='relu', padding='same', input_shape=input_dims),
+                            Conv2D(64, (3, 3), activation='relu', padding='same'),
+                            Conv2D(64, (3, 3), activation='relu', padding='same'),
+                            Conv2D(64, (3, 3), activation='relu', padding='same'),
                             Flatten(),
-                            Dense(512, activation='relu'),
-                            Dense(512, activation='relu'),
+                            Dense(256, activation='relu'),
+                            Dense(256, activation='relu'),
                             Dense(num_actions, activation='linear')])
 
         model.compile(optimizer=Adam(learning_rate=self.__learning_rate), loss='mse')
@@ -319,7 +323,7 @@ class Agent:
         self.__exploration_rate = max(EXPLORATION_RATE_MIN, self.__exploration_rate*EXPLORATION_RATE_DECAY)
 
     def save_model(self):
-        self.__model.save(self.__save_path)
+        self.__model.save(self.__model_path)
 
 
 class Trainer:
@@ -327,18 +331,31 @@ class Trainer:
     def __load_levels(levels_path, test_train_split):
         with open(levels_path, 'rb') as file:
             levels, _ = pickle.load(file)
+            levels = levels[:100]
             
         split = round(len(levels) * test_train_split)
         return levels[:split], levels[split:]
 
     @staticmethod
-    def __train_test_accuracy(agent, levels_path, test_train_split):
+    def __train_test_accuracy(agent, levels_path, test_train_split, new_log=False):
         train_levels, test_levels = Trainer.__load_levels(levels_path, test_train_split)
         train_accuracy = Trainer.__accuracy_offline(agent, train_levels)
         test_accuracy = Trainer.__accuracy_offline(agent, test_levels)
         print(f'Training Accuracy: {train_accuracy}')
         print(f'Test Accuracy: {test_accuracy}\n')
 
+        save_path, filename = os.path.split(agent.model_path)
+        save_path = os.path.join(save_path, 'logs')
+        if not os.path.isdir(save_path):
+            os.mkdir(save_path)
+        
+        filename = f'log_{os.path.splitext(filename)[0]}.csv'
+        file_path = os.path.join(save_path, filename)
+        write_mode = 'w' if new_log or not os.path.isfile(file_path) else 'a'
+
+        with open(file_path, write_mode) as file:
+            file.write(f'{train_accuracy}, {test_accuracy}\n')
+        
     @staticmethod
     def __accuracy_offline(agent, levels):
         if len(levels) == 0:
@@ -381,7 +398,7 @@ class Trainer:
         agent = Agent(environment, batch_size, learning_rate, discount_rate, exploration_rate,
                       experience_replay, double_dqn, model_path=model_path)
         
-        Trainer.__train_test_accuracy(agent, levels_path, test_train_split)
+        Trainer.__train_test_accuracy(agent, levels_path, test_train_split, new_log=True)
 
         for epoch in range(epochs):
             print('Epoch {}'.format(epoch + 1))
@@ -443,5 +460,5 @@ class Trainer:
         return agent
 
 if __name__ == '__main__':
-    epochs = 1
+    epochs = 5
     Trainer.train_offline(epochs)
