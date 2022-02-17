@@ -3,7 +3,7 @@ from parse import Cell
 
 
 class Solver:
-    __GLPK_PATH = r'resources/winglpk-4.65/glpk-4.65/w64/glpsol.exe'
+    __GLPK_PATH = 'resources/winglpk-4.65/glpk-4.65/w64/glpsol.exe'
 
     def __init__(self, parser):
         self.__parser = parser
@@ -23,7 +23,6 @@ class Solver:
                 grid.remaining = remaining
 
     def solve_single_step(self, grid, game=None, level=None):
-        #print(grid)
         self.__setup_problem(grid, game, level)
         left_click_cells, right_click_cells = [], []
         true_class, false_class = self.__get_true_false_classes()

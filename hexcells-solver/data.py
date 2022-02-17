@@ -441,17 +441,18 @@ class ImageData(Generator):
 
             menu.close_game()
 
+
 if __name__ == '__main__':
-    #generator = LearningData()
-    #generator.make_dataset()
+    # generator = LearningData()
+    # generator.make_dataset()
 
     # Do not change the ordering.
     image_generator = ImageData()
-    #image_generator.make_dataset('level_select')
+    # image_generator.make_dataset('level_select')
     image_generator.make_dataset('screen')
-    #image_generator.make_dataset('black')
-    #image_generator.make_dataset('blue')
-    #image_generator.make_dataset('blue_special')
-    #image_generator.make_dataset('counter')
-    #image_generator.make_dataset('column')
-    #image_generator.make_dataset('diagonal')
+    # image_generator.make_dataset('black')
+    # image_generator.make_dataset('blue')
+    # image_generator.make_dataset('blue_special')
+    # image_generator.make_dataset('counter')
+    # image_generator.make_dataset('column')
+    # image_generator.make_dataset('diagonal')

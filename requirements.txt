@@ -1,5 +1,9 @@
-pyperclip
+keras
+matplotlib
+numpy
 opencv-python
-pyautogui
 pulp
+pyautogui
+pyperclip
+pywin32
 tensorflow

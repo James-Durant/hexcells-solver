@@ -10,7 +10,6 @@ from navigate import Navigator
 from window import WindowNotFoundError
 from learn import Trainer, BATCH_SIZE, LEARNING_RATE, DISCOUNT_RATE, EXPLORATION_RATE
 
-
 GAMEIDS = {'Hexcells': '265890',
            'Hexcells Plus': '271900',
            'Hexcells Infinite': '304410'}
@@ -35,16 +34,16 @@ class GUI:
             self.__game_running = True
             self.__game_var.set(self.__menu.title)
             self.__update_status(True)
-            
+
         except KeyboardInterrupt:
             sys.exit()
             pass
-        
+
         except WindowNotFoundError:
             self.__update_status(False)
             self.__menu = None
             self.__game_var.set('None')
-        
+
         except RuntimeError as e:
             messagebox.showerror('Error', str(e))
             sys.exit()
@@ -54,24 +53,24 @@ class GUI:
         self.__game_running = status
         self.__check_ready_to_solve()
 
-        state = 'normal' if status else 'disabled'
+        state = tk.NORMAL if status else tk.DISABLED
         self.__save_optionmenu.configure(state=state)
         self.__set_optionmenu.configure(state=state)
         self.__level_optionmenu.configure(state=state)
-        
+
         if status and self.__game_var.get() == 'Hexcells Infinite':
-            self.__train_button.configure(state='normal')
+            self.__train_button.configure(state=tk.NORMAL)
         else:
-            self.__train_button.configure(state='disabled')
+            self.__train_button.configure(state=tk.DISABLED)
 
     def __load_game(self):
         try:
             self.__menu.close_game()
-            
+
         except KeyboardInterrupt:
             sys.exit()
             pass
-            
+
         except Exception:
             pass
 
@@ -81,7 +80,7 @@ class GUI:
         Popen([r'C:\Program Files (x86)\Steam\steam.exe',
                r'steam://rungameid/' + GAMEIDS[self.__game_var.get()]],
               shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
-        
+
         while True:
             try:
                 self.__menu = Navigator()
@@ -90,11 +89,11 @@ class GUI:
                     break
                 else:
                     self.__update_status(False)
-                    
+
             except KeyboardInterrupt:
                 sys.exit()
                 pass
-            
+
             except WindowNotFoundError:
                 self.__update_status(False)
 
@@ -102,7 +101,7 @@ class GUI:
 
     def __on_game_var_update(self, *args):
         self.__solve_var.set(0)
-        state = 'normal' if self.__game_var.get() == 'Hexcells Infinite' else 'disabled'
+        state = tk.NORMAL if self.__game_var.get() == 'Hexcells Infinite' else tk.DISABLED
         self.__generator_radiobutton.configure(state=state)
 
     def __create_info_frame(self):
@@ -150,15 +149,15 @@ class GUI:
                                                *save_slots)
         self.__save_label.pack(side='left')
         self.__save_optionmenu.pack()
-        
+
         self.__delay_var = tk.BooleanVar(self.__root)
         self.__delay_var.set(False)
 
         self.__delay_checkbutton = tk.Checkbutton(self.__info_frame,
-                                                 text='Particle Effect',
-                                                 variable=self.__delay_var,
-                                                 onvalue=True,
-                                                 offvalue=False)
+                                                  text='Particle Effect',
+                                                  variable=self.__delay_var,
+                                                  onvalue=True,
+                                                  offvalue=False)
 
         self.__info_label.grid(sticky='w', row=0, column=0, columnspan=2)
         self.__game_1_radiobutton.grid(sticky='w', row=1, column=0)
@@ -247,7 +246,7 @@ class GUI:
 
         self.__solve_button = tk.Button(self.__solver_frame,
                                         text='Solve',
-                                        state='disabled',
+                                        state=tk.DISABLED,
                                         font=('Arial', 10),
                                         command=self.__solve)
 
@@ -258,20 +257,20 @@ class GUI:
     def __solver_radiobutton_callback(self, *args):
         if self.__solve_var.get() == 0:
             if self.__game_running:
-                self.__set_optionmenu.configure(state='normal')
-                self.__level_optionmenu.configure(state='normal')
+                self.__set_optionmenu.configure(state=tk.NORMAL)
+                self.__level_optionmenu.configure(state=tk.NORMAL)
 
         elif self.__solve_var.get() == 1:
             self.__level_var.set('-')
             if self.__game_running:
-                self.__set_optionmenu.configure(state='normal')
-            self.__level_optionmenu.configure(state='disabled')
+                self.__set_optionmenu.configure(state=tk.NORMAL)
+            self.__level_optionmenu.configure(state=tk.DISABLED)
 
         else:
             self.__set_var.set('-')
             self.__level_var.set('-')
-            self.__set_optionmenu.configure(state='disabled')
-            self.__level_optionmenu.configure(state='disabled')
+            self.__set_optionmenu.configure(state=tk.DISABLED)
+            self.__level_optionmenu.configure(state=tk.DISABLED)
 
         self.__check_ready_to_solve()
 
@@ -294,32 +293,32 @@ class GUI:
         if ((not self.__game_running) or
                 (self.__solve_var.get() == 0 and (self.__set_var.get() == '-' or self.__level_var.get() == '-')) or
                 (self.__solve_var.get() == 1 and self.__set_var.get() == '-')):
-            self.__solve_button.configure(state='disabled')
+            self.__solve_button.configure(state=tk.DISABLED)
         else:
-            self.__solve_button.configure(state='normal')
+            self.__solve_button.configure(state=tk.NORMAL)
 
     def __solve(self):
         self.__check_game_running()
         if not self.__game_running:
             messagebox.showerror('Error', 'Hexcells window not found')
             return
-        
+
         try:
             if self.__solve_var.get() == 0:
                 level = self.__set_var.get() + '-' + self.__level_var.get()
                 self.__menu.solve_level(self.__save_var.get(),
                                         level,
                                         self.__delay_var.get())
-                
+
             elif self.__solve_var.get() == 1:
                 self.__menu.solve_set(self.__save_var.get(),
                                       self.__set_var.get(),
                                       self.__delay_var.get())
-                
+
             elif self.__solve_var.get() == 2:
                 self.__menu.solve_game(self.__save_var.get(),
                                        self.__delay_var.get())
-                
+
             elif self.__solve_var.get() == 3:
                 self.__menu.level_generator(self.__delay_var.get())
 
@@ -351,7 +350,7 @@ class GUI:
 
         self.__test_var = tk.BooleanVar(self.__root)
         self.__test_var.set(True)
-        
+
         self.__test_checkbutton = tk.Checkbutton(self.__learning_frame,
                                                  text='Test Mode',
                                                  variable=self.__test_var,
@@ -360,16 +359,16 @@ class GUI:
 
         self.__replay_var = tk.BooleanVar(self.__root)
         self.__replay_var.set(False)
-        
+
         self.__replay_checkbutton = tk.Checkbutton(self.__learning_frame,
                                                    text='Experience Replay',
                                                    variable=self.__replay_var,
                                                    onvalue=True,
                                                    offvalue=False)
-        
+
         self.__double_var = tk.BooleanVar(self.__root)
         self.__double_var.set(False)
-        
+
         self.__double_checkbutton = tk.Checkbutton(self.__learning_frame,
                                                    text='Double DQN',
                                                    variable=self.__double_var,
@@ -452,22 +451,21 @@ class GUI:
         self.__path_frame = tk.Frame(self.__learning_frame)
         self.__path_button = tk.Button(self.__path_frame,
                                        text='Select Model: ',
-                                       state='disabled',
+                                       state=tk.DISABLED,
                                        command=self.__select_model_path)
 
         self.__model_path_var = tk.StringVar()
         self.__model_path_var.set('')
         self.__path_entry = tk.Entry(self.__path_frame,
-                                     state='disabled',
+                                     state=tk.DISABLED,
                                      textvariable=self.__model_path_var)
 
         self.__path_button.pack(side='left')
         self.__path_entry.pack(expand=True, fill='both')
         self.__path_frame.grid(sticky='nesw', row=9, column=0, columnspan=2, pady=10)
-        
-        
+
         self.__run_frame = tk.Frame(self.__learning_frame)
-        
+
         modes = ['Online', 'Offline']
         self.__mode_var = tk.StringVar(self.__root)
         self.__mode_var.set('Online')
@@ -480,7 +478,7 @@ class GUI:
         self.__train_button = tk.Button(self.__run_frame,
                                         text='Run',
                                         font=('Arial', 10),
-                                        state='disabled',
+                                        state=tk.DISABLED,
                                         command=self.__train)
 
         self.__mode_optionmenu.pack(side='right')
@@ -491,21 +489,21 @@ class GUI:
 
     def __on_model_var_update(self, *args):
         if self.__model_var.get() == 0:
-            self.__path_button.configure(state='disabled')
-            self.__path_entry.configure(state='disabled')
+            self.__path_button.configure(state=tk.DISABLED)
+            self.__path_entry.configure(state=tk.DISABLED)
             self.__model_path_var.set('')
-            
+
         elif self.__model_var.get() == 1:
-            self.__path_button.configure(state='normal')
-            self.__path_entry.configure(state='normal')
+            self.__path_button.configure(state=tk.NORMAL)
+            self.__path_entry.configure(state=tk.NORMAL)
 
     def __on_mode_var_update(self, *args):
         if self.__mode_var.get() == 'Online':
             self.__check_game_running()
-            
+
         elif self.__mode_var.get() == 'Offline':
-            self.__train_button.configure(state='normal')
-            
+            self.__train_button.configure(state=tk.NORMAL)
+
     def __train(self):
         try:
             epochs = int(self.__epochs_var.get())
@@ -543,20 +541,15 @@ class GUI:
                 if not self.__game_running:
                     messagebox.showerror('Error', 'Hexcells window not found')
                     return
-                
-                training_func = lambda agent: Trainer.train_online(agent,
-                                                                   self.__menu.window,
-                                                                   delay=self.__delay_var.get(),
-                                                                   test_only=self.__test_var.get(),
-                                                                   batch_size=batch_size,
-                                                                   learning_rate=learning_rate,
-                                                                   discount_rate=discount_rate,
-                                                                   exploration_rate=exploration_rate,
-                                                                   experience_replay=self.__replay_var.get(),
-                                                                   double_dqn=self.__double_var.get(),
-                                                                   model_path=model_path)
-                
-                self.__menu.level_generator(self.__delay_var.get(), epochs, training_func)
+
+                def train(agent):
+                    Trainer.train_online(agent, self.__menu.window, delay=self.__delay_var.get(),
+                                         test_only=self.__test_var.get(), batch_size=batch_size,
+                                         learning_rate=learning_rate, discount_rate=discount_rate,
+                                         exploration_rate=exploration_rate, experience_replay=self.__replay_var.get(),
+                                         double_dqn=self.__double_var.get(), model_path=model_path)
+
+                self.__menu.level_generator(self.__delay_var.get(), epochs, train)
 
         except (FileNotFoundError, IOError):
             messagebox.showerror('Error', 'Invalid model path given')
@@ -564,7 +557,7 @@ class GUI:
     def __select_model_path(self):
         file_path = os.path.dirname(os.path.realpath(__file__))
         models_dir = os.path.join(file_path, 'resources', 'models')
-        model_path = filedialog.askopenfilename(parent=self.__root, initialdir=models_dir, 
+        model_path = filedialog.askopenfilename(parent=self.__root, initialdir=models_dir,
                                                 title='Model Selection',
                                                 filetypes=[('HDF5 file', '.h5')])
         self.__model_path_var.set(model_path)

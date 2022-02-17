@@ -7,16 +7,13 @@ import pickle
 import numpy as np
 from grid import Grid, Cell
 
-IMAGE_PATH = r'..\..\Figures\Implementation\Parsing'
-
 RESOLUTIONS = [(2560, 1920), (2560, 1600), (2048, 1152),
                (1920, 1440), (1920, 1200), (1920, 1080),
                (1680, 1050), (1600, 1200)]
 
 
 def average_hash(image):
-    diff = image > image.mean()
-    return diff.flatten()
+    return (image > image.mean()).flatten()
 
 
 class Parser:
@@ -73,7 +70,8 @@ class MenuParser(Parser):
             self.__load_hashes()
 
     def __load_hashes(self):
-        options_path = os.path.join(self.__steam_path, r'steamapps\common\{}\saves\options.txt'.format(self.__window.title))
+        options_path = f'steamapps\\common\\{self.__window.title}\\saves\\options.txt'
+        options_path = os.path.join(self.__steam_path, options_path)
         with open(options_path, 'r') as file:
             data = json.load(file)
 
@@ -100,9 +98,7 @@ class MenuParser(Parser):
         if min(similarities) > 22000:
             # Check for level_exit
             image = cv2.inRange(image, (180, 180, 180), (255, 255, 255))
-            #cv2.imshow('test1', self.__level_exit)
-            #cv2.imshow('test2', image)
-            #cv2.waitKey(0)
+
             sim = np.sum(self.__level_exit != image) 
             print(sim)
             if sim > 25000:
@@ -146,14 +142,6 @@ class MenuParser(Parser):
         rects = [cv2.boundingRect(contour) for contour in contours]
         bounding_boxes = Parser._merge_rects(rects, 100, 100)
 
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_main_mask_1.png', mask)
-        # temp1 = image.copy()
-        # temp2 = image.copy()
-        # cv2.drawContours(temp1, contours, -1, (0,255,0), 2)
-        # for x, y, w, h in bounding_boxes:
-        #    cv2.rectangle(temp1, (x, y), (x+w, y+h), (0,0,255), 2)
-        #    cv2.rectangle(temp2, (x, y), (x+w, y+h), (0,0,255), 2)
-
         buttons = [(x + w // 2, y + h // 2) for x, y, w, h in bounding_boxes if y > threshold]
 
         if len(buttons) == 4:
@@ -169,20 +157,8 @@ class MenuParser(Parser):
 
         rects = [cv2.boundingRect(contour) for contour in contours]
 
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_main_mask_2.png', mask)
-        # cv2.drawContours(temp1, contours, -1, (0,255,0), 2)
-        # for x, y, w, h in rects:
-        #    if y > threshold:
-        #        cv2.rectangle(temp1, (x, y), (x+w, y+h), (0,0,255), 2)
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_main_contours.png', temp1)
-
         bounding_boxes = Parser._merge_rects(rects, image.shape[1], 50)
         buttons = [(x + w // 2, y + h // 2) for x, y, w, h in bounding_boxes if y > threshold]
-
-        # for x, y, w, h in bounding_boxes:
-        #    if y > threshold:
-        #        cv2.rectangle(temp2, (x,y), (x+w,y+h), (0,0,255), 2)
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_main_boxes.png', temp2)
 
         if len(buttons) == 3:
             user_levels, options, menu_exit = buttons
@@ -205,41 +181,22 @@ class MenuParser(Parser):
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         bounding_boxes = [cv2.boundingRect(contour) for contour in contours]
-
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_generation_mask_1.png', mask)
-        # temp1 = image.copy()
-        # temp2 = image.copy()
-        # cv2.drawContours(temp1, contours, -1, (0,255,0), 2)
-        # for x, y, w, h in bounding_boxes:
-        #    cv2.rectangle(temp1, (x, y), (x+w, y+h), (0,0,255), 2)
-
         bounding_boxes.sort(key=lambda box: box[1], reverse=True)
         x, y, w, h = bounding_boxes.pop(0)
-        # cv2.rectangle(temp2, (x, y), (x+w, y+h), (0,0,255), 2)
         play_button = (x + w // 2, y + h // 2)
 
         bounding_boxes.sort(key=lambda box: box[0])
         x, y, w, h = bounding_boxes.pop(0)
-        # cv2.rectangle(temp2, (x, y), (x+w, y+h), (0,0,255), 2)
         random_button = (x + w // 2, y + h // 2)
 
         mask = cv2.inRange(image, (234, 164, 6), (234, 164, 6))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_generation_mask_2.png', mask)
 
         rects = [cv2.boundingRect(contour) for contour in contours]
 
-        # cv2.drawContours(temp1, contours, -1, (0,255,0), 2)
-        # for x, y, w, h in rects:
-        #    cv2.rectangle(temp1, (x, y), (x+w, y+h), (0,0,255), 2)
-
         bounding_boxes = Parser._merge_rects(rects, image.shape[1], 100)
         x, y, w, h = bounding_boxes[0]
-        # cv2.rectangle(temp2, (x, y), (x+w, y+h), (0,0,255), 2)
         seed_button = (x + w // 2, y + h // 2)
-
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_generation_contours.png', temp1)
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_generation_boxes.png', temp2)
 
         return {'play': play_button,
                 'random': random_button,
@@ -251,14 +208,6 @@ class MenuParser(Parser):
         mask = cv2.inRange(image, (244, 244, 244), (255, 255, 255))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_selection_mask.png', mask)
-        #temp = image.copy()
-        #cv2.drawContours(temp, contours, -1, (0,255,0), 2)
-        #cv2.imshow('test', temp)
-        #cv2.waitKey(0)
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_selection_contours.png', temp)
-        #temp = image.copy()
-
         areas = [cv2.contourArea(contour) for contour in contours]
         median_area = np.median(areas)
 
@@ -266,13 +215,6 @@ class MenuParser(Parser):
                  if 0.95 * median_area < area < 1.05 * median_area]
 
         boxes.sort(key=lambda box: box[:2], reverse=True)
-
-        #for x, y, w, h in boxes:
-        #    cv2.rectangle(temp, (x,y), (x+w,y+h), (0,0,255), 2)
-        #cv2.imshow('test', temp)
-        #cv2.waitKey(0)
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_selection_boxes.png', temp)
-        # temp = image.copy()
 
         levels = {}
         hashes = []
@@ -283,9 +225,6 @@ class MenuParser(Parser):
 
             if np.count_nonzero(thresh == 0) < 20:
                 continue
-
-            # temp[y+y_crop:y+h-y_crop, x+x_crop:x+w-x_crop] = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
-            # cv2.rectangle(temp, (x+x_crop,y+y_crop), (x+w-x_crop,y+h-y_crop), (0,0,255), 2)
 
             coords = np.argwhere(thresh == 0)
             x0, y0 = coords.min(axis=0)
@@ -304,12 +243,6 @@ class MenuParser(Parser):
                     
                 levels[match] = (x + w // 2, y + h // 2)
 
-                #print(match)
-                #cv2.imshow('test', thresh)
-                #cv2.waitKey(0)
-
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_selection_parsed.png', temp)
-
         return levels if use_hashes else hashes
 
     def parse_level_exit(self):
@@ -319,25 +252,8 @@ class MenuParser(Parser):
 
         rects = [cv2.boundingRect(contour) for contour in contours]
 
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_exit_image.png', image)
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_exit_mask.png', mask)
-        # temp = image.copy()
-        # for x, y, w, h in rects:
-        #    cv2.rectangle(temp, (x, y), (x+w, y+h), (0,0,255), 2)
-
         bounding_boxes = Parser._merge_rects(rects, image.shape[1], 100)
-        buttons = [(x + w // 2, y + h // 2) for x, y, w, h in bounding_boxes]
-
-        # cv2.drawContours(temp, contours, -1, (0,255,0), 2)
-        # for x, y, w, h in rects:
-        #    cv2.rectangle(temp, (x-3, y-3), (x+w+3, y+h+3), (0,0,255), 2)
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_exit_contours.png', temp)
-        # temp = image.copy()
-        # for x, y, w, h in bounding_boxes:
-        #    cv2.rectangle(temp, (x, y), (x+w, y+h), (0,0,255), 2)
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_exit_boxes.png', temp)
-
-        return buttons
+        return [(x + w // 2, y + h // 2) for x, y, w, h in bounding_boxes]
 
     def parse_level_end(self):
         # end -> completion
@@ -348,15 +264,6 @@ class MenuParser(Parser):
 
         bounding_boxes = [cv2.boundingRect(contour) for contour in contours]
         bounding_boxes.sort(key=lambda x: (x[1], x[0]), reverse=True)
-
-        # temp = image.copy()
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_completion_mask.png', mask)
-        # for i, (x, y, w, h) in enumerate(bounding_boxes):
-        #    if i <= 1:
-        #        cv2.rectangle(temp, (x, y), (x+w-1, y+h-1), (0,0,255), 2)
-        #    else:
-        #        cv2.rectangle(temp, (x, y), (x+w-1, y+h-1), (0,255,0), 2)
-        # cv2.imwrite(IMAGE_PATH+'\menus\implementation_parsing_level_completion_contours.png', temp)
 
         if len(contours) == 6:
             next_button = (bounding_boxes[0][0] + bounding_boxes[0][2] // 2,
@@ -434,8 +341,7 @@ class LevelParser(Parser):
             x_spacing = self.__hex_width * 1.098
         else:
             x_spacing = self.__hex_width * 1.105
-        
-        #print(self.__hex_height)
+
         # 67 - 0.69
         # 43 - 0.72
         if self.__hex_height < 65:
@@ -449,49 +355,25 @@ class LevelParser(Parser):
         # print(self.__hex_width, (self.__x_max - self.__x_min) / x_spacing)
         # print(self.__hex_height, (self.__y_max - self.__y_min) / y_spacing)
 
-        grid = [[None] * cols for _ in range(rows)]
+        layout = [[None] * cols for _ in range(rows)]
         for cell in cells:
             x, y = cell.image_coords
 
             col = int(round((x - self.__x_min) / x_spacing))
             row = int(round((y - self.__y_min) / y_spacing))
             cell.grid_coords = (row, col)
-            grid[row][col] = cell
-
-        # temp = image.copy()
-        # img_height, img_width, _ = temp.shape
-
-        # diff =  grid[1][1].image_coords[1] - grid[0][0].image_coords[1]
-        # for row in range(rows):
-        #    y = int(round(self.__y_min+row*diff))
-        #    cv2.line(temp, (0, y), (img_width, y), (0,255,0), 2)
-
-        # diff =  grid[1][1].image_coords[0] - grid[0][0].image_coords[0]
-        # for col in range(cols):
-        #    x = int(round(self.__x_min+col*diff))
-        #    cv2.line(temp, (x, 0), (x, img_height), (0,255,0), 2)
-
-        # for cell in cells:
-        #    x, y = cell.image_coords
-        #    row, col = cell.grid_coords
-        #    cv2.circle(temp, (x,y), radius=4, color=(0,0,255), thickness=-1)
-        #    cv2.putText(temp, str((col,row)), (x+5,y-10), cv2.FONT_HERSHEY_DUPLEX, 0.6, (0,0,255), thickness=1)
-
-        # cv2.imwrite(IMAGE_PATH+'\implementation_parsing_grid.png', temp)
+            layout[row][col] = cell
 
         _, remaining = self.parse_counters(image)
 
-        scene = Grid(grid, cells, remaining)
-        parsed = self.__parse_columns(image, scene, use_hashes=use_hashes)
+        grid = Grid(layout, cells, remaining)
+        parsed = self.__parse_columns(image, grid, use_hashes=use_hashes)
 
-        return scene if use_hashes else parsed
+        return grid if use_hashes else parsed
 
     def parse_cells(self, image, cell_colour, use_hashes=True):
         mask = cv2.inRange(image, cell_colour, cell_colour)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        # temp = image.copy()
-        # cv2.imwrite(IMAGE_PATH+'\Cells\implementation_parsing_cells_mask_{}.png'.format(cell_colour), mask)
 
         cells = []
         for contour in contours:
@@ -504,13 +386,6 @@ class LevelParser(Parser):
 
                 parsed = self.__parse_cell_number(cropped, cell_colour, use_hashes)
 
-                # cv2.drawContours(temp, [contour], -1, (0,255,0), 2)
-                # if parsed is not None:
-                #    thresh = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
-                #    thresh = np.where(thresh > 220, 0, 255).astype(np.uint8)
-                #    temp[y+y_crop:y+h-y_crop, x+x_crop:x+w-x_crop] = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
-                #    cv2.rectangle(temp, (x+x_crop+1, y+y_crop+1), (x+w-x_crop-1, y+h-y_crop-1), (0,0,255), 2)
-
                 if use_hashes:
                     centre = (x + w // 2, y + h // 2)
                     cell = Cell(centre, w, h, cell_colour, parsed)
@@ -518,8 +393,6 @@ class LevelParser(Parser):
                 else:
                     if parsed is not None:
                         cells.append(parsed)
-
-        # cv2.imwrite(IMAGE_PATH+'\Cells\implementation_parsing_cells_boxes_{}.png'.format(cell_colour), temp)
 
         return cells
 
@@ -556,16 +429,8 @@ class LevelParser(Parser):
             temp[:, -15:] = 255
 
             temp = LevelParser.__process_image(temp)
-
-            # cv2.imshow('test', temp)
-            # cv2.waitKey(0)
-
             number = Parser._find_match(hashes, labels, average_hash(temp))
             match = '{' + number + '}'
-
-        # print(match)
-        # cv2.imshow('test', thresh)
-        # cv2.waitKey(0)
 
         return match
 
@@ -576,13 +441,6 @@ class LevelParser(Parser):
         mask = cv2.inRange(image, Cell.BLUE, Cell.BLUE)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        # temp = image.copy()
-        # cv2.drawContours(temp, contours, -1, (0,255,0), 2)
-        # cv2.imwrite(IMAGE_PATH+'\Counters\implementation_parsing_counters_image.png', image)
-        # cv2.imwrite(IMAGE_PATH+'\Counters\implementation_parsing_counters_mask.png', mask)
-        # cv2.imwrite(IMAGE_PATH+'\Counters\implementation_parsing_counters_contours.png', temp)
-        # temp = image.copy()
-
         parsed = []
         for contour in contours:
             if (cv2.contourArea(contour) > LevelParser.__area_threshold and
@@ -592,14 +450,10 @@ class LevelParser(Parser):
                 y = round(y + h * 0.35)
                 h = round(h * 0.65)
 
-                # cv2.rectangle(temp, (x, y), (x+w-1, y+h-1), (0,0,255), 2)
-
                 cropped = image[y:y + h, x:x + w]
                 thresh = cv2.cvtColor(np.where(cropped == Cell.BLUE, 255, 0).astype(np.uint8), cv2.COLOR_BGR2GRAY)
-
-                # cv2.imwrite(IMAGE_PATH+'\Counters\implementation_parsing_counters_thresh_{}.png'.format(len(parsed)), thresh)
-
                 thresh = cv2.resize(thresh, LevelParser.__counter_dims, interpolation=cv2.INTER_AREA)
+
                 hashed = average_hash(thresh)
 
                 if not use_hashes:
@@ -609,26 +463,16 @@ class LevelParser(Parser):
                     hashes, labels = self.__counter_data
                     similarities = [np.sum(hashed != h) for h in hashes]
                     match = labels[np.argmin(similarities)]
-
-                    # print(match)
-                    # cv2.imshow('test', thresh)
-                    # cv2.waitKey(0)
-
                     parsed.append(match)
 
         if len(parsed) != 2:
             raise RuntimeError('counters parsed incorrectly: {}/2'.format(len(parsed)))
-
-        # cv2.imwrite(IMAGE_PATH+'\Counters\implementation_parsing_counters_filtered.png', temp)
 
         return parsed
 
     def __parse_columns(self, image, grid, use_hashes=True):
         _, thresh = cv2.threshold(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 120, 255, cv2.THRESH_BINARY_INV)
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        # temp1 = image.copy()
-        # cv2.imwrite(IMAGE_PATH+'\Columns\implementation_parsing_columns_mask.png', thresh)
 
         rects = []
         for contour in contours:
@@ -638,14 +482,10 @@ class LevelParser(Parser):
                 if (self.__x_min - 2 * self.__hex_width < x < self.__x_max + 2 * self.__hex_width and
                         self.__y_min - 2 * self.__hex_height < y < self.__y_max + self.__hex_height and
                         np.linalg.norm(coords - grid.nearest_cell(coords).image_coords) < 130):
+
                     rects.append((x, y, w, h))
-                    # cv2.drawContours(temp1, [contour], -1, (0,255,0), 1)
-                    # cv2.rectangle(temp1, (x-1, y-1), (x+w, y+h), (0,0,255), 1)
 
         bounding_boxes = Parser._merge_rects(rects, self.__hex_width * 0.76, self.__hex_height * 0.7)
-
-        # cv2.imwrite(IMAGE_PATH+'\Columns\implementation_parsing_columns_boxes_1.png', temp1)
-        # temp2 = image.copy()
 
         parsed = []
         for x, y, w, h in bounding_boxes:
@@ -661,22 +501,20 @@ class LevelParser(Parser):
             cropped = 255 - thresh[y:y + h, x:x + w]
             number = self.__parse_grid_number(cropped, angle, use_hashes)
 
-            # cv2.rectangle(temp2, (x-1, y-1), (x+w, y+h), (0,0,255), 2)
-            # cv2.arrowedLine(temp2, (x+w//2, y+h//2), nearest_coords, (0,0,255), 2)
-            # if angle == 360:
-            #    angle = 0
-            # cv2.putText(temp2, str(angle), (nearest_coords[0]+5,nearest_coords[1]+15), cv2.FONT_HERSHEY_DUPLEX, 0.6, (0,0,255), 1)
-            # temp2[y:y+h, x:x+w] = cv2.cvtColor(cropped, cv2.COLOR_GRAY2BGR)
-
             if use_hashes:
                 row, col = nearest_cell.grid_coords
                 grid.add_constraint(row, col, number, angle)
 
             parsed.append(number)
 
-        # cv2.imwrite(IMAGE_PATH+'\Columns\implementation_parsing_columns_boxes_2.png', temp2)
-
         return parsed
+
+    @staticmethod
+    def __rotate(image, angle):
+        centre = tuple(np.array(image.shape[1::-1]) / 2)
+        rotation_matrix = cv2.getRotationMatrix2D(centre, angle, 1.0)
+        return cv2.warpAffine(image, rotation_matrix, image.shape[1::-1], flags=cv2.INTER_LINEAR,
+                              borderValue=(255, 255, 255))
 
     def __parse_grid_number(self, thresh, angle, use_hashes=True):
         if np.count_nonzero(thresh == 0) < 20:
@@ -688,10 +526,7 @@ class LevelParser(Parser):
             thresh = cv2.flip(cv2.flip(thresh, 1), 0)
 
         elif angle in [90, 270]:
-            centre = tuple(np.array(thresh.shape[1::-1]) / 2)
-            rotation_matrix = cv2.getRotationMatrix2D(centre, angle, 1.0)
-            thresh = cv2.warpAffine(thresh, rotation_matrix, thresh.shape[1::-1],
-                                    flags=cv2.INTER_LINEAR, borderValue=(255, 255, 255))
+            thresh = LevelParser.__rotate(thresh, angle)
        
         hashed = average_hash(thresh)
 
@@ -712,10 +547,7 @@ class LevelParser(Parser):
                 temp[:, :15] = 255
                 temp[:, -15:] = 255
             else:
-                centre = tuple(np.array(temp.shape[1::-1]) / 2)
-                rotation_matrix = cv2.getRotationMatrix2D(centre, angle, 1.0)
-                temp = cv2.warpAffine(temp, rotation_matrix, temp.shape[1::-1],
-                                      flags=cv2.INTER_LINEAR, borderValue=(255, 255, 255))
+                temp = LevelParser.__rotate(temp, angle)
 
             temp = LevelParser.__process_image(temp)
 
@@ -724,10 +556,6 @@ class LevelParser(Parser):
 
             if angle in [0, 360]:
                 match = '{' + match + '}'
-                
-        #print(match, angle)
-        #cv2.imshow('test2', thresh)
-        #cv2.waitKey(0)
 
         return match
 
@@ -779,7 +607,6 @@ class LevelParser(Parser):
                 cell.colour = Cell.BLUE
             else:
                 return
-                # raise RuntimeError('cell must be blue or black after click')
 
             cell.number = self.__parse_cell_number(cropped, cell.colour)
 
