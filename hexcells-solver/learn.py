@@ -12,35 +12,36 @@ from grid import Cell
 from solve import Solver
 from parse import LevelParser
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Default values
-BATCH_SIZE = 2048
-LEARNING_RATE = 0.001 
+BATCH_SIZE = 4096
+LEARNING_RATE = 0.0001
 LEARNING_RATE_DECAY = 0.99975
-LEARNING_RATE_MIN = 0.0001
-DISCOUNT_RATE = 0.05
+LEARNING_RATE_MIN = 0.00001
+DISCOUNT_RATE = 0
 EXPLORATION_RATE = 0.95
 EXPLORATION_RATE_DECAY = 0.99975
 EXPLORATION_RATE_MIN = 0.01
 EXPERIENCE_REPLAY = True
-MAX_REPLAY_MEMORY = 20000
+MAX_REPLAY_MEMORY = 50000
 DOUBLE_DQN = False
-TARGET_UPDATE_INTERVAL = 5 
+TARGET_UPDATE_INTERVAL = 5
 SAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources/models')
 
 
 class Environment:
     def __init__(self, grid):
         self._grid = grid
+        self._offset = 0.5 if self._grid[0, 0] is None else 0
         self._state_dims = (grid.rows, grid.cols)
         self._max_cells = (grid.rows * grid.cols) // 2
         self._state = self._initial_state()
-     
+
     @property
     def state_dims(self):
         return self._state_dims
-        
+
     @property
     def max_cells(self):
         return self._max_cells
@@ -50,7 +51,6 @@ class Environment:
 
     def _initial_state(self):
         state = np.zeros(self._state_dims)
-        self._row_offset = 1 if self._grid[0, 0] is None else 0
 
         for row in range(self._grid.rows):
             for col in range(self._grid.cols):
@@ -76,17 +76,18 @@ class Environment:
             return 1.0
 
     def _action_to_coords(self, action_index):
+        action_index += self._offset
         row = (action_index * 2) // self._grid.cols
         col = (action_index * 2) % self._grid.cols
-        return row, col
+        return int(row), int(col)
 
     def _coords_to_action(self, coords):
-        return (coords[0]*self._grid.cols + coords[1]) // 2
+        return int((coords[0] * self._grid.cols + coords[1]) // 2)
 
     def unknown(self):
         action_indices = []
         for cell in self._grid.unknown_cells():
-            index = self._coords_to_action(*cell.grid_coords)
+            index = self._coords_to_action(cell.grid_coords)
             action_indices.append(index)
             action_indices.append(index + self._max_cells)
 
@@ -150,21 +151,21 @@ class OnlineEnvironment(Environment):
         left_click_cells, right_click_cells = solver.solve_single_step(self._grid)
         left_click_coords = [cell.grid_coords for cell in left_click_cells]
         right_click_coords = [cell.grid_coords for cell in right_click_cells]
-        
+
         rewards = []
         solved = False
         for action in range(2 * self._max_cells):
             button, row, col, reward = self._reward(action, left_click_coords, right_click_coords)
             rewards.append(reward)
-                
+
             if action == agent_action:
                 cell = self._grid[row, col]
-                
+
                 if (row, col) in left_click_coords:
                     if rewards[-1] == -1:
                         self.__parser.click_cells([cell], 'right')
                         time.sleep(0.1)
-                        
+
                     if len(self._grid.unknown_cells()) > 1:
                         _, remaining = self.__parser.parse_clicked(self._grid, [cell], [], self.__delay)
                     else:
@@ -172,13 +173,13 @@ class OnlineEnvironment(Environment):
                         cell.colour = Cell.BLUE
                         remaining = 0
                         solved = True
-                    
+
                 elif (row, col) in right_click_coords:
                     if rewards[-1] == -1:
                         self.__parser.click_cells([cell], 'left')
                         time.sleep(0.1)
-                        
-                    if len(self._grid.unknown_cells()) > 1:  
+
+                    if len(self._grid.unknown_cells()) > 1:
                         _, remaining = self.__parser.parse_clicked(self._grid, [], [cell], self.__delay)
                     else:
                         self.__parser.click_cells([cell], 'right')
@@ -186,22 +187,22 @@ class OnlineEnvironment(Environment):
                         cell.number = '?'
                         remaining = 0
                         solved = True
-                
+
                 else:
                     mistakes_before, remaining = self.__parser.parse_counters()
-                    
+
                     if button == 0:
                         mistakes_after, remaining = self.__parser.parse_clicked(self._grid, [cell], [], self.__delay)
                         if mistakes_after > mistakes_before:
                             time.sleep(0.1)
                             _, remaining = self.__parser.parse_clicked(self._grid, [], [cell], self.__delay)
-                        
+
                     elif button == 1:
                         mistakes_after, remaining = self.__parser.parse_clicked(self._grid, [], [cell], self.__delay)
                         if mistakes_after > mistakes_before:
                             time.sleep(0.1)
                             _, remaining = self.__parser.parse_clicked(self._grid, [cell], [], self.__delay)
-                
+
                 self._grid.remaining = remaining
                 self._state[row][col] = Environment._cell_to_rep(cell)
 
@@ -218,7 +219,7 @@ class Agent:
         self.__learning_rate = learning_rate
         self.__discount_rate = discount_rate
         self.__exploration_rate = exploration_rate
-        
+
         self.__replay_memory = []
         self.__max_replay_memory = MAX_REPLAY_MEMORY if experience_replay else 1
 
@@ -230,16 +231,16 @@ class Agent:
                 raise FileNotFoundError
         else:
             self.__model = self.__create_model((*self.__environment.state_dims, 1), self.__environment.max_cells * 2)
-            
+
             i = 1
             while True:
                 filename = f'model_{i}.h5'
                 if not os.path.isfile(os.path.join(save_path, filename)):
                     break
                 i += 1
-            
+
             self.__model_path = os.path.join(save_path, filename)
-        
+
         if double_dqn:
             self.__target_model = self.__create_model((*self.__environment.state_dims, 1),
                                                       self.__environment.max_cells * 2)
@@ -256,19 +257,23 @@ class Agent:
     @environment.setter
     def environment(self, environment):
         self.__environment = environment
-        
-    @property 
+
+    @property
     def model_path(self):
         return self.__model_path
 
     def __create_model(self, input_dims, num_actions):
-        model = Sequential([Conv2D(64, (3, 3), activation='relu', padding='same', input_shape=input_dims),
+        model = Sequential([Conv2D(128, (3, 3), activation='relu', padding='same', input_shape=input_dims),
                             Conv2D(64, (3, 3), activation='relu', padding='same'),
-                            Conv2D(64, (3, 3), activation='relu', padding='same'),
-                            Conv2D(64, (3, 3), activation='relu', padding='same'),
+                            Conv2D(32, (3, 3), activation='relu', padding='same'),
+                            Conv2D(16, (3, 3), activation='relu', padding='same'),
                             Flatten(),
+                            Dense(512, activation='relu'),
                             Dense(256, activation='relu'),
-                            Dense(256, activation='relu'),
+                            Dense(128, activation='relu'),
+                            Dense(64, activation='relu'),
+                            Dense(32, activation='relu'),
+                            Dense(16, activation='relu'),
                             Dense(num_actions, activation='linear')])
 
         model.compile(optimizer=Adam(learning_rate=self.__learning_rate), loss='mse')
@@ -296,27 +301,28 @@ class Agent:
         current_states = np.array([np.expand_dims(s, -1) for s, _, _, _, _ in batch])
         current_state_rewards = np.array([r for _, _, r, _, _ in batch])
 
-        predictor = self.__target_model if self.__target_model else self.__model
-        next_states = np.array([np.expand_dims(s, -1) for _, _, _, s, _ in batch])
-        next_state_rewards = predictor.predict(next_states)
-            
-        for i, (_, action, _, _, solved) in enumerate(batch):
-            if not solved:
-                current_state_rewards[i][action] += self.__discount_rate*np.max(next_state_rewards[i])
-           
+        if self.__discount_rate > 0:
+            predictor = self.__target_model if self.__target_model else self.__model
+            next_states = np.array([np.expand_dims(s, -1) for _, _, _, s, _ in batch])
+            next_state_rewards = predictor.predict(next_states)
+
+            for i, (_, action, _, _, solved) in enumerate(batch):
+                if not solved:
+                    current_state_rewards[i][action] += self.__discount_rate * np.max(next_state_rewards[i])
+
         self.__model.fit(current_states, np.array(current_state_rewards), shuffle=False, verbose=False)
-        
+
         if self.__target_model:
             # If solved
             if transition[4]:
                 self.__target_update_counter += 1
-                
+
             if self.__target_update_counter > self.__target_update_interval:
                 self.__target_model.set_weights(self.__model.get_weights())
                 self.__target_update_counter = 0
-               
-        self.__learning_rate = max(LEARNING_RATE_MIN, self.__learning_rate*LEARNING_RATE_DECAY)
-        self.__exploration_rate = max(EXPLORATION_RATE_MIN, self.__exploration_rate*EXPLORATION_RATE_DECAY)
+
+        self.__learning_rate = max(LEARNING_RATE_MIN, self.__learning_rate * LEARNING_RATE_DECAY)
+        self.__exploration_rate = max(EXPLORATION_RATE_MIN, self.__exploration_rate * EXPLORATION_RATE_DECAY)
 
     def save_model(self):
         self.__model.save(self.__model_path)
@@ -327,12 +333,14 @@ class Trainer:
     def __load_levels(levels_path, test_train_split):
         with open(levels_path, 'rb') as file:
             levels, _ = pickle.load(file)
-            
+            levels = levels[:1000]
+
         split = round(len(levels) * test_train_split)
         return levels[:split], levels[split:]
 
     @staticmethod
     def __train_test_accuracy(agent, levels_path, test_train_split, level_count, new_log=False):
+        print('Computing accuracy...')
         train_levels, test_levels = Trainer.__load_levels(levels_path, test_train_split)
         train_accuracy = Trainer.__accuracy_offline(agent, train_levels)
         test_accuracy = Trainer.__accuracy_offline(agent, test_levels)
@@ -340,25 +348,25 @@ class Trainer:
         print(f'Test Accuracy: {test_accuracy}\n')
 
         save_path, filename = os.path.split(agent.model_path)
-        save_path = os.path.join(save_path, 'epoch_logs')
+        save_path = os.path.join(save_path, 'logs')
         if not os.path.isdir(save_path):
             os.makedirs(save_path)
-        
-        filename = f'log_{os.path.splitext(filename)[0]}.csv'
+
+        filename = f'{os.path.splitext(filename)[0]}.csv'
         file_path = os.path.join(save_path, filename)
         write_mode = 'w' if new_log or not os.path.isfile(file_path) else 'a'
 
         with open(file_path, write_mode) as file:
             file.write(f'{level_count}, {train_accuracy}, {test_accuracy}\n')
-        
+
     @staticmethod
     def __accuracy_offline(agent, levels):
         if len(levels) == 0:
             raise RuntimeWarning('Calculating accuracy on zero levels')
-        
+
         actions = 0
         mistakes = 0
-        for grid, grid_solved in levels:
+        for i, (grid, grid_solved) in enumerate(levels, 1):
             agent.environment = environment = OfflineEnvironment(grid, grid_solved)
 
             solved = False
@@ -370,40 +378,41 @@ class Trainer:
                 actions += 1
                 if rewards[action] != 1:
                     mistakes += 1
-                    
+
+            if i % 100 == 0:
+                print(f'>>> {i}/{len(levels)}')
+
         return 1 - (mistakes / actions)
 
     @staticmethod
     def train_offline(epochs, test_only=False, batch_size=BATCH_SIZE, learning_rate=LEARNING_RATE,
                       discount_rate=DISCOUNT_RATE, exploration_rate=EXPLORATION_RATE,
                       experience_replay=EXPERIENCE_REPLAY, double_dqn=DOUBLE_DQN, model_path=None, level_size='small',
-                      test_train_split=0.9):
-        
+                      test_train_split=0.8):
+
         current_path = os.path.dirname(os.path.abspath(__file__))
         level_path = os.path.join(current_path, f'resources/levels/levels_{level_size}.pickle')
-        
+
         train_levels, _ = Trainer.__load_levels(level_path, 1)
         environment = OfflineEnvironment(*train_levels[0])
-        
+
         agent = Agent(environment, batch_size, learning_rate, discount_rate, exploration_rate,
                       experience_replay, double_dqn, model_path=model_path)
-        
+
         Trainer.__train_test_accuracy(agent, level_path, test_train_split, 0, new_log=True)
 
         level_count = 0
         for epoch in range(epochs):
-            print('Epoch {}'.format(epoch + 1))
+            print(f'Epoch {epoch + 1}')
             train_levels, _ = Trainer.__load_levels(level_path, test_train_split)
 
             for i, (grid, grid_solved) in enumerate(train_levels, 1):
                 agent.environment = environment = OfflineEnvironment(grid, grid_solved)
                 Trainer.__run(environment, agent, test_only)
 
-                if i % 100 == 0:
-                    print('>>> {0}/{1}'.format(i, len(train_levels)))
-
                 level_count += 1
-                if level_count % (len(train_levels) // 4) == 0:
+                if i % (len(train_levels) // 5) == 0:
+                    print(f'>>> {i}/{len(train_levels)}')
                     Trainer.__train_test_accuracy(agent, level_path, test_train_split, level_count)
 
             agent.save_model()
@@ -412,10 +421,10 @@ class Trainer:
     def train_online(agent, window, delay=False, test_only=False, batch_size=BATCH_SIZE, learning_rate=LEARNING_RATE,
                      discount_rate=DISCOUNT_RATE, exploration_rate=EXPLORATION_RATE, experience_replay=True,
                      double_dqn=False, target_update_interval=1, model_path=None):
-        
+
         parser = LevelParser(window)
         environment = OnlineEnvironment(parser, delay)
-        
+
         if not agent:
             agent = Agent(environment, batch_size, learning_rate,
                           discount_rate, exploration_rate, experience_replay,
