@@ -241,6 +241,8 @@ class Agent:
 
             self.__model_path = os.path.join(save_path, filename)
 
+        self.save_model()
+
         if double_dqn:
             self.__target_model = self.__create_model((*self.__environment.state_dims, 1),
                                                       self.__environment.max_cells * 2)
@@ -263,17 +265,15 @@ class Agent:
         return self.__model_path
 
     def __create_model(self, input_dims, num_actions):
-        model = Sequential([Conv2D(128, (3, 3), activation='relu', padding='same', input_shape=input_dims),
+        model = Sequential([Conv2D(64, (3, 3), activation='relu', padding='same', input_shape=input_dims),
                             Conv2D(64, (3, 3), activation='relu', padding='same'),
-                            Conv2D(32, (3, 3), activation='relu', padding='same'),
-                            Conv2D(16, (3, 3), activation='relu', padding='same'),
+                            Conv2D(64, (3, 3), activation='relu', padding='same'),
+                            Conv2D(64, (3, 3), activation='relu', padding='same'),
                             Flatten(),
-                            Dense(512, activation='relu'),
                             Dense(256, activation='relu'),
-                            Dense(128, activation='relu'),
-                            Dense(64, activation='relu'),
-                            Dense(32, activation='relu'),
-                            Dense(16, activation='relu'),
+                            Dense(256, activation='relu'),
+                            Dense(256, activation='relu'),
+                            Dense(256, activation='relu'),
                             Dense(num_actions, activation='linear')])
 
         model.compile(optimizer=Adam(learning_rate=self.__learning_rate), loss='mse')
@@ -414,8 +414,7 @@ class Trainer:
                 if i % (len(train_levels) // 5) == 0:
                     print(f'>>> {i}/{len(train_levels)}')
                     Trainer.__train_test_accuracy(agent, level_path, test_train_split, level_count)
-
-            agent.save_model()
+                    agent.save_model()
 
     @staticmethod
     def train_online(agent, window, delay=False, test_only=False, batch_size=BATCH_SIZE, learning_rate=LEARNING_RATE,
@@ -449,4 +448,4 @@ class Trainer:
 
 
 if __name__ == '__main__':
-    Trainer.train_offline(5)
+    Trainer.train_offline(6)
