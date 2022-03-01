@@ -12,10 +12,10 @@ from grid import Cell
 from solve import Solver
 from parse import LevelParser
 
-# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Default values
-BATCH_SIZE = 4096
+BATCH_SIZE = 64
 LEARNING_RATE = 0.0001
 LEARNING_RATE_DECAY = 0.99975
 LEARNING_RATE_MIN = 0.00001
@@ -23,7 +23,7 @@ DISCOUNT_RATE = 0
 EXPLORATION_RATE = 0.95
 EXPLORATION_RATE_DECAY = 0.99975
 EXPLORATION_RATE_MIN = 0.01
-EXPERIENCE_REPLAY = True
+EXPERIENCE_REPLAY = False
 MAX_REPLAY_MEMORY = 50000
 DOUBLE_DQN = False
 TARGET_UPDATE_INTERVAL = 5
@@ -33,7 +33,7 @@ SAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources/
 class Environment:
     def __init__(self, grid):
         self._grid = grid
-        self._offset = 0.5 if self._grid[0, 0] is None else 0
+        self._offset = 1 if self._grid[0, 0] is None else 0
         self._state_dims = (grid.rows, grid.cols)
         self._max_cells = (grid.rows * grid.cols) // 2
         self._state = self._initial_state()
@@ -61,7 +61,7 @@ class Environment:
     @staticmethod
     def _cell_to_rep(cell):
         if cell is None:
-            return 0
+            return 0.0
 
         elif cell.colour == Cell.BLACK:
             if cell.number == '?':
@@ -76,9 +76,8 @@ class Environment:
             return 1.0
 
     def _action_to_coords(self, action_index):
-        action_index += self._offset
-        row = (action_index * 2) // self._grid.cols
-        col = (action_index * 2) % self._grid.cols
+        row = (2 * action_index + self._offset) // self._grid.cols
+        col = (2 * action_index + self._offset) % self._grid.cols
         return int(row), int(col)
 
     def _coords_to_action(self, coords):
@@ -333,7 +332,6 @@ class Trainer:
     def __load_levels(levels_path, test_train_split):
         with open(levels_path, 'rb') as file:
             levels, _ = pickle.load(file)
-            levels = levels[:1000]
 
         split = round(len(levels) * test_train_split)
         return levels[:split], levels[split:]
@@ -362,7 +360,7 @@ class Trainer:
     @staticmethod
     def __accuracy_offline(agent, levels):
         if len(levels) == 0:
-            raise RuntimeWarning('Calculating accuracy on zero levels')
+            raise RuntimeWarning('Calculating accuracy with no levels')
 
         actions = 0
         mistakes = 0
@@ -387,7 +385,7 @@ class Trainer:
     @staticmethod
     def train_offline(epochs, test_only=False, batch_size=BATCH_SIZE, learning_rate=LEARNING_RATE,
                       discount_rate=DISCOUNT_RATE, exploration_rate=EXPLORATION_RATE,
-                      experience_replay=EXPERIENCE_REPLAY, double_dqn=DOUBLE_DQN, model_path=None, level_size='small',
+                      experience_replay=EXPERIENCE_REPLAY, double_dqn=DOUBLE_DQN, model_path=None, level_size='large',
                       test_train_split=0.8):
 
         current_path = os.path.dirname(os.path.abspath(__file__))
@@ -448,4 +446,4 @@ class Trainer:
 
 
 if __name__ == '__main__':
-    Trainer.train_offline(6)
+    Trainer.train_offline(7)
