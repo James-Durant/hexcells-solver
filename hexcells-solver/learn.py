@@ -22,7 +22,7 @@ LEARNING_RATE_MIN = 0.00001
 DISCOUNT_RATE = 0
 EXPLORATION_RATE = 0.95
 EXPLORATION_RATE_DECAY = 0.99975
-EXPLORATION_RATE_MIN = 0.01
+EXPLORATION_RATE_MIN = 0.05
 EXPERIENCE_REPLAY = False
 MAX_REPLAY_MEMORY = 50000
 DOUBLE_DQN = False
@@ -122,6 +122,8 @@ class OfflineEnvironment(Environment):
             if action == agent_action:
                 cell_curr = self._grid[row, col]
                 cell_true = self._grid_solved[row, col]
+
+                assert cell_true.colour != Cell.ORANGE
 
                 if cell_curr and cell_curr.colour == Cell.ORANGE:
                     if cell_true.colour == Cell.BLUE:
@@ -385,8 +387,8 @@ class Trainer:
     @staticmethod
     def train_offline(epochs, test_only=False, batch_size=BATCH_SIZE, learning_rate=LEARNING_RATE,
                       discount_rate=DISCOUNT_RATE, exploration_rate=EXPLORATION_RATE,
-                      experience_replay=EXPERIENCE_REPLAY, double_dqn=DOUBLE_DQN, model_path=None, level_size='large',
-                      test_train_split=0.8):
+                      experience_replay=EXPERIENCE_REPLAY, double_dqn=DOUBLE_DQN, model_path=None,
+                      level_size='small', test_train_split=0.8):
 
         current_path = os.path.dirname(os.path.abspath(__file__))
         level_path = os.path.join(current_path, f'resources/levels/levels_{level_size}.pickle')
