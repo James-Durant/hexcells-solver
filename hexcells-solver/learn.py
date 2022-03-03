@@ -15,11 +15,11 @@ from parse import LevelParser
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Default values
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 LEARNING_RATE = 0.0001
 LEARNING_RATE_DECAY = 0.99975
 LEARNING_RATE_MIN = 0.00001
-DISCOUNT_RATE = 0
+DISCOUNT_RATE = 0.05
 EXPLORATION_RATE = 0.95
 EXPLORATION_RATE_DECAY = 0.99975
 EXPLORATION_RATE_MIN = 0.01
@@ -329,21 +329,22 @@ class Agent:
 
 class Trainer:
     @staticmethod
-    def __load_levels(levels_path, test_train_split):
+    def __load_levels(levels_path, train_val_split):
         with open(levels_path, 'rb') as file:
             levels, _ = pickle.load(file)
+            levels = levels[:1600]
 
-        split = round(len(levels) * test_train_split)
+        split = round(len(levels) * train_val_split)
         return levels[:split], levels[split:]
 
     @staticmethod
-    def __train_test_accuracy(agent, levels_path, test_train_split, level_count, new_log=False):
+    def __train_test_accuracy(agent, levels_path, train_val_split, level_count, new_log=False):
         print('Computing accuracy...')
-        train_levels, test_levels = Trainer.__load_levels(levels_path, test_train_split)
+        train_levels, val_levels = Trainer.__load_levels(levels_path, train_val_split)
         train_accuracy = Trainer.__accuracy_offline(agent, train_levels)
-        test_accuracy = Trainer.__accuracy_offline(agent, test_levels)
+        val_accuracy = Trainer.__accuracy_offline(agent, val_levels)
         print(f'Training Accuracy: {train_accuracy}')
-        print(f'Test Accuracy: {test_accuracy}\n')
+        print(f'Validation Accuracy: {test_accuracy}\n')
 
         save_path, filename = os.path.split(agent.model_path)
         save_path = os.path.join(save_path, 'logs')
@@ -356,6 +357,22 @@ class Trainer:
 
         with open(file_path, write_mode) as file:
             file.write(f'{level_count}, {train_accuracy}, {test_accuracy}\n')
+
+    @staticmethod
+    def test_accuracy(model_path, level_size, experience_replay=EXPERIENCE_REPLAY, double_dqn=DOUBLE_DQN):
+        current_path = os.path.dirname(os.path.abspath(__file__))
+        levels_path = os.path.join(current_path, f'resources/levels/levels_{level_size}.pickle')
+
+        with open(levels_path, 'rb') as file:
+            levels, _ = pickle.load(file)
+            test_levels = levels[1600:]
+
+        environment = OfflineEnvironment(*levels[0])
+        agent = Agent(environment, BATCH_SIZE, LEARNING_RATE, DISCOUNT_RATE, EXPLORATION_RATE,
+                      experience_replay, double_dqn, model_path=model_path)
+
+        test_accuracy = Trainer.__accuracy_offline(agent, test_levels)
+        print(f'Test Accuracy: {test_accuracy}')
 
     @staticmethod
     def __accuracy_offline(agent, levels):
@@ -385,8 +402,8 @@ class Trainer:
     @staticmethod
     def train_offline(epochs, test_only=False, batch_size=BATCH_SIZE, learning_rate=LEARNING_RATE,
                       discount_rate=DISCOUNT_RATE, exploration_rate=EXPLORATION_RATE,
-                      experience_replay=EXPERIENCE_REPLAY, double_dqn=DOUBLE_DQN, model_path=None, level_size='large',
-                      test_train_split=0.8):
+                      experience_replay=EXPERIENCE_REPLAY, double_dqn=DOUBLE_DQN, model_path=None,
+                      level_size='large', train_val_split=0.8125):
 
         current_path = os.path.dirname(os.path.abspath(__file__))
         level_path = os.path.join(current_path, f'resources/levels/levels_{level_size}.pickle')
@@ -397,12 +414,12 @@ class Trainer:
         agent = Agent(environment, batch_size, learning_rate, discount_rate, exploration_rate,
                       experience_replay, double_dqn, model_path=model_path)
 
-        Trainer.__train_test_accuracy(agent, level_path, test_train_split, 0, new_log=True)
+        Trainer.__train_test_accuracy(agent, level_path, train_val_split, 0, new_log=True)
 
         level_count = 0
         for epoch in range(epochs):
             print(f'Epoch {epoch + 1}')
-            train_levels, _ = Trainer.__load_levels(level_path, test_train_split)
+            train_levels, _ = Trainer.__load_levels(level_path, train_val_split)
 
             for i, (grid, grid_solved) in enumerate(train_levels, 1):
                 agent.environment = environment = OfflineEnvironment(grid, grid_solved)
@@ -411,7 +428,7 @@ class Trainer:
                 level_count += 1
                 if i % (len(train_levels) // 5) == 0:
                     print(f'>>> {i}/{len(train_levels)}')
-                    Trainer.__train_test_accuracy(agent, level_path, test_train_split, level_count)
+                    Trainer.__train_test_accuracy(agent, level_path, train_val_split, level_count)
                     agent.save_model()
 
     @staticmethod
@@ -447,3 +464,6 @@ class Trainer:
 
 if __name__ == '__main__':
     Trainer.train_offline(7)
+    Trainer.test_accuracy('resources/models/model_4.h5', 'small', False, False)
+    Trainer.test_accuracy('resources/models/model_12.h5', 'medium', False, False)
+    Trainer.test_accuracy('resources/models/model_13.h5', 'large', False, False)
