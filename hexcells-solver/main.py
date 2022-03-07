@@ -100,7 +100,6 @@ class GUI:
         self.__menu.wait_until_loaded()
 
     def __on_game_var_update(self, *args):
-        self.__solve_var.set(0)
         state = tk.NORMAL if self.__game_var.get() == 'Hexcells Infinite' else tk.DISABLED
         self.__generator_radiobutton.configure(state=state)
 

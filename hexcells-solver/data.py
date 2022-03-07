@@ -28,11 +28,11 @@ class Generator:
         try:
             menu = Navigator(use_hashes=use_hashes)
             menu.close_game()
-            
+
         except KeyboardInterrupt:
             sys.exit()
             pass
-        
+
         except Exception:
             pass
 
@@ -174,7 +174,7 @@ class ImageData(Generator):
     def make_dataset(self, dataset_type):
         if dataset_type == 'screen':
             return self.__make_dataset_screen()
-        
+
         hash_path = os.path.join(self._save_path, dataset_type, 'hashes.pickle')
         game = 'Hexcells Infinite'
         if dataset_type == 'blue_special':
@@ -341,25 +341,25 @@ class ImageData(Generator):
         return hashes, labels
 
     def __make_dataset_screen(self):
-        images, labels = [], []
         for resolution in RESOLUTIONS:
+            images, labels = [], []
             menu = self._load_game('Hexcells', resolution, use_hashes=False)
             main_menu = menu.window.screenshot()
             images.append(main_menu)
             labels.append('main_menu')
             menu.close_game()
-            
+
             menu = self._load_game('Hexcells Plus', resolution, use_hashes=False)
             main_menu = menu.window.screenshot()
             images.append(main_menu)
             labels.append('main_menu')
             menu.close_game()
-            
+
             menu = self._load_game('Hexcells Infinite', resolution, use_hashes=False)
             main_menu = menu.window.screenshot()
             images.append(main_menu)
             labels.append('main_menu')
-        
+
             menu_parser = MenuParser(menu.window, use_hashes=False)
             buttons = menu_parser.parse_main_menu()
             save_slot_buttons = buttons['save_slots']
@@ -389,7 +389,7 @@ class ImageData(Generator):
             level_completion = menu.window.screenshot()
             images.append(level_completion)
             labels.append('level_completion')
-            
+
             _, menu_button = menu_parser.parse_level_end()
             menu.window.click(menu_button)
             menu.window.move_mouse()
@@ -404,7 +404,7 @@ class ImageData(Generator):
             level_generator = menu.window.screenshot()
             images.append(level_generator)
             labels.append('level_generator')
-            
+
             menu.back()
             buttons = menu_parser.parse_main_menu()
             user_levels_button = buttons['user_levels']
@@ -424,12 +424,12 @@ class ImageData(Generator):
             options = menu.window.screenshot()
             images.append(options)
             labels.append('options')
-                                      
+
             hashes = [average_hash(cv2.resize(image, (480, 270), interpolation=cv2.INTER_AREA))
                       for image in images]
-            
+
             hashes.append(cv2.resize(level_exit, (480, 270)))
-            labels.append('level_exit')   
+            labels.append('level_exit')
 
             hash_dir = os.path.join(self._save_path, 'screen', '{0}x{1}'.format(*resolution))
             if not os.path.exists(hash_dir):

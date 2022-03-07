@@ -95,7 +95,7 @@ class Navigator:
         else:
             if screen != 'main_menu':
                 self.back()
-            
+
             self.load_save(int(save) if save != '-' else 1)
 
     def solve(self, continuous, level=None, delay=False):
@@ -126,7 +126,7 @@ class Navigator:
         try:
             coords = levels[level_str]
         except KeyError:
-            raise RuntimeError('Selected level is not unlocked yet')
+            raise RuntimeError('Selected level is not unlocked yet 2')
 
         self.__window.click(coords)
         self.__window.move_mouse()
@@ -140,13 +140,13 @@ class Navigator:
         levels = self.__menu_parser.parse_levels()
         if set_str not in ['1', '2', '3', '4', '5', '6']:
             raise RuntimeError('Set must be between 1-6 (inclusive)')
-        
+
         try:
             level = set_str + '-1'
             self.__window.click(levels[level])
         except KeyError:
-            raise RuntimeError('Selected level is not unlocked yet')
-            
+            raise RuntimeError('Selected level is not unlocked yet 1')
+
         self.__window.move_mouse()
         self.wait_until_loaded()
         self.solve(True, level, delay)
@@ -161,22 +161,22 @@ class Navigator:
     def level_generator(self, delay=False, num_levels=10, training_func=None):
         if self.__window.title != 'Hexcells Infinite':
             raise RuntimeError('Only Hexcells Infinite has the level generator')
-            
+
         screen = self.__menu_parser.get_screen()
-        
+
         if screen == 'in_level':
             self.back()
             time.sleep(0.5)
             self.exit_level()
             screen = self.__menu_parser.get_screen()
-            
+
         elif screen == 'level_completion':
             _, menu_button = self.__menu_parser.parse_level_end()
             self.__window.click(menu_button)
             self.__window.move_mouse()
             self.wait_until_loaded()
             screen = self.__menu_parser.get_screen()
-        
+
         if screen != 'level_generator':
             self.__transition_to_main_menu()
 
@@ -185,7 +185,7 @@ class Navigator:
             self.__window.click(generator_button)
             self.__window.move_mouse()
             self.wait_until_loaded()
-        
+
         try:
             agent = None
             for _ in range(num_levels):
@@ -197,7 +197,7 @@ class Navigator:
                 self.__window.click(play_button)
                 self.__window.move_mouse()
                 self.wait_until_loaded()
-                
+
                 if training_func:
                     agent = training_func(agent)
                     self.__window.move_mouse()
@@ -206,13 +206,13 @@ class Navigator:
                     self.__window.click(menu_button)
                     self.__window.move_mouse()
                     self.wait_until_loaded()
-                    
+
                 else:
                     self.solve(False, delay=delay)
-                
+
         except KeyboardInterrupt:
             return
-        
+
     def back(self):
         self.__window.press_key('esc')
         time.sleep(1.5)

@@ -78,7 +78,7 @@ class MenuParser(Parser):
         resolution = data['screenWidth'], data['screenHeight']
         if resolution not in RESOLUTIONS:
             resolution = (1920, 1080)
-        
+
         dataset_type = os.path.join('screen', '{0}x{1}'.format(*resolution))
         hashes, labels = Parser._load_hashes(dataset_type)
         self.__level_exit = hashes.pop(-1)
@@ -88,30 +88,30 @@ class MenuParser(Parser):
     def get_screen(self):
         image = cv2.resize(self.__window.screenshot(), (480, 270), interpolation=cv2.INTER_AREA)
         hashed = average_hash(image)
-        
+
         hashes, labels = self.__screen_data
         similarities = [np.sum(hashed != h) for h in hashes]
-            
-        for label, sim in zip(labels, similarities):
-            print(label, sim)
-        
+
+        #for label, sim in zip(labels, similarities):
+            #print(label, sim)
+
         if min(similarities) > 22000:
             # Check for level_exit
             image = cv2.inRange(image, (180, 180, 180), (255, 255, 255))
 
-            sim = np.sum(self.__level_exit != image) 
+            sim = np.sum(self.__level_exit != image)
             print(sim)
             if sim > 25000:
-                print('in_level')
-                print()
+                #print('in_level')
+                #print()
                 return 'in_level'
             else:
-                print('level_exit')
-                print()
+                #print('level_exit')
+                #print()
                 return 'level_exit'
-        
-        print(labels[np.argmin(similarities)])
-        print()
+
+        #print(labels[np.argmin(similarities)])
+        #print()
         return labels[np.argmin(similarities)]
 
     def wait_until_loaded(self):
@@ -240,7 +240,7 @@ class MenuParser(Parser):
             else:
                 hashes, labels = self.__level_data
                 match = Parser._find_match(hashes, labels, hashed)
-                    
+
                 levels[match] = (x + w // 2, y + h // 2)
 
         return levels if use_hashes else hashes
@@ -334,7 +334,7 @@ class LevelParser(Parser):
         self.__y_min, self.__y_max = np.min(ys), np.max(ys)
         self.__hex_width = int(np.median(widths))
         self.__hex_height = int(np.median(heights))
-        
+
         if self.__hex_width > 70:
             x_spacing = self.__hex_width * 1.085
         elif 54 <= self.__hex_width <= 70:
@@ -519,7 +519,7 @@ class LevelParser(Parser):
     def __parse_grid_number(self, thresh, angle, use_hashes=True):
         if np.count_nonzero(thresh == 0) < 20:
             return None
-        
+
         thresh = LevelParser.__process_image(thresh)
 
         if angle in [120, 240]:
@@ -527,7 +527,7 @@ class LevelParser(Parser):
 
         elif angle in [90, 270]:
             thresh = LevelParser.__rotate(thresh, angle)
-       
+
         hashed = average_hash(thresh)
 
         if not use_hashes:
@@ -570,7 +570,7 @@ class LevelParser(Parser):
 
         if right_click_cells:
             self.click_cells(right_click_cells, 'right')
-            
+
             if delay:
                 min_row = min(right_click_cells, key=lambda cell: cell.grid_coords[0]).grid_coords[0]
                 time.sleep(max(1.5, 0.15*(grid.rows-min_row)))

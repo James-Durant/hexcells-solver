@@ -15,7 +15,7 @@ from parse import LevelParser
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Default values
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 LEARNING_RATE = 0.0001
 LEARNING_RATE_DECAY = 0.99975
 LEARNING_RATE_MIN = 0.00001
