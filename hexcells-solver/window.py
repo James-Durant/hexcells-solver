@@ -46,9 +46,11 @@ class Window:
     def paste():
         pyautogui.hotkey('ctrl', 'v')
 
-    def click(self, coords, button='left'):
+    def click(self, coords, button='left', reset_mouse=False):
         x, y, _, _ = self._get_position()
         pyautogui.click(x=x + coords[0], y=y + coords[1], button=button)
+        if reset_mouse:
+            self.move_mouse()
 
     def click_cell(self, cell, button):
         x1, y1, _, _ = self._get_position()

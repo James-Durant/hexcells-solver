@@ -255,7 +255,7 @@ class MenuParser(Parser):
         bounding_boxes = Parser._merge_rects(rects, image.shape[1], 100)
         return [(x + w // 2, y + h // 2) for x, y, w, h in bounding_boxes]
 
-    def parse_level_end(self):
+    def parse_level_completion(self):
         # end -> completion
         image = self.__window.screenshot()
 
