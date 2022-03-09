@@ -387,7 +387,7 @@ class GUI:
                                        text='Epochs: ')
 
         self.__epochs_var = tk.StringVar()
-        self.__epochs_var.set('1')
+        self.__epochs_var.set('3')
         self.__epochs_entry = tk.Entry(self.__epochs_frame,
                                        textvariable=self.__epochs_var)
 

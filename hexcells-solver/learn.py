@@ -429,12 +429,14 @@ class Trainer:
                 if i % (len(train_levels) // 5) == 0:
                     print(f'>>> {i}/{len(train_levels)}')
                     Trainer.__train_test_accuracy(agent, level_path, train_val_split, level_count)
-                    agent.save_model()
+
+                    if not test_only:
+                        agent.save_model()
 
     @staticmethod
     def train_online(agent, window, delay=False, test_only=False, batch_size=BATCH_SIZE, learning_rate=LEARNING_RATE,
-                     discount_rate=DISCOUNT_RATE, exploration_rate=EXPLORATION_RATE, experience_replay=True,
-                     double_dqn=False, target_update_interval=1, model_path=None):
+                     discount_rate=DISCOUNT_RATE, exploration_rate=EXPLORATION_RATE, experience_replay=EXPERIENCE_REPLAY,
+                     double_dqn=DOUBLE_DQN, target_update_interval=1, model_path=None):
 
         parser = LevelParser(window)
         environment = OnlineEnvironment(parser, delay)
@@ -447,7 +449,10 @@ class Trainer:
             agent.environment = environment
 
         Trainer.__run(environment, agent, test_only)
-        agent.save_model()
+
+        if not test_only:
+            agent.save_model()
+
         return agent
 
     @staticmethod
@@ -455,7 +460,7 @@ class Trainer:
         solved = False
         while not solved:
             current_state = environment.get_state()
-            action = agent.get_action(current_state)
+            action = agent.get_action(current_state, test_only=True)
             new_state, rewards, solved = environment.step(action)
 
             if not test_only:
