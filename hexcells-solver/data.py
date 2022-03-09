@@ -77,6 +77,7 @@ class Generator:
 
 class LearningData(Generator):
     """Contains the code for generating training data (i.e., levels and their pre-computed solutions) for deep Q-learning."""
+
     def __init__(self):
         """Define the path to the directory to save level data to."""
         self.___save_path = os.path.join(SAVE_PATH, 'levels')
@@ -230,6 +231,7 @@ class LearningData(Generator):
 
 class ImageData(Generator):
     """Contains the code for generating the hashes used in the level and menu parsing algorithms."""
+
     def __init__(self):
         """Call the parent constructor."""
         self.__save_path = SAVE_PATH
