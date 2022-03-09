@@ -14,7 +14,8 @@ from solve import Solver
 from navigate import Navigator
 from parse import average_hash, LevelParser, MenuParser, RESOLUTIONS
 
-SAVE_PATH = 'resources'
+# Use the absolute path of this file.
+SAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources')
 STEAM_PATH = 'C:\Program Files (x86)\Steam'
 
 
