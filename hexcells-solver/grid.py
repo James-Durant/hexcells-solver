@@ -5,12 +5,12 @@ class Grid:
     """Represents a Hexcells level as a grid of Cell and Constraint objects."""
 
     # Relative coordinates of directly adjacent cells.
-    __INNER = [(0, -2), (1, -1), (1, 1), (0, 2), (-1, 1), (-1, -1)]
+    INNER = [(0, -2), (1, -1), (1, 1), (0, 2), (-1, 1), (-1, -1)]
     # Relative coordinates of cells at a 2-cell radius.
-    __OUTER = [(0, -4), (1, -3), (2, -2), (2, 0), (2, 2), (1, 3), (0, 4),
+    OUTER = [(0, -4), (1, -3), (2, -2), (2, 0), (2, 2), (1, 3), (0, 4),
                (-1, 3), (-2, 2), (-2, 0), (-2, -2), (-1, -3)]
     # All cells contained within a 2-cell radius.
-    __COMBINED = __INNER + __OUTER
+    COMBINED = INNER + OUTER
 
     def __init__(self, grid, cells, remaining):
         """Encapsulate a given grid of cell objects parsed from a level.
@@ -202,10 +202,10 @@ class Grid:
         """
         # For black cells (ignore cells with ?), return the adjacent cells.
         if cell.colour == Cell.BLACK and cell.number != '?':
-            deltas = Grid.__INNER
+            deltas = Grid.INNER
         # For blue cells with a number, return the cells in a 2-cell radius.
         elif cell.colour == Cell.BLUE and cell.number is not None:
-            deltas = Grid.__COMBINED
+            deltas = Grid.COMBINED
         else:
             # Otherwise, there are no neighbours to consider.
             deltas = []

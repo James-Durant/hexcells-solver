@@ -522,7 +522,7 @@ class ImageData(Generator):
             menu.back()
             game_parser = LevelParser(menu.window)
             solver = Solver(game_parser)
-            solver.solve('1-1', menu.window.title)
+            solver.solve(menu.window.title, '1-1')
 
             # Take a screenshot of the resulting level completion screen.
             menu.window.move_mouse()

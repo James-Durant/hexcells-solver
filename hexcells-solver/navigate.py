@@ -161,7 +161,7 @@ class Navigator:
         # Solve the level.
         game_parser = LevelParser(self.__window)
         solver = Solver(game_parser)
-        solver.solve(level, self.__window.title, delay)
+        solver.solve(self.__window.title, level, delay)
 
         # Wait for the level completion screen to load and parse it.
         self.__window.move_mouse()
