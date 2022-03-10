@@ -39,8 +39,7 @@ class Parser:
             i = 0
             while i < len(rects):
                 x2, y2, w2, h2 = rects[i]
-                if (abs(x1 + w1 - x2) < xdist and
-                        abs(y1 - y2) < ydist):
+                if (abs(x1 + w1 - x2) < xdist and abs(y1 - y2) < ydist):
 
                     x_min = min(x_min, x2)
                     y_min = min(y_min, y2)
