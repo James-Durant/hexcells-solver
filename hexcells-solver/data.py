@@ -12,10 +12,7 @@ from grid import Cell
 from main import GAMEIDS
 from solve import Solver
 from navigate import Navigator
-from parse import average_hash, LevelParser, MenuParser, RESOLUTIONS, STEAM_PATH
-
-# Use the absolute path of this file.
-SAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources')
+from parse import average_hash, LevelParser, MenuParser, RESOLUTIONS, STEAM_PATH, RESOURCES_PATH
 
 
 class Generator:
@@ -78,8 +75,7 @@ class LearningData(Generator):
     """Contains the code for generating training data (i.e., levels and their pre-computed solutions) for deep Q-learning."""
 
     def __init__(self):
-        """Define the path to the directory to save level data to."""
-        self.___save_path = os.path.join(SAVE_PATH, 'levels')
+        """Cell the parent constructor."""
         super().__init__()
 
     def make_dataset(self, num_levels):
@@ -207,7 +203,7 @@ class LearningData(Generator):
                     menu.wait_until_loaded()
 
                     # If the file to save levels already exists, load the contents.
-                    file_path = os.path.join(self.___save_path, 'levels.pickle')
+                    file_path = os.path.join(RESOURCES_PATH, 'levels', 'levels.pickle')
                     if os.path.isfile(file_path):
                         with open(file_path, 'rb') as file:
                             levels, labels = pickle.load(file)
@@ -233,7 +229,6 @@ class ImageData(Generator):
 
     def __init__(self):
         """Call the parent constructor."""
-        self.__save_path = SAVE_PATH
         super().__init__()
 
     def make_dataset(self, dataset_type):
@@ -249,11 +244,11 @@ class ImageData(Generator):
 
         # Create the file path to the directory to save the hashes to.
         if dataset_type == 'blue_special':
-            hash_path = os.path.join(self.__save_path, 'blue', 'hashes.pickle')
+            hash_path = os.path.join(RESOURCES_PATH, 'blue', 'hashes.pickle')
             game = 'Hexcells Plus'
         else:
             # The game is Hexcells Plus for the "special" blue hashes and Hexcells Infinite otherwise.
-            hash_path = os.path.join(self.__save_path, dataset_type, 'hashes.pickle')
+            hash_path = os.path.join(RESOURCES_PATH, dataset_type, 'hashes.pickle')
             game = 'Hexcells Infinite'
 
         # Iterate over each resolution to generate hashes for.
@@ -268,7 +263,7 @@ class ImageData(Generator):
                 # For each of the separate hint types.
                 for hint in ['normal', 'consecutive', 'non-consecutive']:
                     # Load the custom level specific to the hint type.
-                    level_path = os.path.join(self.__save_path, dataset_type, f'{hint}_level.hexcells')
+                    level_path = os.path.join(RESOURCES_PATH, dataset_type, f'{hint}_level.hexcells')
                     menu.load_custom_level(level_path)
 
                     # Get the hashes from the custom level.
@@ -288,7 +283,7 @@ class ImageData(Generator):
                 for part in ['1', '2']:
                     for hint in ['normal', 'consecutive', 'non-consecutive']:
                         # Load the custom level for the hint type and part.
-                        level_path = os.path.join(self.__save_path, dataset_type, f'{hint}_{part}_level.hexcells')
+                        level_path = os.path.join(RESOURCES_PATH, dataset_type, f'{hint}_{part}_level.hexcells')
                         menu.load_custom_level(level_path)
 
                         # Get the hashes from the custom level.
@@ -312,13 +307,13 @@ class ImageData(Generator):
 
                     # Parse the level select screen and click on level 4-6.
                     menu_parser = MenuParser(menu.window)
-                    levels = menu_parser.parse_levels()
+                    levels = menu_parser.parse_level_selection()
                     menu.window.click(levels['4-6'])
                     menu.wait_until_loaded()
 
                 else:
                     # In all other cases, load the singular custom level for the dataset type.
-                    level_path = os.path.join(self.__save_path, dataset_type, 'level.hexcells')
+                    level_path = os.path.join(RESOURCES_PATH, dataset_type, 'level.hexcells')
                     menu.load_custom_level(level_path)
 
                 # Get the hashes for the level.
@@ -362,7 +357,7 @@ class ImageData(Generator):
                       '6-4', '6-1', '5-5', '5-6', '6-5', '6-6']
 
             # Parse the level select screen.
-            hashes = parser.parse_levels(use_hashes=False)
+            hashes = parser.parse_level_selection(use_hashes=False)
 
         elif dataset_type in ['black', 'blue', 'blue_special', 'counter']:
             # Take a screenshot of the game window.
@@ -508,7 +503,7 @@ class ImageData(Generator):
             labels.append('level_select')
 
             # Parse the level select screen and click on level 1-1.
-            levels = menu_parser.parse_levels()
+            levels = menu_parser.parse_level_selection()
             coords = levels['1-1']
             menu.window.click(coords)
 
@@ -581,7 +576,7 @@ class ImageData(Generator):
             labels.append('level_exit')
 
             # If there is not already a directory for this resolution, create one.
-            hash_dir = os.path.join(self.__save_path, 'screen', '{0}x{1}'.format(*resolution))
+            hash_dir = os.path.join(RESOURCES_PATH, 'screen', '{0}x{1}'.format(*resolution))
             if not os.path.exists(hash_dir):
                 os.makedirs(hash_dir)
 

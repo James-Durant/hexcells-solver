@@ -10,7 +10,7 @@ from tensorflow.keras.optimizers import Adam
 
 from grid import Cell
 from solve import Solver
-from parse import LevelParser
+from parse import LevelParser, RESOURCES_PATH
 
 # Reduce the number of messages output by TensorFlow.
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -32,8 +32,6 @@ TARGET_UPDATE_INTERVAL = 1
 # Number of levels in the combined training and validation datasets; the rest is for testing.
 TRAIN_LEVELS = 1600
 
-# Use the absolute path of this file.
-SAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources')
 
 class Environment:
     """Defines an environment (i.e., a Hexcells level) in which an agent can act.
@@ -401,7 +399,7 @@ class Agent:
             i = 1
             while True:
                 filename = f'model_{i}.h5'
-                model_path = os.path.join(SAVE_PATH, 'models', filename)
+                model_path = os.path.join(RESOURCES_PATH, 'models', filename)
                 if not os.path.isfile(model_path):
                     break
                 i += 1
@@ -606,7 +604,7 @@ class Trainer:
             level_size (str): small, medium or large.
         """
         # Load the levels from the given file path.
-        levels_path = os.path.join(SAVE_PATH, 'levels', f'levels_{level_size}.pickle')
+        levels_path = os.path.join(RESOURCES_PATH, 'levels', f'levels_{level_size}.pickle')
         with open(levels_path, 'rb') as file:
             levels, _ = pickle.load(file)
             # Skip over the levels in the training and validation datasets.
@@ -705,7 +703,7 @@ class Trainer:
             train_val_split (float, optional): proportion of levels to use for training.
         """
         # Load a single level to establish the dimensions of the environment.
-        level_path = os.path.join(SAVE_PATH, 'levels', f'levels_{level_size}.pickle')
+        level_path = os.path.join(RESOURCES_PATH, 'levels', f'levels_{level_size}.pickle')
         train_levels, _ = Trainer.__load_levels(level_path, 1)
         environment = OfflineEnvironment(*train_levels[0])
 

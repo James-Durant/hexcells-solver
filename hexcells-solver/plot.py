@@ -2,6 +2,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+from parse import RESOURCES_PATH
+
 
 def plot_accuracy(log_path, models, file_name, split, labels=None):
     """Plot training and validation accuracy versus number of levels solved.
@@ -74,7 +76,8 @@ def plot_accuracy(log_path, models, file_name, split, labels=None):
 
 if __name__ == '__main__':
     # If this file is being run, create the plots used in the final report.
-    plot_accuracy('resources/models/logs', [1, 2, 3, 4, 5], 'comparison_nodes_layers', True)
-    plot_accuracy('resources/models/logs', [4, 6, 7, 8, 9], 'comparison_activation_filters', True)
-    plot_accuracy('resources/models/logs', [4, 10, 11], 'comparison_replay_double', False, ['Standard', 'Experience Replay', 'Double DQN'])
-    plot_accuracy('resources/models/logs', [4, 12, 13], 'comparison_level_sizes', False, ['Small', 'Medium', 'Large'])
+    log_path = os.path.join(RESOURCES_PATH, 'models', 'logs')
+    plot_accuracy(log_path, [1, 2, 3, 4, 5], 'comparison_nodes_layers', True)
+    plot_accuracy(log_path, [4, 6, 7, 8, 9], 'comparison_activation_filters', True)
+    plot_accuracy(log_path, [4, 10, 11], 'comparison_replay_double', False, ['Standard', 'Experience Replay', 'Double DQN'])
+    plot_accuracy(log_path, [4, 12, 13], 'comparison_level_sizes', False, ['Small', 'Medium', 'Large'])

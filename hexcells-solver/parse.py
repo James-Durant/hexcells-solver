@@ -12,7 +12,7 @@ RESOLUTIONS = [(2560, 1920), (2560, 1600), (2048, 1152), (1920, 1440),
                (1920, 1200), (1920, 1080), (1680, 1050), (1600, 1200)]
 
 # Use the absolute path of this file.
-LOAD_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources')
+RESOURCES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources')
 
 # Path to the Steam executable.
 STEAM_PATH = 'C:\Program Files (x86)\Steam'
@@ -46,7 +46,7 @@ class Parser:
             tuple: the hashes and associated labels loaded from the file.
         """
         # Try to open the file for the dataset.
-        file_path = os.path.join(LOAD_PATH, dataset_type, 'hashes.pickle')
+        file_path = os.path.join(RESOURCES_PATH, dataset_type, 'hashes.pickle')
         try:
             with open(file_path, 'rb') as file:
                 return pickle.load(file)
@@ -436,8 +436,8 @@ class MenuParser(Parser):
 
 
 class LevelParser(Parser):
-    __hex_mask_path = 'resources/hex_mask.png'
-    __counter_mask_path = 'resources/counter_mask.png'
+    """Contains the code for automatic parsing of levels."""
+
     __hex_match_threshold = 0.08
     __counter_match_threshold = 0.1
     __area_threshold = 550
@@ -454,11 +454,11 @@ class LevelParser(Parser):
         self.__column_data = Parser._load_hashes('column')
         self.__diagonal_data = Parser._load_hashes('diagonal')
 
-        hex_image = cv2.imread(LevelParser.__hex_mask_path)
+        hex_image = cv2.imread(os.path.join(RESOURCES_PATH, 'cell.png'))
         hex_mask = cv2.inRange(hex_image, Cell.ORANGE, Cell.ORANGE)
         hex_contour, _ = cv2.findContours(hex_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        counter_image = cv2.imread(LevelParser.__counter_mask_path)
+        counter_image = cv2.imread(os.path.join(RESOURCES_PATH, 'counter.png'))
         counter_mask = cv2.inRange(counter_image, Cell.BLUE, Cell.BLUE)
         counter_contour, _ = cv2.findContours(counter_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
