@@ -46,7 +46,6 @@ class Generator:
         except KeyboardInterrupt:
             # If the program receives Control + C, exit.
             sys.exit()
-            pass
 
         # Ignore all other exceptions and continue (a game window was not open).
         except Exception:
@@ -99,7 +98,7 @@ class LearningData(Generator):
 
         # Click on the level generator button and wait for it to load.
         generator_button = buttons['level_generator']
-        menu.window.click(generator_button, reset_mouse=True)
+        menu.window.click(generator_button)
         menu.wait_until_loaded()
 
         # Create a list of seeds for the random level generator.
@@ -117,17 +116,17 @@ class LearningData(Generator):
 
             # Click on the seed button to input the level's seed.
             play_button, seed_button = buttons['play'], buttons['seed']
-            menu.window.click(seed_button, reset_mouse=True)
+            menu.window.click(seed_button)
             time.sleep(0.2)
             menu.window.paste() # Paste the level's seed.
             time.sleep(0.2)
 
             # Click the play button to generate the level for the chosen seed.
             # Click multiple times as there were some issues with only once.
-            menu.window.click(play_button)
+            menu.window.click(play_button, move_mouse=False)
             time.sleep(0.1)
-            menu.window.click(play_button)
-            menu.window.click(play_button, reset_mouse=True)
+            menu.window.click(play_button, move_mouse=False)
+            menu.window.click(play_button, move_mouse=True)
             menu_parser.wait_until_loaded()
 
             # Parse the initial level state.
@@ -178,7 +177,7 @@ class LearningData(Generator):
                     _, menu_button = menu_parser.parse_level_completion()
 
                     # Click on the button to return to the level generator screen.
-                    menu.window.click(menu_button, reset_mouse=True)
+                    menu.window.click(menu_button)
                     menu.wait_until_loaded()
 
                     # Skip the level if identified above.
@@ -191,10 +190,10 @@ class LearningData(Generator):
                     play_button = buttons['play']
 
                     # Click the play button to generate the same level again.
-                    menu.window.click(play_button)
+                    menu.window.click(play_button, move_mouse=False)
                     time.sleep(0.1)
-                    menu.window.click(play_button)
-                    menu.window.click(play_button, reset_mouse=True)
+                    menu.window.click(play_button, move_mouse=False)
+                    menu.window.click(play_button, move_mouse=True)
                     menu_parser.wait_until_loaded()
 
                     # Now click and parse the single cell left from before.
@@ -205,7 +204,7 @@ class LearningData(Generator):
                     menu.window.move_mouse()
                     time.sleep(1.5)
                     _, _, exit_button = menu_parser.parse_level_exit()
-                    menu.window.click(exit_button, reset_mouse=True)
+                    menu.window.click(exit_button)
                     menu.wait_until_loaded()
 
                     # If the file to save levels already exists, load the contents.
@@ -281,7 +280,6 @@ class ImageData(Generator):
 
                     # Exit the level to load the next hint type.
                     menu.back()
-                    time.sleep(1)
                     menu.exit_level()
 
             # The diagonal dataset is split into two parts for each hint type.
@@ -302,7 +300,6 @@ class ImageData(Generator):
 
                         # Exit the level to load the next hint type.
                         menu.back()
-                        time.sleep(1)
                         menu.exit_level()
 
             else:
@@ -317,7 +314,7 @@ class ImageData(Generator):
                     # Parse the level select screen and click on level 4-6.
                     menu_parser = MenuParser(menu.window)
                     levels = menu_parser.parse_levels()
-                    menu.window.click(levels['4-6'], reset_mouse=True)
+                    menu.window.click(levels['4-6'])
                     menu.wait_until_loaded()
 
                 else:
@@ -503,7 +500,7 @@ class ImageData(Generator):
             buttons = menu_parser.parse_main_menu()
             save_slot_buttons = buttons['save_slots']
             # Click on save slot 1
-            menu.window.click(save_slot_buttons[0], reset_mouse=True)
+            menu.window.click(save_slot_buttons[0])
             menu_parser.wait_until_loaded()
 
             # Take a screenshot of the level select screen.
@@ -514,7 +511,7 @@ class ImageData(Generator):
             # Parse the level select screen and click on level 1-1.
             levels = menu_parser.parse_levels()
             coords = levels['1-1']
-            menu.window.click(coords, reset_mouse=True)
+            menu.window.click(coords)
 
             # Press the escape key and take a screenshot of the resulting level exit screen.
             time.sleep(2)
@@ -536,14 +533,14 @@ class ImageData(Generator):
 
             # Parse the level completion screen and click on the button to return to the main menu.
             _, menu_button = menu_parser.parse_level_completion()
-            menu.window.click(menu_button, reset_mouse=True)
+            menu.window.click(menu_button)
             menu.wait_until_loaded()
 
             # Go back to the main menu screen, parse it, and click on the level generator button.
             menu.back()
             buttons = menu_parser.parse_main_menu()
             generator_button = buttons['level_generator']
-            menu.window.click(generator_button, reset_mouse=True)
+            menu.window.click(generator_button)
             menu.wait_until_loaded()
 
             # Take a screenshot of the level generator screen.
@@ -555,7 +552,7 @@ class ImageData(Generator):
             menu.back()
             buttons = menu_parser.parse_main_menu()
             user_levels_button = buttons['user_levels']
-            menu.window.click(user_levels_button, reset_mouse=True)
+            menu.window.click(user_levels_button)
             time.sleep(4) # Wait for the levels to show up.
 
             # Take a screenshot of the user levels screen.
@@ -567,7 +564,7 @@ class ImageData(Generator):
             menu.back()
             buttons = menu_parser.parse_main_menu()
             options_button = buttons['options']
-            menu.window.click(options_button, reset_mouse=True)
+            menu.window.click(options_button)
             time.sleep(2)
 
             # take a screenshot of the options screen.

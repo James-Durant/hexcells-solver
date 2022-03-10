@@ -306,8 +306,7 @@ class GUI:
             sys.exit()
 
         except Exception:
-            # Ignore any other exceptions.
-            pass
+            pass # Ignore any other exceptions.
 
         # Now that there are no games open, disable the relevant GUI components.
         self.__update_status(False)
@@ -458,7 +457,7 @@ class GUI:
 
             # Solve a randomly generate level.
             elif self.__solve_var.get() == 3:
-                self.__menu.level_generator(self.__delay_var.get())
+                self.__menu.level_generator(1, self.__delay_var.get())
 
         except RuntimeError as e:
             # Display any error messages that arise during solving.
@@ -509,7 +508,7 @@ class GUI:
                                        self.__double_var.get(), model_path=model_path)
 
                 # Run the agent on the level generator for the given number of epochs.
-                self.__menu.level_generator(self.__delay_var.get(), epochs, train)
+                self.__menu.level_generator(epochs, self.__delay_var.get(), train)
 
         except (FileNotFoundError, IOError):
             # Display an error message if an invalid model path was given.
