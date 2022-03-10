@@ -477,7 +477,7 @@ class Agent:
         """Get the action chosen by the agent in a given state.
 
         Args:
-            state (np.ndarray): the matrix representation of the current level state.
+            state (numpy.ndarray): the matrix representation of the current level state.
             training (bool, optional): whether to use the epsilon-greedy strategy or not (only used in training).
 
         Returns:

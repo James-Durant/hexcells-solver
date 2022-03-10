@@ -6,6 +6,8 @@ from tkinter import filedialog
 from tkinter import messagebox
 
 from subprocess import Popen
+
+from parse import STEAM_PATH
 from navigate import Navigator
 from window import WindowNotFoundError
 from learn import Trainer, LEARNING_RATE, DISCOUNT_RATE, EXPLORATION_RATE
@@ -14,9 +16,6 @@ from learn import Trainer, LEARNING_RATE, DISCOUNT_RATE, EXPLORATION_RATE
 GAMEIDS = {'Hexcells': '265890',
            'Hexcells Plus': '271900',
            'Hexcells Infinite': '304410'}
-
-# Path to the Steam executable.
-STEAM_PATH = 'C:\Program Files (x86)\Steam\steam.exe'
 
 
 class GUI:
@@ -313,7 +312,8 @@ class GUI:
 
         # Load the chosen game by sending a command to the Steam executable.
         self.__root.update()
-        Popen([STEAM_PATH, f'steam://rungameid/{GAMEIDS[self.__game_var.get()]}'],
+        steam_path = os.path.join(STEAM_PATH, 'steam.exe')
+        Popen([steam_path, f'steam://rungameid/{GAMEIDS[self.__game_var.get()]}'],
               shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
 
         # Try to capture the newly opened game window.

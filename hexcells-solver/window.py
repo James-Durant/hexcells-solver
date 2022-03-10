@@ -55,7 +55,7 @@ class Window:
     def screenshot(self):
         """
         Returns:
-            np.ndarray: a screenshot of the active game window.
+            numpy.ndarray: a screenshot of the active game window.
         """
         # Bring the window to the foreground to take the screenshot.
         self.__to_foreground()

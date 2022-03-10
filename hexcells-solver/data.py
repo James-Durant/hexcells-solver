@@ -12,11 +12,10 @@ from grid import Cell
 from main import GAMEIDS
 from solve import Solver
 from navigate import Navigator
-from parse import average_hash, LevelParser, MenuParser, RESOLUTIONS
+from parse import average_hash, LevelParser, MenuParser, RESOLUTIONS, STEAM_PATH
 
 # Use the absolute path of this file.
 SAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources')
-STEAM_PATH = 'C:\Program Files (x86)\Steam'
 
 
 class Generator:
@@ -573,12 +572,12 @@ class ImageData(Generator):
             labels.append('options')
 
             # Resize each of the screenshots from above and calculate their hash.
-            hashes = [average_hash(cv2.resize(image, (480, 270), interpolation=cv2.INTER_AREA))
+            hashes = [average_hash(cv2.resize(image, MenuParser.SCREEN_HASH_DIMS, interpolation=cv2.INTER_AREA))
                       for image in images]
 
             # Handle the level exit screen separately. Instead of hashing, just thesholded it and resize.
             level_exit = cv2.inRange(level_exit, (180, 180, 180), (255, 255, 255))
-            hashes.append(cv2.resize(level_exit, (480, 270)))
+            hashes.append(cv2.resize(level_exit, MenuParser.SCREEN_HASH_DIMS))
             labels.append('level_exit')
 
             # If there is not already a directory for this resolution, create one.

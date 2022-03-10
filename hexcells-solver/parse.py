@@ -3,170 +3,280 @@ import cv2
 import time
 import json
 import pickle
-
 import numpy as np
+
 from grid import Grid, Cell
 
-RESOLUTIONS = [(2560, 1920), (2560, 1600), (2048, 1152),
-               (1920, 1440), (1920, 1200), (1920, 1080),
-               (1680, 1050), (1600, 1200)]
+# The resolutions for which there are screen hashes for.
+RESOLUTIONS = [(2560, 1920), (2560, 1600), (2048, 1152), (1920, 1440),
+               (1920, 1200), (1920, 1080), (1680, 1050), (1600, 1200)]
+
+# Use the absolute path of this file.
+LOAD_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources')
+
+# Path to the Steam executable.
+STEAM_PATH = 'C:\Program Files (x86)\Steam'
 
 
 def average_hash(image):
+    """Computes a perceptual hash of a given image using the average hashing algorithm.
+
+    Args:
+        image (numpy.ndarray): the image to hash.
+
+    Returns:
+        numpy.ndarray: a perceptual hash of the image.
+    """
+    # For each pixel, compare it to its mean.
+    # Flatten to get a 1D array of binary values.
     return (image > image.mean()).flatten()
 
 
 class Parser:
+    """The parent class for the MenuParser and LevelParser classes."""
+
     @staticmethod
     def _load_hashes(dataset_type):
-        path = os.path.join('resources', dataset_type, 'hashes.pickle')
+        """Loads a dataset of pre-computed hashes.
+
+        Args:
+            dataset_type (str): the dataset type to load.
+
+        Returns:
+            tuple: the hashes and associated labels loaded from the file.
+        """
+        # Try to open the file for the dataset.
+        file_path = os.path.join(LOAD_PATH, dataset_type, 'hashes.pickle')
         try:
-            with open(path, 'rb') as file:
+            with open(file_path, 'rb') as file:
                 return pickle.load(file)
+
+        # Raise an error if the file cannot be found.
         except FileNotFoundError:
-            raise RuntimeError(f'Reference hashes missing for {dataset_type}')
+            raise RuntimeError(f'Hashes missing for {dataset_type}')
 
     @staticmethod
-    def _merge_rects(rects, xdist, ydist):
-        rects.sort(key=lambda x: x[0])
+    def _merge_boxes(boxes, x_dist, y_dist):
+        """Merge bounding boxes in close proximity.
 
+        Args:
+            boxes (list): bounding boxes to be merged.
+            x_dist (float): distance between boxes in the x-axis to be merge.
+            y_dist (float): distance between boxes in the y-axis to be merge.
+
+        Returns:
+            list: the merged bounding boxes.
+        """
+        # Sort the bounding boxes by x coordinate in ascending order.
+        boxes.sort(key=lambda x: x[0])
+
+        # Keep iterating until all boxes have been merged.
         merged = []
-        while rects:
-            x1, y1, w1, h1 = rects.pop()
+        while boxes:
+            # Get one of the boxes.
+            x1, y1, w1, h1 = boxes.pop()
             x_min, y_min = x1, y1
             x_max, y_max = x1 + w1, y1 + h1
 
+            # Iterate over the other boxes.
             i = 0
-            while i < len(rects):
-                x2, y2, w2, h2 = rects[i]
-                if (abs(x1 + w1 - x2) < xdist and abs(y1 - y2) < ydist):
+            while i < len(boxes):
+                x2, y2, w2, h2 = boxes[i]
 
+                # Check if the box is in close proximity.
+                if (abs(x1 + w1 - x2) < x_dist and abs(y1 - y2) < y_dist):
+                    # If so, merge the bounding boxes.
                     x_min = min(x_min, x2)
                     y_min = min(y_min, y2)
                     x_max = max(x_max, x2 + w2)
                     y_max = max(y_max, y2 + h2)
-                    del rects[i]
+                    del boxes[i] # Delete the box after merging.
 
                 else:
+                    # Otherwise, the box is too far away so it is skipped.
                     i += 1
 
+            # Record the merged bounding box after considering all others.
             merged.append((x_min, y_min, x_max - x_min, y_max - y_min))
 
         return merged
 
     @staticmethod
     def _find_match(hashes, labels, hashed):
+        """Find the hash with minimum hamming distance in a given list of hashes.
+
+        Args:
+            hashes (list): hashes to compute the distances over.
+            labels (list): label corresponding to each hash.
+            hashed (numpy.ndarray): hash to compute the distance with.
+
+        Returns:
+            str: label of the hash with minimum Hamming distance.
+        """
+        # Compute the Hamming distance between each hash in the list of hashes and the given hash.
         similarities = [np.sum(hashed != h) for h in hashes]
+        # Return the label of the hash with minimum distance.
         return labels[np.argmin(similarities)]
 
 
 class MenuParser(Parser):
-    def __init__(self, window, use_hashes=True, steam_path=r'C:\Program Files (x86)\Steam'):
+    """Contains the code for automatic parsing of menu screens."""
+
+    # Dimensions to resize screenshots to before applying hashing.
+    SCREEN_HASH_DIMS = (480, 270)
+
+    def __init__(self, window, use_hashes=True):
+        """Initialises the menu parser by loading the required screen hashes.
+
+        Args:
+            window (_type_): _description_
+            use_hashes (bool, optional): _description_. Defaults to True.
+        """
         self.__window = window
-        self.__steam_path = steam_path
+
+        # Level selection data is created first in data.py
         self.__level_data = Parser._load_hashes('level_select')
+
+        # If generating the level selection hashes, do not try to load the hashes for the other screens.
         if use_hashes:
             self.__load_hashes()
 
     def __load_hashes(self):
+        """Load the screen hashes based on the game window's resolution."""
+        # Load the options path for the game currently open.
         options_path = f'steamapps\\common\\{self.__window.title}\\saves\\options.txt'
-        options_path = os.path.join(self.__steam_path, options_path)
+        options_path = os.path.join(STEAM_PATH, options_path)
         with open(options_path, 'r') as file:
             data = json.load(file)
 
+        # Get the resolution of the game.
+        # If a non-standard resolution is being used, default to 1920x1080
         resolution = data['screenWidth'], data['screenHeight']
         if resolution not in RESOLUTIONS:
             resolution = (1920, 1080)
 
+        # Load the screen hashes specific to the game window.
         dataset_type = os.path.join('screen', '{0}x{1}'.format(*resolution))
         hashes, labels = Parser._load_hashes(dataset_type)
+        
+        # Take out the level exit data as it is handled slightly differently.
         self.__level_exit = hashes.pop(-1)
         labels.pop(-1)
         self.__screen_data = hashes, labels
 
     def get_screen(self):
-        image = cv2.resize(self.__window.screenshot(), (480, 270), interpolation=cv2.INTER_AREA)
+        """Identify which menu screen is currently being displayed.
+
+        Returns:
+            str: the menu screen being displayed.
+        """
+        # Take a screenshot of the game window, resize it, and calculate its hash.
+        image = cv2.resize(self.__window.screenshot(), MenuParser.SCREEN_HASH_DIMS, interpolation=cv2.INTER_AREA)
         hashed = average_hash(image)
 
+        # Compute the Hamming distance between each reference hash and the screenshot's hash.
         hashes, labels = self.__screen_data
         similarities = [np.sum(hashed != h) for h in hashes]
 
-        #for label, sim in zip(labels, similarities):
-            #print(label, sim)
-
+        # If the minimum similarity is too low, the screen is most likely the level exit screen.
         if min(similarities) > 22000:
-            # Check for level_exit
+            # Threshold the image.
             image = cv2.inRange(image, (180, 180, 180), (255, 255, 255))
 
-            sim = np.sum(self.__level_exit != image)
-            print(sim)
-            if sim > 25000:
-                #print('in_level')
-                #print()
+            # Compute the number of pixels where the level exit screen and image differ.
+            if np.sum(self.__level_exit != image) > 25000:
+                # If large, the screen is likely to be in a level.
                 return 'in_level'
             else:
-                #print('level_exit')
-                #print()
+                # Otherwise, the image is a match and it is the level exit screen.
                 return 'level_exit'
 
-        #print(labels[np.argmin(similarities)])
-        #print()
+        # Otherwise, return the screen with minimum Hamming distance.
         return labels[np.argmin(similarities)]
 
     def wait_until_loaded(self):
+        """Forces the program to wait until a menu screen has fully loaded."""
+        # Add a small fixed delay initially.
         time.sleep(0.75)
         for _ in range(50):
-            image = self.__window.screenshot()
+            image = self.__window.screenshot() # Take a screenshot.
+
+            # Define a mask for orange and blue cells. 
+            # The third part is a slighly different shade of blue that appears once  on the level generator screen.
             mask = cv2.inRange(image, Cell.ORANGE, Cell.ORANGE)
             mask += cv2.inRange(image, Cell.BLUE, Cell.BLUE)
             mask += cv2.inRange(image, (234, 164, 6), (234, 164, 6))
 
+            # Apply the mask to identify contours.
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+            # If there are any contours, then the level had almost loaded.
+            time.sleep(0.5)
             if contours:
-                time.sleep(0.5)
                 return
 
-            time.sleep(0.05)
-
-        raise RuntimeError('wait until loaded failed')
+        # If this is reached, the screen never loaded for some reason.
+        raise RuntimeError('Wait until loaded failed.')
 
     def parse_main_menu(self):
+        """Detect and parse the buttons on the main menu screen.
+
+        Returns:
+            dict: the coordinates of the centre of each button.
+        """
         image = self.__window.screenshot()
 
-        threshold = round(0.24 * image.shape[1])
+        # Set how much of the image should be ignored (from the top).
+        cropped = round(0.24 * image.shape[1])
 
+        # Threshold the image on blue and identify contours.
         mask = cv2.inRange(image, (240, 240, 240), (255, 255, 255))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        rects = [cv2.boundingRect(contour) for contour in contours]
-        bounding_boxes = Parser._merge_rects(rects, 100, 100)
+        # Calculate bounding boxes from the contours and merge boxes in close proximity.
+        boxes = [cv2.boundingRect(contour) for contour in contours]
+        boxes = Parser._merge_boxes(boxes, 100, 100)
 
-        buttons = [(x + w // 2, y + h // 2) for x, y, w, h in bounding_boxes if y > threshold]
+        # Filter out any bounding boxes in the top 24% of the image.
+        # Use the centre of each button as its coordinates.
+        buttons = [(x + w // 2, y + h // 2) for x, y, w, h in boxes if y > cropped]
 
+        # If 4 buttons were found, extract the level generator button from the save slots.
         if len(buttons) == 4:
             buttons.sort(key=lambda x: tuple(reversed(x)))
             level_generator = buttons.pop()
         else:
             level_generator = None
 
+        # Sort the save slot buttons by x coordinate (i.e., order is 1, 2 and 3).
         slots = sorted(buttons, key=lambda x: x[0])
 
+        # Now thresholded the original image on grey and identify contours.
         mask = cv2.inRange(image, (180, 180, 180), (180, 180, 180))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        rects = [cv2.boundingRect(contour) for contour in contours]
+        # Calculate bounding boxes from the contours and merge boxes in close proximity.
+        boxes = [cv2.boundingRect(contour) for contour in contours]
+        boxes = Parser._merge_boxes(boxes, image.shape[1], 50)
 
-        bounding_boxes = Parser._merge_rects(rects, image.shape[1], 50)
-        buttons = [(x + w // 2, y + h // 2) for x, y, w, h in bounding_boxes if y > threshold]
+        # Filter out any bounding boxes in the top 24% of the image.
+        # Use the centre of each button as its coordinates.
+        buttons = [(x + w // 2, y + h // 2) for x, y, w, h in boxes if y > cropped]
 
+        # If 3 buttons were found, the game must be Hexcells Infinite which has the user levels button.
         if len(buttons) == 3:
             user_levels, options, menu_exit = buttons
+        
+        # Otherwise, the game must be Hexcells or Hexcells Plus where there is no user levels button.
         elif len(buttons) == 2:
             user_levels = None
             options, menu_exit = buttons
-        else:
-            raise RuntimeError('main menu parsing failed')
 
+        else:
+            # Otherwise, a button was missed.
+            raise RuntimeError('Main menu parsing failed.')
+
+        # Return the coordinates of the buttons as a dictionary.
         return {'save_slots': slots,
                 'level_generator': level_generator,
                 'user_levels': user_levels,
@@ -174,110 +284,155 @@ class MenuParser(Parser):
                 'exit': menu_exit}
 
     def parse_generator(self):
-        image = self.__window.screenshot()
+        """Detect and parse the buttons on the level generator screen.
 
+        Returns:
+            dict: the coordinates of the centre of each button.
+        """
+        image = self.__window.screenshot()
+        
+        # Threshold the image on white and identify contours.
         mask = cv2.inRange(image, (240, 240, 240), (255, 255, 255))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        bounding_boxes = [cv2.boundingRect(contour) for contour in contours]
-        bounding_boxes.sort(key=lambda box: box[1], reverse=True)
-        x, y, w, h = bounding_boxes.pop(0)
+        # Calculate bounding boxes from the contours and sort them by y coordinate (descending).
+        boxes = [cv2.boundingRect(contour) for contour in contours]
+        boxes.sort(key=lambda box: box[1], reverse=True)
+
+        # Get the play button which is the closest to the bottom in the screenshot.
+        x, y, w, h = boxes.pop(0)
         play_button = (x + w // 2, y + h // 2)
 
-        bounding_boxes.sort(key=lambda box: box[0])
-        x, y, w, h = bounding_boxes.pop(0)
+        # Now sort the boxes by x coordinate to get get the random seed button.
+        # The random seed button is the furthest to the left in the screenshot.
+        boxes.sort(key=lambda box: box[0])
+        x, y, w, h = boxes.pop(0)
         random_button = (x + w // 2, y + h // 2)
 
+        # Threshold the original image on blue (the shade unique to this screen).
         mask = cv2.inRange(image, (234, 164, 6), (234, 164, 6))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        rects = [cv2.boundingRect(contour) for contour in contours]
+        # Calculate bounding boxes from the contours and merge boxes in close proximity.
+        boxes = [cv2.boundingRect(contour) for contour in contours]
+        boxes = Parser._merge_boxes(boxes, image.shape[1], 100)
 
-        bounding_boxes = Parser._merge_rects(rects, image.shape[1], 100)
-        x, y, w, h = bounding_boxes[0]
+        # Get the coordinates of the seed selection button.
+        x, y, w, h = boxes[0]
         seed_button = (x + w // 2, y + h // 2)
 
+        # Return the coordinates of the buttons as a dictionary.
         return {'play': play_button,
                 'random': random_button,
                 'seed': seed_button}
 
-    def parse_levels(self, use_hashes=True):
+    def parse_level_selection(self, use_hashes=True):
+        """Detect and parse the buttons on the level generator screen.
+
+        Args:
+            use_hashes (bool, optional): whether use pre-computed hashes or not.
+
+        Returns:
+            dict: the coordinates of the centre of each level's button.
+        """
         image = self.__window.screenshot()
 
+        # Apply a white mask and identify contours.
         mask = cv2.inRange(image, (244, 244, 244), (255, 255, 255))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
+        # Calculate median contour area.
         areas = [cv2.contourArea(contour) for contour in contours]
         median_area = np.median(areas)
 
+        # Filter out boxes that are not within 5% of the median contour area.
         boxes = [cv2.boundingRect(contour) for contour, area in list(zip(contours, areas))
                  if 0.95 * median_area < area < 1.05 * median_area]
-
         boxes.sort(key=lambda box: box[:2], reverse=True)
 
+        # Iterate over each bounding box.
         levels = {}
         hashes = []
         for x, y, w, h in boxes:
+            # Crop the image to the region within the bounding box.
             x_crop, y_crop = round(w * 0.25), round(h * 0.3)
             cropped = image[y + y_crop:y + h - y_crop, x + x_crop:x + w - x_crop]
-            thresh = 255 - cv2.inRange(cropped, (240, 240, 240), (255, 255, 255))
 
+            # Threshold the cropped region using a white mask to extract the text.
+            # Then invert the result so that the text is black and the background is white.
+            thresh = 255 - cv2.inRange(cropped, (240, 240, 240), (255, 255, 255))
+            
+            # If there are fewer than 20 black pixels, this is probably not a valid box.
             if np.count_nonzero(thresh == 0) < 20:
                 continue
-
+            
+            # Otherwise, crop the image further to filter out any unecessary bordering whitespace.
             coords = np.argwhere(thresh == 0)
             x0, y0 = coords.min(axis=0)
             x1, y1 = coords.max(axis=0) + 1
 
+            # Resize the cropped image and compute its hash.
             thresh = cv2.resize(thresh[x0:x1, y0:y1], (52, 27), interpolation=cv2.INTER_AREA)
-
             hashed = average_hash(thresh)
 
+            # If this is being run by data.py, record the hash. Do not try to parse it.
             if not use_hashes:
                 hashes.append(hashed)
-
             else:
+                # Otherwise, get the label of the reference hash with minimum Hamming distance.
                 hashes, labels = self.__level_data
                 match = Parser._find_match(hashes, labels, hashed)
-
+                # Record the centre of the button for the parsed level.
                 levels[match] = (x + w // 2, y + h // 2)
 
+        # Return the level button coordinates if parsing.
+        # Return the level button hashes if obtaining the reference dataset.
         return levels if use_hashes else hashes
 
     def parse_level_exit(self):
+        """Detect and parse the buttons on the level exit screen.
+
+        Returns:
+            list: the coordinates of the centre of each button.
+        """
+        # Take a screenshot, apply a mask to extract the buttons' text and identify contours.
         image = self.__window.screenshot()
         mask = cv2.inRange(image, (180, 180, 180), (255, 255, 255))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        rects = [cv2.boundingRect(contour) for contour in contours]
+        # Calculate bounding boxes and merge boxes in close proximity.
+        boxes = [cv2.boundingRect(contour) for contour in contours]
+        boxes = Parser._merge_boxes(boxes, image.shape[1], 100)
 
-        bounding_boxes = Parser._merge_rects(rects, image.shape[1], 100)
-        return [(x + w // 2, y + h // 2) for x, y, w, h in bounding_boxes]
+        # Calculate the centre of the merged boxes.
+        return [(x + w // 2, y + h // 2) for x, y, w, h in boxes]
 
     def parse_level_completion(self):
-        # end -> completion
-        image = self.__window.screenshot()
+        """Detect and parse the buttons on the level completion screen.
 
+        Returns:
+            list: the coordinates of the centre of each button.
+        """
+        # Take a screenshot, apply a white mask and identify contours.
+        image = self.__window.screenshot()
         mask = cv2.inRange(image, (255, 255, 255), (255, 255, 255))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        bounding_boxes = [cv2.boundingRect(contour) for contour in contours]
-        bounding_boxes.sort(key=lambda x: (x[1], x[0]), reverse=True)
+        # Calculating bounding boxes and sort them by (y, x) in descending order.
+        boxes = [cv2.boundingRect(contour) for contour in contours]
+        boxes.sort(key=lambda x: (x[1], x[0]), reverse=True)
 
-        if len(contours) == 6:
-            next_button = (bounding_boxes[0][0] + bounding_boxes[0][2] // 2,
-                           bounding_boxes[0][1] + bounding_boxes[0][3] // 2)
-
-            menu_button = (bounding_boxes[1][0] + bounding_boxes[1][2] // 2,
-                           bounding_boxes[1][1] + bounding_boxes[1][3] // 2)
-
+        # If 6 boxes were identified, the "next level" button is present.
+        if len(boxes) == 6:
+            next_button = (boxes[0][0] + boxes[0][2] // 2, boxes[0][1] + boxes[0][3] // 2)
+            menu_button = (boxes[1][0] + boxes[1][2] // 2, boxes[1][1] + boxes[1][3] // 2)
             return next_button, menu_button
 
         else:
-            menu_button = (bounding_boxes[0][0] + bounding_boxes[0][2] // 2,
-                           bounding_boxes[0][1] + bounding_boxes[0][3] // 2)
-
-        return None, menu_button
+            # Otherwise, this must be the last level in the set or a randomly generated level
+            # in which case there is no "next level" button.
+            menu_button = (boxes[0][0] + boxes[0][2] // 2, boxes[0][1] + boxes[0][3] // 2)
+            return None, menu_button
 
 
 class LevelParser(Parser):
@@ -473,7 +628,7 @@ class LevelParser(Parser):
         _, thresh = cv2.threshold(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 120, 255, cv2.THRESH_BINARY_INV)
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        rects = []
+        boxes = []
         for contour in contours:
             if cv2.contourArea(contour) < 1000:
                 x, y, w, h = cv2.boundingRect(contour)
@@ -482,9 +637,9 @@ class LevelParser(Parser):
                         self.__y_min - 2 * self.__hex_height < y < self.__y_max + self.__hex_height and
                         np.linalg.norm(coords - grid.nearest_cell(coords).image_coords) < 130):
 
-                    rects.append((x, y, w, h))
+                    boxes.append((x, y, w, h))
 
-        bounding_boxes = Parser._merge_rects(rects, self.__hex_width * 0.76, self.__hex_height * 0.7)
+        bounding_boxes = Parser._merge_boxes(boxes, self.__hex_width * 0.76, self.__hex_height * 0.7)
 
         parsed = []
         for x, y, w, h in bounding_boxes:
