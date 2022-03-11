@@ -445,7 +445,7 @@ class LevelParser(Parser):
             self.__black_data = Parser._load_hashes('black')
             self.__blue_data = Parser._load_hashes('blue')
             self.__counter_data = Parser._load_hashes('counter')
-        
+
         # Load the grid constraint datasets if requested.
         if use_grid_hashes:
             self.__column_data = Parser._load_hashes('column')
