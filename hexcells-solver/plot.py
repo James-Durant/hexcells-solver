@@ -38,9 +38,12 @@ def plot_accuracy(log_path, models, file_name, split, labels=None):
         label = f'Model {model}' if labels is None else labels[i]
 
         # Plot the training and validation accuracies.
-        ax1.plot(level_nums, train_accuracy, color=colour, label=label, linewidth=0.8, linestyle='solid')
-        ax1.plot(level_nums, val_accuracy, color=colour, linewidth=0.8, linestyle='dashed')
-        ax2.plot(level_nums, val_accuracy, color=colour, linewidth=0.8, linestyle='dashed')
+        if split:
+            ax1.plot(level_nums, train_accuracy, color=colour, label=label, linewidth=0.8, linestyle='solid')
+            ax2.plot(level_nums, val_accuracy, color=colour, label=label, linewidth=0.8, linestyle='dashed')
+        else:
+            ax1.plot(level_nums, train_accuracy, color=colour, label=label, linewidth=0.8, linestyle='solid')
+            ax1.plot(level_nums, val_accuracy, color=colour, linewidth=0.8, linestyle='dashed')
 
     # Set the x-axis labels.
     ax1.set_xlabel('Number of Levels Solved', fontsize=11, weight='bold')
@@ -59,7 +62,8 @@ def plot_accuracy(log_path, models, file_name, split, labels=None):
 
     # Add legends to the plots.
     ax1.legend()
-    ax2.legend()
+    if split:
+        ax2.legend()
 
     # Create a new directory for figures if one does not exist.
     save_path = os.path.join(log_path, '..', 'figures')

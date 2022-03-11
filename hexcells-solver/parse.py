@@ -493,7 +493,7 @@ class LevelParser(Parser):
         for cell in cells:
             x, y = cell.image_coords
             self.__x_min = min(x, self.__x_min)
-            self.__x_max = max(x, self.__x_min)
+            self.__x_max = max(x, self.__x_max)
             self.__y_min = min(y, self.__y_min)
             self.__y_max = max(y, self.__y_max)
 
@@ -769,7 +769,7 @@ class LevelParser(Parser):
 
             # Calculate the difference in position between the box centre and the nearest cell.
             delta_x = box_coords[0] - nearest_coords[0]
-            delta_y = box_coords[1] - nearest_coords[1]
+            delta_y = nearest_coords[1] - box_coords[1]
 
             # Calculate the angle between the box centre and the nearest cell.
             theta = (90 - np.degrees(np.arctan2(delta_y, delta_x))) % 360

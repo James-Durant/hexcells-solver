@@ -27,16 +27,15 @@ class GUI:
         self.__root.title('HexSolver')
         self.__root.resizable(width=False, height=False)
 
-        self.__radiobuttons = {}
+        self.__button_font = ('Arial', 10)
+        self.__title_font = ('Arial Black', 10)
+        self.__radiobutton_font = ('Arial Black', 9)
 
         # Add the three main components of the GUI.
         self.__setup_vars()
         self.__create_game_frame()
         self.__create_solver_frame()
         self.__create_learning_frame()
-
-        self.__text_font = ('Arial Black', 9)
-        self.__title_font = ('Arial Black', 10)
 
         # Run the GUI.
         self.__check_game_running()
@@ -128,14 +127,14 @@ class GUI:
         self.__game_radiobuttons = []
         for i, game in enumerate(GAMEIDS, 1):
             radiobutton = tk.Radiobutton(self.__game_frame, variable=self.__game_var, value=game,
-                                         text=game, font=self.__text_font, command=self.__load_game)
+                                         text=game, font=self.__radiobutton_font, command=self.__load_game)
             radiobutton.grid(sticky='w', row=i, column=0)
             self.__game_radiobuttons.append(radiobutton)
 
         # Create a frame to contain the "Select Save" text and a dropdown menu.
         saves = [1, 2, 3]
         self.__save_frame = tk.Frame(self.__game_frame)
-        self.__save_label = tk.Label(self.__save_frame, text='Select Save:', font=self.__text_font)
+        self.__save_label = tk.Label(self.__save_frame, text='Select Save:')
         self.__save_optionmenu = tk.OptionMenu(self.__save_frame, self.__save_var, *saves)
         self.__save_label.pack(side='left')
         self.__save_optionmenu.pack()
@@ -158,10 +157,10 @@ class GUI:
 
         # Create a radiobutton for each of the solving options.
         self.__solver_radiobuttons = []
-        labels = ['Specific Level'], ['Specific Set'], ['Entire Game'], ['Level Generator']
+        labels = ['Specific Level', 'Specific Set', 'Entire Game', 'Level Generator']
         for i, label in enumerate(labels):
             radiobutton = tk.Radiobutton(self.__solver_frame, variable=self.__solve_var,
-                                         value=i, text=label, font=self.__text_font)
+                                         value=i, text=label, font=self.__radiobutton_font)
             radiobutton.grid(sticky='w', row=i+1, column=0)
             self.__solver_radiobuttons.append(radiobutton)
 
@@ -172,7 +171,7 @@ class GUI:
         for i, (variable, label) in enumerate(zip(variables, labels), 1):
             options = ['1', '2', '3', '4', '5', '6']
             frame = tk.Frame(self.__solver_frame)
-            label = tk.Label(frame, text=f'{label}:', font=self.__text_font)
+            label = tk.Label(frame, text=f'{label}:')
             optionmenu = tk.OptionMenu(frame, variable, *options)
             label.pack(side='left')
             optionmenu.pack()
@@ -180,7 +179,7 @@ class GUI:
             self.__solver_optionmenus.append(optionmenu)
 
         # Create a button that can be clicked to run the solver on the chosen level(s).
-        self.__solve_button = tk.Button(self.__solver_frame, text='Solve', font=self.__text_font,
+        self.__solve_button = tk.Button(self.__solver_frame, text='Solve', font=self.__button_font,
                                         state=tk.DISABLED, command=self.__run_solver)
         self.__solve_button.grid(sticky='nesw', row=5, column=0, columnspan=2, pady=(10, 0))
 
@@ -199,7 +198,7 @@ class GUI:
         self.__learning_radiobuttons = []
         for i, label in enumerate(['New Model', 'Load Model']):
             radiobutton = tk.Radiobutton(self.__learning_frame, variable=self.__model_var,
-                                         value=i, text=label, font=self.__text_font)
+                                         value=i, text=label, font=self.__radiobutton_font)
             radiobutton.grid(sticky='w', row=i+1, column=0)
             self.__learning_radiobuttons.append(radiobutton)
 
@@ -215,7 +214,7 @@ class GUI:
 
         # Create entry boxes (with an associated label) for each of the model hyperparameters.
         self.__learning_entries = []
-        variables = [self.__epochs_var, self.__learning_rate_var, self.__discount_rate_var, ]
+        variables = [self.__epochs_var, self.__learning_rate_var, self.__discount_rate_var, self.__exploration_rate_var]
         labels = ['Epochs', 'Learning Rate', 'Discount Rate', 'Exploration Rate']
         for i, (variable, label) in enumerate(zip(variables, labels), 4):
             frame = tk.Frame(self.__learning_frame)
@@ -234,17 +233,17 @@ class GUI:
         self.__path_entry = tk.Entry(self.__path_frame, state=tk.DISABLED, textvariable=self.__model_path_var)
         self.__path_button.pack(side='left')
         self.__path_entry.pack(expand=True, fill='both')
-        self.__path_frame.grid(sticky='nesw', row=9, column=0, columnspan=2, pady=10)
+        self.__path_frame.grid(sticky='nesw', row=8, column=0, columnspan=2, pady=10)
 
         # Create a dropdown menu for selecting between online and offline learning.
         modes = ['Online', 'Offline']
         self.__run_frame = tk.Frame(self.__learning_frame)
-        self.__run_frame.grid(sticky='nesw', row=10, column=0, columnspan=2, pady=(10, 0))
+        self.__run_frame.grid(sticky='nesw', row=9, column=0, columnspan=2, pady=(10, 0))
         self.__mode_optionmenu = tk.OptionMenu(self.__run_frame, self.__mode_var, *modes)
         self.__mode_optionmenu.pack(side='right')
 
         # Create a button that, when clicked, runs a chosen model.
-        self.__train_button = tk.Button(self.__run_frame, text='Run', font=('Arial', 10),
+        self.__train_button = tk.Button(self.__run_frame, text='Run', font=self.__button_font,
                                         state=tk.DISABLED, command=self.__run_model)
         self.__train_button.pack(expand=True, fill='x')
 
@@ -381,7 +380,7 @@ class GUI:
                 levels.pop()
 
         # Update the level selection dropdown with these new changes.
-        level_optionmenu = self.__solver_optionmenus[0]
+        level_optionmenu = self.__solver_optionmenus[1]
         level_optionmenu['menu'].delete(0, 'end')
         for level in levels:
             level_optionmenu['menu'].add_command(label=level, command=tk._setit(self.__level_var, level))

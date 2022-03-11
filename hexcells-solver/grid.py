@@ -285,7 +285,7 @@ class Grid:
 class Cell:
     """Represents an individual cell containing within a Grid (defined above)."""
 
-    # The RGB values of the colours used for the blue, black and orange cells.
+    # The RGB values of the colours used for blue, black and orange cells.
     BLUE = (235, 164, 5)
     BLACK = (62, 62, 62)
     ORANGE = (41, 177, 255)
@@ -305,7 +305,7 @@ class Cell:
             number (int, optional): number associated with the cell.
         """
         self.__image_coords = image_coords
-        self.__grid_coords = None # Initially none but will be set when parsing.
+        self.__grid_coords = None # Initially none but is set when parsing.
         self.__width = width
         self.__height = height
 

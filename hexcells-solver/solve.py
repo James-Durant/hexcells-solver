@@ -206,6 +206,14 @@ class Solver:
                     # Create a new entry in the dictionary if the cell has not been met yet.
                     except KeyError:
                         self.__constraints[cell] = {constraint}
+        
+        # Find all unknown cells that have no constraints acting on them.
+        for cell in self.__unknown:
+            try:
+                self.__constraints[cell]
+            except KeyError:
+                # The set of contraints for the cell is empty.
+                self.__constraints[cell] = set()
 
     def __get_classes(self, level):
         """Define equivalence classes of cells with the same constraints.

@@ -45,6 +45,7 @@ class Environment:
             grid (grid.Grid): a parsed Hexcells level.
         """
         self._grid = grid
+        self._solver = Solver(None)
 
         # Define an offset for action indexing based on whether the top-left
         # cell is present or not.
@@ -175,8 +176,7 @@ class Environment:
                    Also returned are the cells that could be left or right clicked.
         """
         # Get the cells that could be left or right clicked, given the available information in the level.
-        solver = Solver(self.__parser)
-        left_click_cells, right_click_cells = solver.solve_single_step(self._grid)
+        left_click_cells, right_click_cells = self._solver.solve_single_step(self._grid)
         left_click_coords = [cell.grid_coords for cell in left_click_cells]
         right_click_coords = [cell.grid_coords for cell in right_click_cells]
 
@@ -261,6 +261,7 @@ class OnlineEnvironment(Environment):
         """
         # Call the parent constructor with a parsed grid capturing the initial level state.
         super().__init__(parser.parse_grid())
+        self._solver =  Solver(parser)
         self.__parser = parser
         self.__delay = delay
 

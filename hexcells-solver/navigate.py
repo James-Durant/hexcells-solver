@@ -196,7 +196,7 @@ class Navigator:
         self.__transition_to_level_select(save)
 
         # Parse the level selection screen.
-        levels = self.__menu_parser.parse_levels()
+        levels = self.__menu_parser.parse_level_selection()
         try:
             # Try to click on the button corresponding to the chosen level.
             self.__window.click(levels[level_str])
@@ -221,7 +221,7 @@ class Navigator:
         self.__transition_to_level_select(save)
 
         # Parse the level selection screen.
-        levels = self.__menu_parser.parse_levels()
+        levels = self.__menu_parser.parse_level_selection()
 
         try:
             # Try to click on the button corresponding to the first level.
@@ -276,13 +276,10 @@ class Navigator:
                 play_button, random_button = buttons['play'], buttons['random']
 
                 # Click on the button to input a new random seed.
-                # Double click the button as there were minor issues with just once.
-                self.__window.click(random_button, move_mouse=False)
-                self.__window.click(random_button, move_mouse=True)
+                self.__window.click(random_button)
 
                 # Click on the button to generate the level.
-                self.__window.click(play_button, move_mouse=False)
-                self.__window.click(play_button, move_mouse=True)
+                self.__window.click(play_button)
                 self.wait_until_loaded() # Wait for the level to be generated.
 
                 # Run a model if one was given.
