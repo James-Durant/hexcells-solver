@@ -212,7 +212,7 @@ class Navigator:
 
         # Wait until the level has loaded and then solve it.
         self.wait_until_loaded()
-        self.solve(False, level_str, delay) # False to solve the single level.
+        self.solve(False, level_str, delay)  # False to solve the single level.
 
     def solve_set(self, save, set_str, delay=False):
         """Solve a set of levels.
@@ -239,7 +239,7 @@ class Navigator:
 
         # Wait until the level has loaded and then solve it.
         self.wait_until_loaded()
-        self.solve(True, level, delay) # True to solve the rest of the levels in the set.
+        self.solve(True, level, delay)  # True to solve the rest of the levels in the set.
 
     def solve_game(self, save, delay=False):
         """Solves all levels in the game currently running.
@@ -285,7 +285,7 @@ class Navigator:
 
                 # Click on the button to generate the level.
                 self.__window.click(play_button)
-                self.wait_until_loaded() # Wait for the level to be generated.
+                self.wait_until_loaded()  # Wait for the level to be generated.
 
                 # Run a model if one was given.
                 if train:

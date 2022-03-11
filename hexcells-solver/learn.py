@@ -189,9 +189,9 @@ class Environment:
 
             # Check if the chosen action is correct against the solution.
             if ((row, col) in left_click_coords and button == 0) or ((row, col) in right_click_coords and button == 1):
-                rewards.append(1) # Reward is +1 if correct
+                rewards.append(1)  # Reward is +1 if correct
             else:
-                rewards.append(-1) # Reward is -1 if incorrect.
+                rewards.append(-1)  # Reward is -1 if incorrect.
 
         return rewards, left_click_coords, right_click_coords
 
@@ -261,7 +261,7 @@ class OnlineEnvironment(Environment):
         """
         # Call the parent constructor with a parsed grid capturing the initial level state.
         super().__init__(parser.parse_grid())
-        self._solver =  Solver(parser)
+        self._solver = Solver(parser)
         self.__parser = parser
         self.__delay = delay
 
@@ -299,7 +299,7 @@ class OnlineEnvironment(Environment):
                 # Instead, just click the cell and ignore parsing.
                 self.__parser.click_cells([cell], 'left')
                 cell.colour = Cell.BLUE
-                remaining = 0 # Solved as there are no remaining cells to uncover.
+                remaining = 0  # Solved as there are no remaining cells to uncover.
                 solved = True
 
         # Check if the cell is in the set of cells that could be right clicked.
@@ -408,7 +408,6 @@ class Agent:
             # Save the newly created model.
             self.__model_path = model_path
             self.save_model()
-
 
         if double_dqn:
             # If using double deep Q-learning, create a new model with the same architecture as above.
@@ -545,7 +544,7 @@ class Agent:
             # If the desired number of levels has been solved, update the weights of the target model.
             if self.__target_update_counter > self.__target_update_interval:
                 self.__target_model.set_weights(self.__model.get_weights())
-                self.__target_update_counter = 0 # Reset the counter.
+                self.__target_update_counter = 0  # Reset the counter.
 
         # Decay the learning and exploration rates.
         self.__learning_rate = max(LEARNING_RATE_MIN, self.__learning_rate * LEARNING_RATE_DECAY)
@@ -612,7 +611,7 @@ class Trainer:
             test_levels = levels[TRAIN_LEVELS:]
 
         # Load the model from the given file path.
-        environment = OfflineEnvironment(*levels[0]) # Use the first level to establish the environment size.
+        environment = OfflineEnvironment(*levels[0])  # Use the first level to establish the environment size.
         agent = Agent(environment, LEARNING_RATE, DISCOUNT_RATE, 0, False, False, model_path=model_path)
 
         # Compute the agent's accuracy on the test dataset.
@@ -633,7 +632,7 @@ class Trainer:
         # Load the levels from the file
         with open(levels_path, 'rb') as file:
             levels, _ = pickle.load(file)
-            levels = levels[:TRAIN_LEVELS] # Only keep the first 1600.
+            levels = levels[:TRAIN_LEVELS]  # Only keep the first 1600.
 
         # Split the levels into training and validation datasets.
         split = round(len(levels) * train_val_split)
@@ -686,8 +685,8 @@ class Trainer:
 
     @staticmethod
     def run_offline(epochs, training, learning_rate=LEARNING_RATE, discount_rate=DISCOUNT_RATE,
-                      exploration_rate=EXPLORATION_RATE, experience_replay=EXPERIENCE_REPLAY, double_dqn=DOUBLE_DQN,
-                      batch_size=BATCH_SIZE, model_path=None, level_size='small', train_val_split=0.8125):
+                    exploration_rate=EXPLORATION_RATE, experience_replay=EXPERIENCE_REPLAY, double_dqn=DOUBLE_DQN,
+                    batch_size=BATCH_SIZE, model_path=None, level_size='small', train_val_split=0.8125):
         """Run an agent in a number of offline learning environments.
 
         Args:

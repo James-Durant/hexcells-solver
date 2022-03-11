@@ -65,7 +65,7 @@ class Solver:
         temp = pulp.LpVariable('initial', 0, 1, 'binary')
         self.__problem += temp == 0
         self.__problem.setObjective(temp)
-        self.__problem.solve(self.__solver) # Run the solver.
+        self.__problem.solve(self.__solver)  # Run the solver.
 
         # Identify the variables that are assigned their maximum (i.e., the size of the equivalence class
         # corresponding to the variable) and those that are assigned their minimum (i.e., 0).
@@ -222,8 +222,8 @@ class Solver:
         Args:
             level (str): level to be formulated as an ILP problem.
         """
-        self.__rep_of = {} # Representative of each cell.
-        self.__class_of_rep = {} # Equivalence class of each representative.
+        self.__rep_of = {}  # Representative of each cell.
+        self.__class_of_rep = {}  # Equivalence class of each representative.
 
         # If the level is one of the special cases, each cell is its own representative.
         # Using equivalence classes is not strict necessary but helps with optimisation.
@@ -336,10 +336,7 @@ class Solver:
                 # These constraints are only valid for black cells with a number between 2 and 4,
                 # or blue cells with numbers between 2 and 10.
                 # Cells with hint types and numbers outside these ranges are not well-defined.
-                if (cell.hint != 'normal' and
-                    ((cell.colour == Cell.BLACK and 2 <= cell.number <= 4) or
-                     (cell.colour == Cell.BLUE and 2 <= cell.number <= 10))):
-
+                if (cell.hint != 'normal' and ((cell.colour == Cell.BLACK and 2 <= cell.number <= 4) or (cell.colour == Cell.BLUE and 2 <= cell.number <= 10))):
                     # Blue cells with hint types are only used in 4-6 from Hexcells Plus and cannot be created in custom levels.
                     # In this sole level, these constraints only apply to the outer ring of the 2-cell radius neighbourhood, rather than also including
                     # the directly adjacent neighbours). Therefore, these constraints have been implemented in the same way for the solver.
@@ -365,11 +362,10 @@ class Solver:
                         # That is, there can be no isolated blue cell or isolated gap. Note that the indexing wraps around.
                         elif cell.colour == Cell.BLACK:
                             for i in range(n):
-                                cond = (self.__get_var(neighbours[i]) -
-                                        self.__get_var(neighbours[(i + 1) % n]) -
-                                        self.__get_var(neighbours[(i - 1) % n]))
-
-                                self.__problem += -1 <= cond <= 0
+                                condition = self.__get_var(neighbours[i])
+                                condition -= self.__get_var(neighbours[(i + 1) % n])
+                                condition -= self.__get_var(neighbours[(i - 1) % n])
+                                self.__problem += -1 <= condition <= 0
 
                     # Similarly to grid constraints, for -n- cells (either blue or black), a consecutive block of n neighbouring cells can contain at most n-1 blue cells.
                     if cell.hint == 'non-consecutive':
@@ -424,12 +420,12 @@ class Solver:
             grid (grid.Grid): level to be formulated as an ILP problem.
         """
         # Get the cells in each letter of "FINISH" using the columns of each letter.
-        letters = [[0, 1, 2], # F
-                   [5], # I
-                   [8, 9, 10, 11, 12], # N
-                   [15], # I
-                   [18, 19, 20], # S
-                   [23, 24, 25, 26]] # H
+        letters = [[0, 1, 2],  # F
+                   [5],  # I
+                   [8, 9, 10, 11, 12],  # N
+                   [15],  # I
+                   [18, 19, 20],  # S
+                   [23, 24, 25, 26]]  # H
 
         # Combine the cells from columns of the same letter.
         for i, letter in enumerate(letters):

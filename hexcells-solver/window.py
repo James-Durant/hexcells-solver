@@ -88,7 +88,7 @@ class Window:
         """
         # Transform the window coordinates to monitor coordinates.
         x, y, _, _ = self.__get_position()
-        pyautogui.click(x=x+coords[0], y=y+coords[1], button=button)
+        pyautogui.click(x=x + coords[0], y=y + coords[1], button=button)
 
         # Move the mouse out of the way if requested.
         if move_mouse:

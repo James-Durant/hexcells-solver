@@ -89,7 +89,7 @@ class Parser:
                     y_min = min(y_min, y2)
                     x_max = max(x_max, x2 + w2)
                     y_max = max(y_max, y2 + h2)
-                    del boxes[i] # Delete the box after merging.
+                    del boxes[i]  # Delete the box after merging.
 
                 else:
                     # Otherwise, the box is too far away, so it is skipped.
@@ -196,7 +196,7 @@ class MenuParser(Parser):
         # Add a small fixed delay initially.
         time.sleep(0.75)
         for _ in range(50):
-            image = self.__window.screenshot() # Take a screenshot.
+            image = self.__window.screenshot()  # Take a screenshot.
 
             # Define a mask for orange and blue cells.
             # The third part is a slightly different shade of blue that only appears on the level generator screen.
@@ -639,7 +639,7 @@ class LevelParser(Parser):
 
             # Parse the number only (ignore the hint type).
             number = Parser._find_match(hashes, labels, hashed)
-            match = f'{{{number}}}' # Add the hint type back.
+            match = f'{{{number}}}'  # Add the hint type back.
 
         return match
 
@@ -745,9 +745,9 @@ class LevelParser(Parser):
 
                 # Check that the contour is within the playable area (with slight padding) and that
                 # it is not too far away from a cell.
-                if (self.__x_min - 2 * self.__cell_width < x < self.__x_max + 2 * self.__cell_width and
-                    self.__y_min - 2 * self.__cell_height < y < self.__y_max + self.__cell_height and
-                    np.linalg.norm(coords - grid.nearest_cell(coords).image_coords) < 130):
+                if (self.__x_min - 2 * self.__cell_width < x < self.__x_max + 2 * self.__cell_width
+                        and self.__y_min - 2 * self.__cell_height < y < self.__y_max + self.__cell_height
+                        and np.linalg.norm(coords - grid.nearest_cell(coords).image_coords) < 130):
                     # If the contour was not filtered out, record it.
                     boxes.append((x, y, w, h))
 
@@ -764,7 +764,7 @@ class LevelParser(Parser):
 
             # Calculate the difference in position between the box centre and the nearest cell.
             delta_x = box_coords[0] - nearest_coords[0]
-            delta_y = nearest_coords[1] - box_coords[1] # The direction is reversed here.
+            delta_y = nearest_coords[1] - box_coords[1]  # The direction is reversed here.
 
             # Calculate the angle between the box centre and the nearest cell.
             theta = (90 - np.degrees(np.arctan2(delta_y, delta_x))) % 360
@@ -856,7 +856,7 @@ class LevelParser(Parser):
             # Use the column dataset (since the constraint is upright) to find the matching number.
             hashes, labels = self.__column_data
             match = Parser._find_match(hashes, labels, average_hash(temp))
-            match = f'{{{match}}}' # Add the hint type back.
+            match = f'{{{match}}}'  # Add the hint type back.
 
         return match
 
@@ -881,7 +881,6 @@ class LevelParser(Parser):
         # pad the blank areas with whitespace.
         return cv2.warpAffine(image, rotation_matrix, image.shape[1::-1],
                               flags=cv2.INTER_LINEAR, borderValue=(255, 255, 255))
-
 
     def parse_clicked(self, grid, left_click_cells, right_click_cells, delay=False):
         """Left and right click cells and parse their uncovered contents.
@@ -914,7 +913,7 @@ class LevelParser(Parser):
                 # Get the cell to right click that is highest in the level.
                 min_row = min(cell.grid_coords[0] for cell in right_click_cells)
                 # Wait based on how far the particles have to fall.
-                time.sleep(max(1.5, 0.15*(grid.rows-min_row)))
+                time.sleep(max(1.5, 0.15 * (grid.rows - min_row)))
             else:
                 time.sleep(0.15)
 

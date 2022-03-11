@@ -8,7 +8,7 @@ class Grid:
     INNER = [(0, -2), (1, -1), (1, 1), (0, 2), (-1, 1), (-1, -1)]
     # Relative coordinates of cells at a 2-cell radius.
     OUTER = [(0, -4), (1, -3), (2, -2), (2, 0), (2, 2), (1, 3), (0, 4),
-               (-1, 3), (-2, 2), (-2, 0), (-2, -2), (-1, -3)]
+             (-1, 3), (-2, 2), (-2, 0), (-2, -2), (-1, -3)]
     # All cells contained within a 2-cell radius.
     COMBINED = INNER + OUTER
 
@@ -21,11 +21,11 @@ class Grid:
             remaining (int): number of blue cells to uncover in the cell.
         """
         self.__grid = grid
-        self.__rows = len(grid) # Number of rows.
-        self.__cols = len(grid[0]) # Number of columns.
+        self.__rows = len(grid)  # Number of rows.
+        self.__cols = len(grid[0])  # Number of columns.
         self.__cells = cells
         self.__remaining = remaining
-        self.__constraints = [] # No constraints initially.
+        self.__constraints = []  # No constraints initially.
         # Get the image coordinates for each cell.
         self.__cell_image_coords = np.asarray([cell.image_coords for cell in cells])
 
@@ -108,12 +108,12 @@ class Grid:
         # Set the hint type of the constraint as consecutive if it was parsed as {n}
         if parsed[0] == '{' and parsed[-1] == '}':
             hint = 'consecutive'
-            number = parsed[1:-1] # Extract the constraint's number.
+            number = parsed[1:-1]  # Extract the constraint's number.
 
         # Set the hint type of the constraint as consecutive if it was parsed as -n-
         elif parsed[0] == '-' and parsed[-1] == '-':
             hint = 'non-consecutive'
-            number = parsed[1:-1] # Extract the constraint's number.
+            number = parsed[1:-1]  # Extract the constraint's number.
         else:
             # Otherwise, there is no hint type and the parsed representation
             # is just the number.
@@ -305,7 +305,7 @@ class Cell:
             number (int, optional): number associated with the cell.
         """
         self.__image_coords = image_coords
-        self.__grid_coords = None # Initially none but is set when parsing.
+        self.__grid_coords = None  # Initially none but is set when parsing.
         self.__width = width
         self.__height = height
 

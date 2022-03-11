@@ -22,7 +22,7 @@ class Generator:
 
     def __init__(self):
         """Store the paths to the Hexcells options.txt file and Steam executable."""
-        self.__options_path = os.path.join(STEAM_PATH, 'steamapps\common\{0}\saves\options.txt')
+        self.__options_path = os.path.join(STEAM_PATH, 'steamapps\\common\\{0}\\saves\\options.txt')
         self.__steam_path = os.path.join(STEAM_PATH, 'steam.exe')
 
     def _load_game(self, game, resolution, use_level_hashes=True, use_screen_hashes=True):
@@ -70,7 +70,7 @@ class Generator:
         # Try to capture the newly opened game window.
         menu = Navigator(use_level_hashes, use_screen_hashes)
         menu.window.move_mouse()
-        menu.wait_until_loaded() # Make sure the main menu screen has fully loaded.
+        menu.wait_until_loaded()  # Make sure the main menu screen has fully loaded.
         return menu
 
 
@@ -101,7 +101,7 @@ class LearningData(Generator):
 
         # Create a list of seeds for the random level generator.
         # Each level corresponds to a seed consisting of 8 digits.
-        seeds = ['0' * (8 - len(str(i))) + str(i) for i in range(1, num_levels+1)]
+        seeds = ['0' * (8 - len(str(i))) + str(i) for i in range(1, num_levels + 1)]
 
         # Keep iterating until there are no levels left to process.
         i = 0
@@ -116,7 +116,7 @@ class LearningData(Generator):
             play_button, seed_button = buttons['play'], buttons['seed']
             menu.window.click(seed_button)
             time.sleep(0.2)
-            menu.window.paste() # Paste the level's seed.
+            menu.window.paste()  # Paste the level's seed.
             time.sleep(0.2)
 
             # Click the play button to generate the level for the chosen seed.
@@ -129,8 +129,8 @@ class LearningData(Generator):
 
             # Parse the initial level state.
             game_parser = LevelParser(menu.window)
-            grid = game_parser.parse_grid() # The grid that will be solved to get ground truth solution.
-            grid_initial = game_parser.parse_grid() # The grid that is stored as the initial level state.
+            grid = game_parser.parse_grid()  # The grid that will be solved to get ground truth solution.
+            grid_initial = game_parser.parse_grid()  # The grid that is stored as the initial level state.
 
             # Keep iterating until the level is solved.
             solver = Solver(game_parser)
@@ -332,7 +332,7 @@ class ImageData(Generator):
             # The counter dataset need only be run for one resolution.
             if dataset_type == 'counter':
                 break
-        
+
         # For the special blue dataset, add the hashes and labels to the existing blue dataset.
         if dataset_type == 'blue_special':
             with open(hash_path, 'rb') as file:
@@ -431,9 +431,9 @@ class ImageData(Generator):
                 labels = ['-' + str(i) + '-' for i in range(2, 16)]
 
             elif dataset_type == 'diagonal_normal_1':
-                labels = ([str(i) for i in range(1, 16)] +
-                          ['0', '0'] +
-                          [str(i) for i in range(15, 0, -1)])
+                labels = [str(i) for i in range(1, 16)]
+                labels += ['0', '0']
+                labels += [str(i) for i in range(15, 0, -1)]
 
             elif dataset_type == 'diagonal_normal_2':
                 labels = ['24', '25', '27', '26', '23', '22', '21', '20',
@@ -441,9 +441,9 @@ class ImageData(Generator):
                           '20', '23', '21', '24', '26', '27', '25', '22']
 
             elif dataset_type == 'diagonal_consecutive_1':
-                labels = (['{' + str(i) + '}' for i in range(1, 16)] +
-                          ['{0}', '{0}'] +
-                          ['{' + str(i) + '}' for i in range(15, 0, -1)])
+                labels = ['{' + str(i) + '}' for i in range(1, 16)]
+                labels += ['{0}', '{0}']
+                labels += ['{' + str(i) + '}' for i in range(15, 0, -1)]
 
             elif dataset_type == 'diagonal_consecutive_2':
                 labels = ['{24}', '{25}', '{27}', '{26}', '{23}', '{22}',
@@ -452,8 +452,8 @@ class ImageData(Generator):
                           '{21}', '{24}', '{26}', '{27}', '{25}', '{22}']
 
             elif dataset_type == 'diagonal_non-consecutive_1':
-                labels = (['-' + str(i) + '-' for i in range(2, 16)] +
-                          ['-' + str(i) + '-' for i in range(15, 1, -1)])
+                labels = ['-' + str(i) + '-' for i in range(2, 16)]
+                labels += ['-' + str(i) + '-' for i in range(15, 1, -1)]
 
             elif dataset_type == 'diagonal_non-consecutive_2':
                 labels = ['-23-', '-24-', '-27-', '-26-', '-25-', '-22-',
@@ -555,11 +555,11 @@ class ImageData(Generator):
 
             # Go back to the main menu screen, parse it, and click on the user levels button.
             menu.back()
-            pyperclip.copy('') # Empty the clipboard.
+            pyperclip.copy('')  # Empty the clipboard.
             buttons = menu_parser.parse_main_menu()
             user_levels_button = buttons['user_levels']
             menu.window.click(user_levels_button)
-            time.sleep(4) # Wait for the levels to show up.
+            time.sleep(4)  # Wait for the levels to show up.
 
             # Take a screenshot of the user levels screen.
             user_levels = menu.window.screenshot()

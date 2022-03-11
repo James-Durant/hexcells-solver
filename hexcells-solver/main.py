@@ -44,26 +44,26 @@ class GUI:
 
         # Which save slot to load.
         self.__save_var = tk.StringVar(self.__root)
-        self.__save_var.set('1') # Save slot 1 by default.
+        self.__save_var.set('1')  # Save slot 1 by default.
 
         # Whether to add a delay after clicking cells (for the particle effect to clear).
         self.__delay_var = tk.BooleanVar(self.__root)
-        self.__delay_var.set(False) # No delay by default.
+        self.__delay_var.set(False)  # No delay by default.
 
         # Whether to solve a specific level, a set of levels, an entire game
         # or a randomly generate level.
         self.__solve_var = tk.IntVar(self.__root)
-        self.__solve_var.set(0) # Initially a specific level.
+        self.__solve_var.set(0)  # Initially a specific level.
         self.__solve_var.trace('w', self.__solver_radiobutton_callback)
 
         # Which level set to use for solving.
         self.__set_var = tk.StringVar(self.__root)
-        self.__set_var.set('-') # Not assigned initially.
+        self.__set_var.set('-')  # Not assigned initially.
         self.__set_var.trace('w', self.__on_set_change)
 
         # Which level within a set to use for solving.
         self.__level_var = tk.StringVar(self.__root)
-        self.__level_var.set('-') # Not assigned initially.
+        self.__level_var.set('-')  # Not assigned initially.
         self.__level_var.trace('w', self.__check_ready_to_solve)
 
         # Whether to create a new model or load an existing one.
@@ -95,7 +95,7 @@ class GUI:
         self.__discount_rate_var = tk.StringVar()
         self.__discount_rate_var.set(str(DISCOUNT_RATE))
 
-         # Value for the exploration rate hyperparameter.
+        # Value for the exploration rate hyperparameter.
         self.__exploration_rate_var = tk.StringVar()
         self.__exploration_rate_var.set(str(EXPLORATION_RATE))
 
@@ -157,7 +157,7 @@ class GUI:
         for i, label in enumerate(labels):
             radiobutton = tk.Radiobutton(self.__solver_frame, variable=self.__solve_var,
                                          value=i, text=label, font=self.__radiobutton_font)
-            radiobutton.grid(sticky='w', row=i+1, column=0)
+            radiobutton.grid(sticky='w', row=i + 1, column=0)
             self.__solver_radiobuttons.append(radiobutton)
 
         # Create a frames containing a set/level selection dropdowns with an associated label.
@@ -195,7 +195,7 @@ class GUI:
         for i, label in enumerate(['New Model', 'Load Model']):
             radiobutton = tk.Radiobutton(self.__learning_frame, variable=self.__model_var,
                                          value=i, text=label, font=self.__radiobutton_font)
-            radiobutton.grid(sticky='w', row=i+1, column=0)
+            radiobutton.grid(sticky='w', row=i + 1, column=0)
             self.__learning_radiobuttons.append(radiobutton)
 
         # Create checkbuttons for setting whether a model should be trained, and whether
@@ -214,7 +214,7 @@ class GUI:
         labels = ['Epochs', 'Learning Rate', 'Discount Rate', 'Exploration Rate']
         for i, (variable, label) in enumerate(zip(variables, labels), 4):
             frame = tk.Frame(self.__learning_frame)
-            label = tk.Label(frame,  text=f'{label}: ')
+            label = tk.Label(frame, text=f'{label}: ')
             entry = tk.Entry(frame, textvariable=variable)
             label.pack(side='left')
             entry.pack(expand=True, fill='both')
@@ -300,7 +300,7 @@ class GUI:
             sys.exit()
 
         except Exception:
-            pass # Ignore any other exceptions.
+            pass  # Ignore any other exceptions.
 
         # Now that there are no games open, disable the relevant GUI components.
         self.__update_status(False)
@@ -347,7 +347,7 @@ class GUI:
 
         # Check if the solver is to be run on a set of levels.
         elif self.__solve_var.get() == 1:
-            self.__level_var.set('-') # Reset the level selection dropdown.
+            self.__level_var.set('-')  # Reset the level selection dropdown.
             # If the game is running, only enable the set selection dropdown.
             if self.__game_running:
                 level_optionmenu.configure(state=tk.NORMAL)
@@ -388,9 +388,9 @@ class GUI:
     def __check_ready_to_solve(self, *args):
         """Check if the solve button can be enabled."""
         # Check if the game is running and whether a valid set-level selection has been made.
-        if ((not self.__game_running) or
-            (self.__solve_var.get() == 0 and (self.__set_var.get() == '-' or self.__level_var.get() == '-')) or
-            (self.__solve_var.get() == 1 and self.__set_var.get() == '-')):
+        if ((not self.__game_running)
+                or (self.__solve_var.get() == 0 and (self.__set_var.get() == '-' or self.__level_var.get() == '-'))
+                or (self.__solve_var.get() == 1 and self.__set_var.get() == '-')):
             self.__solve_button.configure(state=tk.DISABLED)
         else:
             self.__solve_button.configure(state=tk.NORMAL)
