@@ -15,7 +15,7 @@ class Solver:
         """Initialises the solver.
 
         Args:
-            parser (parse.GameParser): parser to parse uncovered cell information.
+            parser (parse.GameParser): parser to use when getting uncovered cell information.
         """
         self.__parser = parser
 
@@ -23,7 +23,7 @@ class Solver:
         """Solves a Hexcells level.
 
         Args:
-            game (str, optional): the game in the series being solved.
+            game (str, optional): game in the series being solved.
             level (str, optional): set and number of the level being solved.
             delay (bool, optional): whether to add a delay after clicking cells.
         """
@@ -52,23 +52,23 @@ class Solver:
 
         Args:
             grid (grid.Grid): level to solve.
-            game (str, optional): the game in the series being solved.
+            game (str, optional): game in the series being solved.
             level (str, optional): set and number of the level being solved.
 
         Returns:
-            tuple: the set of cells to left and right click in the solution.
+            tuple: the set of cells to left and right click.
         """
-        # Define the constraints for the ILP problem.
+        # Define the variables and constraints of the ILP problem.
         self.__setup_problem(grid, game, level)
 
-        # Set up a temporary objective function to obtain an initial solution.
+        # Create a temporary objective function to get an initial solution.
         temp = pulp.LpVariable('initial', 0, 1, 'binary')
         self.__problem += temp == 0
         self.__problem.setObjective(temp)
         self.__problem.solve(self.__solver) # Run the solver.
 
         # Identify the variables that are assigned their maximum (i.e., the size of the equivalence class
-        # corresponding to the variable) and those assigned their minimum (i.e., 0).
+        # corresponding to the variable) and those that are assigned their minimum (i.e., 0).
         # The true and false sets contain the class representatives.
         true_set, false_set = self.__get_true_false_sets()
 
@@ -76,11 +76,11 @@ class Solver:
         # Keep iterating until there are no cells in the true or false sets.
         left_click_cells, right_click_cells = [], []
         while true_set or false_set:
-            # Get the sums of the variables for the classes in true and false sets.
+            # Get the sums of the variables for the representatives in true and false sets.
             true_sum = pulp.lpSum(self.__get_var(true) for true in true_set)
             false_sum = pulp.lpSum(self.__get_var(false) for false in false_set)
 
-            # The same ILP is used again but with an updated objective function.
+            # The same ILP problem is used again but with an updated objective function.
             # The solver will try to find a new solution that varies as much as possible from the initial solution.
             # The variables that were assigned their maximum will be assigned their minimum, and vice versa.
             self.__problem.setObjective(true_sum - false_sum)
@@ -89,13 +89,13 @@ class Solver:
             # Check if there are changes between the new and previous solutions.
             # If there are no changes, each variable must be assigned to its singular possible value.
             if pulp.value(self.__problem.objective) == sum(len(self.__class_of_rep[rep]) for rep in true_set):
-                # For each representative in the true set, add the members of its equivalence class
-                # to the cells to be left clicked (i.e., revealed as blue).
+                # For each representative in the true set, add the members of its equivalence class to
+                # the cells to be left clicked (i.e., revealed as blue).
                 for rep in true_set:
                     left_click_cells.extend(self.__class_of_rep[rep])
 
-                # For each representative in the false set, add the members of its equivalence class
-                # to the cells to be right clicked (i.e., revealed as black).
+                # For each representative in the false set, add the members of its equivalence class to
+                # the cells to be right clicked (i.e., revealed as black).
                 for rep in false_set:
                     right_click_cells.extend(self.__class_of_rep[rep])
 
@@ -116,7 +116,7 @@ class Solver:
         Returns:
             tuple: true and false sets of equivalence class representatives.
         """
-        # Iterate over the decision variable for each equivalence class.
+        # Iterate over each equivalence class.
         true_set, false_set = set(), set()
         for rep, rep_class in self.__class_of_rep.items():
             # Get the value of the decision variable for the class.
@@ -137,8 +137,8 @@ class Solver:
            for solving Hexcells as an integer linear programming problem (ILP).
 
         Args:
-            grid (grid.Grid): the level to formulate as an ILP problem.
-            game (str, optional): the game in the series being solved.
+            grid (grid.Grid): level to formulate as an ILP problem.
+            game (str, optional): game in the series being solved.
             level (str, optional): set and number of the level being solved.
         """
         # Get the sets of unknown (i.e., orange) and known (i.e., blue and black) cells.
@@ -151,8 +151,9 @@ class Solver:
         # Use the constraints to define equivalence classes.
         self.__get_classes(level)
 
-        # Define integer decision variables for each equivalence class.
-        self.__get_variables()
+        # Define a decision variable for each class with domain from 0 to the number of unknown cells in the class.
+        self.__variables = {rep: pulp.LpVariable(f'x_{rep.grid_coords}', 0, len(rep_class), 'Integer')
+                            for rep, rep_class in self.__class_of_rep.items()}
 
         # Source the GLPK solver and create a new problem to solve.
         self.__solver = pulp.GLPK_CMD(path=GLPK_PATH, msg=False, options=['--cuts'])
@@ -165,24 +166,24 @@ class Solver:
 
         # If the level is 6-6 from Hexcells Plus, add additional constraints.
         if level == '6-6' and game == 'Hexcells Plus':
-            self.__add_plus_end_level_constraints(grid)
+            self.__add_plus_final_level_constraints(grid)
 
         # If the level is 6-6 from Hexcells Infinite, add additional constraints.
         elif level == '6-6' and game == 'Hexcells Infinite':
-            self.__add_infinite_end_level_constraints(grid)
+            self.__add_infinite_final_level_constraints(grid)
 
     def __get_constraints(self, grid):
-        """Gets the set of constraints acting on each unknown cell.
+        """Get the set of constraints acting on each unknown cell.
 
         Args:
-            grid (grid.Grid): the level to be formulated.
+            grid (grid.Grid): level to be formulated as an ILP problem.
         """
         # Get the cell constraints from each known cell.
         self.__constraints = {}
         for cell_1 in self.__known:
             # Check that the constraint has a number.
             if cell_1.number is not None and cell_1.number != '?':
-                # Add each the constraint to each of the unknown cell that it acts on.
+                # Add the constraint to each of the unknown cells that it acts on.
                 # 1-cell radius for black cells and 2-cell radius for blue cells.
                 for cell_2 in grid.neighbours(cell_1):
                     # Make sure the cell is unknown.
@@ -190,12 +191,11 @@ class Solver:
                         # Add the cell constraint to the unknown cell's set of constraints.
                         try:
                             self.__constraints[cell_2].add(cell_1)
-
-                        # Create a new entry in the dictionary if the cell has not been met yet.
                         except KeyError:
+                            # Create a new entry in the dictionary if the cell has not been met yet.
                             self.__constraints[cell_2] = {cell_1}
 
-        # Add the column constraints acting on each unknown cell.
+        # Add the grid constraints acting on each unknown cell.
         for constraint in grid.constraints:
             for cell in constraint.members:
                 # Make sure the cell is unknown.
@@ -203,27 +203,27 @@ class Solver:
                     # Add the grid constraint to the unknown cell's set of constraints.
                     try:
                         self.__constraints[cell].add(constraint)
-
-                    # Create a new entry in the dictionary if the cell has not been met yet.
                     except KeyError:
+                        # Create a new entry in the dictionary if the cell has not been met yet.
                         self.__constraints[cell] = {constraint}
 
         # Find all unknown cells that have no constraints acting on them.
         for cell in self.__unknown:
             try:
+                # Check if any constraints were identified for the cell.
                 self.__constraints[cell]
             except KeyError:
-                # The set of contraints for the cell is empty.
+                # Mark the set of contraints for the cell as empty.
                 self.__constraints[cell] = set()
 
     def __get_classes(self, level):
         """Define equivalence classes of cells with the same constraints.
 
         Args:
-            level (str): the level to be formulated as an ILP problem.
+            level (str): level to be formulated as an ILP problem.
         """
-        self.__rep_of = {}
-        self.__class_of_rep = {}
+        self.__rep_of = {} # Representative of each cell.
+        self.__class_of_rep = {} # Equivalence class of each representative.
 
         # If the level is one of the special cases, each cell is its own representative.
         # Using equivalence classes is not strict necessary but helps with optimisation.
@@ -258,12 +258,6 @@ class Solver:
                     self.__rep_of[cell] = cell
                     self.__class_of_rep[cell] = {cell}
 
-    def __get_variables(self):
-        """Define integer decision variables for each equivalence class."""
-        # Define a decision variable for each class with domain from 0 to the number of unknown cells in the class.
-        self.__variables = {rep: pulp.LpVariable(f'x_{rep.grid_coords}', 0, len(rep_class), 'Integer')
-                            for rep, rep_class in self.__class_of_rep.items()}
-
     def __get_var(self, cell):
         """A helper function to get the variable/value of a given cell.
 
@@ -271,7 +265,7 @@ class Solver:
             cell (grid.Cell): cell to get the variable/value for.
 
         Returns:
-            int or pulp.LpVariable: the variable/value of the cell.
+            int or pulp.LpVariable: variable/value of the cell.
         """
         # If a cell is blank or black, it is known and has a value of 0.
         if cell is None or cell.colour == Cell.BLACK:
@@ -290,19 +284,19 @@ class Solver:
         return 0
 
     def __add_remaining_constraint(self, grid):
-        """Add the constraint for the total number of blue cells to uncover.
+        """Add the constraint for the number of remaining blue cells to uncover.
 
         Args:
-            grid (grid.Grid): the level to be formulated as an ILP problem.
+            grid (grid.Grid): level to be formulated as an ILP problem.
         """
-        # Constrain the total number of blue cells to be the equal to the number of remaining blue cells.
+        # Constrain the number of blue cells to be the equal to the number of remaining blue cells to uncover.
         self.__problem += pulp.lpSum(self.__get_var(cell) for cell in self.__unknown) == grid.remaining
 
     def __add_column_constraints(self, grid):
-        """Add the level's grid constraints to the problem.
+        """Add the grid constraints to the problem formulation.
 
         Args:
-            grid (grid.Grid): the level to be formulated as an ILP problem.
+            grid (grid.Grid): level to be formulated as an ILP problem.
         """
         # Iterate over each grid constraint.
         for constraint in grid.constraints:
@@ -316,25 +310,26 @@ class Solver:
                         self.__problem += pulp.lpSum([self.__get_var(constraint.members[start]),
                                                       self.__get_var(constraint.members[start + span])]) <= 1
 
-            # For -n- grid constraints, any n consecutive cells in a row, column or diagonal may contain at most n-1 blue cells
+            # For -n- grid constraints, any n consecutive cells in a row, column or diagonal may contain at most n-1 blue cells.
             elif constraint.hint == 'non-consecutive':
                 for offset in range(len(constraint.members) - constraint.number + 1):
                     self.__problem += pulp.lpSum(self.__get_var(constraint.members[offset + i])
                                                  for i in range(constraint.number)) <= constraint.number - 1
 
     def __add_cell_constraints(self, grid):
-        """Add the level's cell constraints to the problem.
+        """Add cell constraints to the problem formulation.
 
         Args:
-            grid (grid.Grid): the level to be formulated as an ILP problem.
+            grid (grid.Grid): level to be formulated as an ILP problem.
         """
         # Iterate over each known cell with a number constraint.
         for cell in self.__known:
             if cell.number is not None and cell.number != '?':
                 # Get the neighbours of the cell.
-                # For black cells, this is the 1-cell radius. For blue cells, it is the 2-cell radius.
+                # For black cells, it is the 1-cell radius. For blue cells, it is the 2-cell radius.
                 neighbours = grid.neighbours(cell)
-                # The number of neighbouring blue cells must be equal to the cell number.
+
+                # The number of neighbouring blue cells must be equal to the cell's number.
                 self.__problem += pulp.lpSum(self.__get_var(neighbour) for neighbour in neighbours) == cell.number
 
                 # Check if there are any hint types to consider.
@@ -345,7 +340,7 @@ class Solver:
                     ((cell.colour == Cell.BLACK and 2 <= cell.number <= 4) or
                      (cell.colour == Cell.BLUE and 2 <= cell.number <= 10))):
 
-                    # Blue cells with hint types are only used in one level in Hexcells, 4-6 from Hexcells Plus and cannot be created in custom levels.
+                    # Blue cells with hint types are only used in 4-6 from Hexcells Plus and cannot be created in custom levels.
                     # In this sole level, these constraints only apply to the outer ring of the 2-cell radius neighbourhood, rather than also including
                     # the directly adjacent neighbours). Therefore, these constraints have been implemented in the same way for the solver.
                     # In other words, functionality for blue cells with hint types is not well-defined when they have unknown adjacent cells.
@@ -366,9 +361,8 @@ class Solver:
                                     if Solver.__dist(neighbours, i, j) in range(cell.number, n):
                                         self.__problem += pulp.lpSum([self.__get_var(neighbours[i]), self.__get_var(neighbours[j])]) <= 1
 
-                        # For {n} black cells, the following two patterns cannot occur: ``--X--'' and ``X--X'' where X denotes a blue cell and -- denotes a non-blue cell.
-                        # That is, there can be no isolated blue cell or isolated gap.
-                        # Note that the indexing wraps around.
+                        # For {n} black cells, the following two patterns cannot occur: --X-- and X--X where X denotes a blue cell and -- denotes a non-blue cell.
+                        # That is, there can be no isolated blue cell or isolated gap. Note that the indexing wraps around.
                         elif cell.colour == Cell.BLACK:
                             for i in range(n):
                                 cond = (self.__get_var(neighbours[i]) -
@@ -389,12 +383,12 @@ class Solver:
         """Calculate the circular distance between two cells while accounting for gaps.
 
         Args:
-            neighbours (list): the set of neighbour cells to calculate the distance over.
+            neighbours (list): set of cells to calculate the distance over.
             i (int): index of the first cell.
             j (int): index of the second cell.
 
         Returns:
-            int: the minimum circular distance between the two cells.
+            int: minimum circular distance between the two cells.
         """
         n = len(neighbours)
 
@@ -423,11 +417,11 @@ class Solver:
         # Return the minimum of the two distances.
         return min(dist_1, dist_2)
 
-    def __add_plus_end_level_constraints(self, grid):
+    def __add_plus_final_level_constraints(self, grid):
         """Add the constraints from the final level of Hexcells Plus to the problem formulation.
 
         Args:
-            grid (grid.Grid): the level to be formulated as an ILP problem.
+            grid (grid.Grid): level to be formulated as an ILP problem.
         """
         # Get the cells in each letter of "FINISH" using the columns of each letter.
         letters = [[0, 1, 2], # F
@@ -446,7 +440,7 @@ class Solver:
             letters[i] = cells
 
         # Matching letters (i.e., the Is) contain 5 blue cells in total.
-        # Also, the first and last letters (F and H) have 16 blue cells between them.
+        # The first and last letters (F and H) have 16 blue cells between them.
         self.__problem += pulp.lpSum(letters[1] + letters[3]) == 5
         self.__problem += pulp.lpSum(letters[0] + letters[5]) == 16
 
@@ -459,16 +453,16 @@ class Solver:
             self.__problem += pulp.lpSum(letter) <= x * len(letter)
             xs.append(x)
 
-        # Constrain at least one of the letters to have x=0 (i.e., no blue cells).
+        # Constrain at least one of the letters to have no blue cells (i.e., x = 0 for the letter).
         self.__problem += pulp.lpSum(xs) == len(letters) - 1
 
-    def __add_infinite_end_level_constraints(self, grid):
+    def __add_infinite_final_level_constraints(self, grid):
         """Add the constraints from the final level of Hexcells Infinite to the problem formulation.
 
         Args:
-            grid (grid.Grid): the level to be formulated as an ILP problem.
+            grid (grid.Grid): level to be formulated as an ILP problem.
         """
-        # The first constraint is that all columns contain an odd number of blue cells.
+        # All columns contain an odd number of blue cells.
         for col in range(grid.cols):
             # Get the cells in the column.
             column = grid.get_column(col)
@@ -478,11 +472,11 @@ class Solver:
             x = pulp.LpVariable(f'x_{col}', 0, (len(column) - 1) // 2, 'Integer')
             self.__problem += pulp.lpSum(self.__get_var(cell) for cell in column) == 2 * x + 1
 
-        # The second constraint applies to the 2-cell neighbours of two cells.
+        # The next constraint applies to the 2-cell neighbours of two cells.
         centre_1, centre_2 = grid[8, 4], grid[8, 12]
         region_1 = grid.find_neighbours(centre_1, Grid.COMBINED) + [centre_1]
         region_2 = grid.find_neighbours(centre_2, Grid.COMBINED) + [centre_2]
 
-        # Constrain each set of cells to contain exactly 7 blue cells.
+        # Constrain each region to contain exactly 7 blue cells.
         self.__problem += pulp.lpSum(self.__get_var(cell) for cell in region_1) == 7
         self.__problem += pulp.lpSum(self.__get_var(cell) for cell in region_2) == 7

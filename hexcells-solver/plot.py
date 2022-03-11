@@ -9,7 +9,7 @@ def plot_accuracy(log_path, models, file_name, split, labels=None):
     """Plot training and validation accuracy versus number of levels solved.
 
     Args:
-        log_path (str): file path to the log containing accuracies to plot.
+        log_path (str): file path to the log containing the data to plot.
         models (list): models to load logs for.
         file_name (str): file name to use when saving the plot.
         split (bool): whether to use separate plots for training and validation accuracies.
@@ -34,7 +34,7 @@ def plot_accuracy(log_path, models, file_name, split, labels=None):
         train_accuracy = accuracy_history[:, 1]
         val_accuracy = accuracy_history[:, 2]
 
-        # Label for the legend.
+        # The label for the legend.
         label = f'Model {model}' if labels is None else labels[i]
 
         # Plot the training and validation accuracies.
@@ -65,7 +65,7 @@ def plot_accuracy(log_path, models, file_name, split, labels=None):
     if split:
         ax2.legend()
 
-    # Create a new directory for figures if one does not exist.
+    # Create a new directory for saving figures if one does not exist.
     save_path = os.path.join(log_path, '..', 'figures')
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -79,8 +79,10 @@ def plot_accuracy(log_path, models, file_name, split, labels=None):
 
 
 if __name__ == '__main__':
-    # If this file is being run, create the plots used in the final report.
+    # Path to the directory containing the training logs.
     log_path = os.path.join(RESOURCES_PATH, 'models', 'logs')
+
+    # If this file is being run, create the plots used in the final report.
     plot_accuracy(log_path, [1, 2, 3, 4, 5], 'comparison_nodes_layers', True)
     plot_accuracy(log_path, [4, 6, 7, 8, 9], 'comparison_activation_filters', True)
     plot_accuracy(log_path, [4, 10, 11], 'comparison_replay_double', False, ['Standard', 'Experience Replay', 'Double DQN'])

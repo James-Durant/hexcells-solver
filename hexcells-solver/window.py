@@ -15,7 +15,7 @@ class Window:
     """Encapsulates a Hexcells game window."""
 
     def __init__(self, title):
-        """Finds a Hexcells game window if currently running.
+        """Finds a Hexcells game window if one is currently running.
 
         Args:
             title (str): the game to find the window for.
@@ -30,7 +30,7 @@ class Window:
     def title(self):
         """
         Returns:
-            str: the title of the window.
+            str: title of the window.
         """
         return self.__title
 
@@ -38,9 +38,9 @@ class Window:
         """Get the position of the game window.
 
         Returns:
-            tuple: the monitor coordinates of the window.
+            tuple: monitor coordinates of the window.
         """
-        # Get the coordinates of the window and adjust them by the window border.
+        # Get the coordinates of the window and adjust to remove the window's border.
         x1, y1, x2, y2 = win32gui.GetClientRect(self.__hwnd)
         x1, y1 = win32gui.ClientToScreen(self.__hwnd, (x1, y1))
         x2, y2 = win32gui.ClientToScreen(self.__hwnd, (x2 - x1, y2 - y1))
@@ -59,34 +59,34 @@ class Window:
         """
         # Bring the window to the foreground to take the screenshot.
         self.__to_foreground()
-        # Take a screenshot of the screen and crop to the region of the window.
+        # Take a screenshot and crop it to the region of the window.
         x1, y1, x2, y2 = self.__get_position()
         image = pyautogui.screenshot(region=(x1, y1, x2, y2))
         return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
     @staticmethod
     def press_key(key):
-        """Press a given key.
+        """Press a given key once.
 
         Args:
-            key (str): the key to press.
+            key (str): key to press.
         """
         pyautogui.press(key)
 
     @staticmethod
     def paste():
-        """Paste the contents of the keyboard in the window."""
+        """Paste the contents of the clipboard in the window."""
         pyautogui.hotkey('ctrl', 'v')
 
     def click(self, coords, button='left', move_mouse=True):
-        """Perform a mouse click at the given coordinates.
+        """Perform a mouse click at given coordinates.
 
         Args:
             coords (tuple): coordinates of the object to click.
             button (str, optional): either left or right.
             move_mouse (bool, optional): whether to move the mouse after clicking.
         """
-        # Adjust the window coordinates to monitor coordinates.
+        # Transform the window coordinates to monitor coordinates.
         x, y, _, _ = self.__get_position()
         pyautogui.click(x=x+coords[0], y=y+coords[1], button=button)
 
@@ -98,7 +98,7 @@ class Window:
         """Click on a cell with a chosen button action.
 
         Args:
-            cell (grid.Cell): the cell to click.
+            cell (grid.Cell): cell to click.
             button (str): either left or right.
         """
         # Convert the cell's window coordinates to monitor coordinates.
@@ -122,7 +122,7 @@ def get_window():
     Returns:
         window.Window: the active game window.
     """
-    # Try to find windows for each of the games in the Hexcells series.
+    # Try to find a window for each game in the Hexcells series.
     try:
         return Window('Hexcells')
     except RuntimeError:
