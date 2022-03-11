@@ -8,14 +8,15 @@ from parse import MenuParser, LevelParser
 
 class Navigator:
     """Provides an interface between high-level actions and menu parsing algorithms."""
-    def __init__(self, use_hashes=True):
+    def __init__(self, use_level_hashes=True, use_screen_hashes=True):
         """Capture the active game window.
 
         Args:
-            use_hashes (bool, optional): whether to load image hashes.
+            use_level_hashes (bool, optional): whether to load level hashes.
+            use_screen_hashes (bool, optional): whether to load screen hashes.
         """
         self.__window = get_window()
-        self.__menu_parser = MenuParser(self.__window, use_hashes=use_hashes)
+        self.__menu_parser = MenuParser(self.__window, use_level_hashes, use_screen_hashes)
 
     @property
     def window(self):
@@ -37,18 +38,21 @@ class Navigator:
         """Wait until a menu screen has fully loaded before continuing."""
         self.__menu_parser.wait_until_loaded()
 
-    def load_save(self, slot):
+    def load_save(self, slot, screen=None):
         """Load a given save slot.
 
         Args:
             slot (int): save slot to load.
+            screen (str, optional): screen that is currently showing.
         """
         # Check that the save slot is valid.
         if slot not in [1, 2, 3]:
             raise RuntimeError('Invalid save slot given.')
 
         # Go from the current screen to the main menu screen.
-        self.__transition_to_main_menu()
+        # Skip this if hashes are not being used (this is the case when called in data.py)
+        if screen != 'main_menu':
+            self.__transition_to_main_menu()
 
         # Parse the main menu screen to identify the save slot buttons.
         buttons = self.__menu_parser.parse_main_menu()
@@ -130,6 +134,7 @@ class Navigator:
         self.load_save(int(save) if save != '-' else 1)
 
     def __transition_to_level_generator(self):
+        """Transition to the level generator screen."""
         # Get the screen that is currently being shown.
         screen = self.__menu_parser.get_screen()
 
@@ -297,14 +302,16 @@ class Navigator:
             # Stop solving on Control + C event.
             return
 
-    def load_custom_level(self, level_path):
+    def load_custom_level(self, level_path, screen=None):
         """Load a custom level from a given file path.
 
         Args:
             level_path (str): path to the level to load.
+            screen (str, optional): screen that is currently showing.
         """
         # Go from the current screen to the main menu.
-        self.__transition_to_main_menu()
+        if screen != 'main_menu':
+            self.__transition_to_main_menu()
 
         # Load the given level file and copy its contents to the clipboard.
         with open(level_path, 'r') as file:

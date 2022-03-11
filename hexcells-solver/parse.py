@@ -125,20 +125,22 @@ class MenuParser(Parser):
     # Dimensions to resize screenshots to before applying hashing.
     SCREEN_HASH_DIMS = (480, 270)
 
-    def __init__(self, window, use_hashes=True):
+    def __init__(self, window, use_level_hashes=True, use_screen_hashes=True):
         """Initialises the menu parser by loading the required screen hashes.
 
         Args:
-            window (_type_): _description_
-            use_hashes (bool, optional): _description_. Defaults to True.
+            window (window.Window): the active game window to parse.
+            use_level_hashes (bool, optional): whether to load level selection hashes or not.
+            use_screen_hashes (bool, optional): whether to load screen hashes or not.
         """
         self.__window = window
 
-        # Level selection data is created first in data.py
-        self.__level_data = Parser._load_hashes('level_select')
+        # Do not load level selection data if creating it in data.py
+        if use_level_hashes:
+            self.__level_data = Parser._load_hashes('level_select')
 
-        # If generating the level selection hashes, do not try to load the hashes for the other screens.
-        if use_hashes:
+        # Do not load screen data if creating it in data.py
+        if use_screen_hashes:
             self.__load_hashes()
 
     def __load_hashes(self):
@@ -375,15 +377,15 @@ class MenuParser(Parser):
             thresh = cv2.resize(thresh[x0:x1, y0:y1], (52, 27), interpolation=cv2.INTER_AREA)
             hashed = average_hash(thresh)
 
-            # If this is being run by data.py, record the hash. Do not try to parse it.
-            if not use_hashes:
-                hashes.append(hashed)
-            else:
-                # Otherwise, get the label of the reference hash with minimum Hamming distance.
+            # Get the label of the reference hash with minimum Hamming distance.
+            if use_hashes:
                 hashes, labels = self.__level_data
                 match = Parser._find_match(hashes, labels, hashed)
                 # Record the centre of the button for the parsed level.
                 levels[match] = (x + w // 2, y + h // 2)
+            else:
+                # Otherwise, this is being run by data.py, so record the hash. Do not try to parse it.
+                hashes.append(hashed)
 
         # Return the level button coordinates if parsing.
         # Return the level button hashes if obtaining the reference dataset.
@@ -438,20 +440,25 @@ class MenuParser(Parser):
 class LevelParser(Parser):
     """Contains the code for automatic parsing of levels."""
 
-    def __init__(self, window):
+    def __init__(self, window, use_cell_counter_hashes=True, use_grid_hashes=True):
         """Load the hashes and reference images for parsing.
 
         Args:
             window (window.Window): the active game window.
+            use_cell_counter_hashes (bool, optional): whether to load cell and counter hashes or not.
+            use_grid_hashes (bool, optional): whether to load grid constraint hashes or not.
         """
         self.__window = window
 
         # Load the cell, counter and grid constraint datasets.
-        self.__black_data = Parser._load_hashes('black')
-        self.__blue_data = Parser._load_hashes('blue')
-        self.__counter_data = Parser._load_hashes('counter')
-        self.__column_data = Parser._load_hashes('column')
-        self.__diagonal_data = Parser._load_hashes('diagonal')
+        if use_cell_counter_hashes:
+            self.__black_data = Parser._load_hashes('black')
+            self.__blue_data = Parser._load_hashes('blue')
+            self.__counter_data = Parser._load_hashes('counter')
+        
+        if use_grid_hashes:
+            self.__column_data = Parser._load_hashes('column')
+            self.__diagonal_data = Parser._load_hashes('diagonal')
 
         # Load the reference cell.png file, threshold it and extract its contour.
         cell_image = cv2.imread(os.path.join(RESOURCES_PATH, 'cell.png'))

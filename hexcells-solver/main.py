@@ -7,15 +7,11 @@ from tkinter import messagebox
 
 from subprocess import Popen
 
+from data import GAMEIDS
 from parse import STEAM_PATH
 from navigate import Navigator
 from window import WindowNotFoundError
 from learn import Trainer, LEARNING_RATE, DISCOUNT_RATE, EXPLORATION_RATE
-
-# Steam IDs of the three Hexcells games.
-GAMEIDS = {'Hexcells': '265890',
-           'Hexcells Plus': '271900',
-           'Hexcells Infinite': '304410'}
 
 
 class GUI:
