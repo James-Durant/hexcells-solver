@@ -475,7 +475,7 @@ class Cell:
 
         # Concatenate the cell's number and hint type.
         if self.__hint == 'consecutive':
-            number = f'{{self.__number}}'
+            number = f'{{{self.__number}}}'
 
         elif self.__hint == 'non-consecutive':
             number = f'-{self.__number}-'
@@ -498,7 +498,7 @@ class Constraint:
 
     # Valid hint types for constraints.
     HINT_TYPES = Cell.HINT_TYPES
-    ANGLES = [0, 60, 90, 120, 240, 270, 300]
+    ANGLES = [0, 60, 90, 120, 240, 270, 300, 360]
 
     def __init__(self, number, hint, angle, members):
         """Set the properties of the grid constraint.
