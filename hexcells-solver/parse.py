@@ -924,11 +924,11 @@ class LevelParser(Parser):
             # Add a larger delay based on the number of rows if the particle effect has not been disabled.
             if delay:
                 # Get the cell to right click that is highest in the level.
-                min_row = min(right_click_cells, key=lambda c: c.grid_coords[0])
+                min_row = min(cell.grid_coords[0] for cell in right_click_cells)
                 # Wait based on how far the particles have to fall.
                 time.sleep(max(1.5, 0.15*(grid.rows-min_row)))
             else:
-                time.sleep(0.1)
+                time.sleep(0.15)
 
             # Take a screenshot of the resulting level state and parse it.
             image = self.__window.screenshot()

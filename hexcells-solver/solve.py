@@ -5,7 +5,8 @@ from grid import Grid, Cell
 from parse import RESOURCES_PATH
 
 # File path to the GNU Linear Programming Kit (GLPK) solver.
-GLPK_PATH = os.path.join(RESOURCES_PATH, 'glpk-4.65', 'w64', 'glpsol.exe')
+GLPK_PATH = os.path.join(RESOURCES_PATH, 'glpk', 'w64', 'glpsol.exe')
+
 
 class Solver:
     """Contains the code related to automatically solving Hexcells levels."""

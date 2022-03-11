@@ -458,6 +458,9 @@ class GUI:
             # Display any error messages that arise during solving.
             messagebox.showerror('Error', str(e))
 
+        finally:
+            self.__solver_radiobutton_callback()
+
     def __run_model(self):
         """This method is called when the run button is clicked."""
         try:

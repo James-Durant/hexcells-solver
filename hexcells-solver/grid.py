@@ -466,9 +466,9 @@ class Cell:
         if self.__colour == Cell.BLUE:
             colour = 'X'
         elif self.__colour == Cell.BLACK:
-            colour = '#'
+            colour = 'O'
         elif self.__colour == Cell.ORANGE:
-            colour = '-'
+            colour = '?'
         else:
             # This should never be raised.
             raise RuntimeError('Invalid cell colour found.')
