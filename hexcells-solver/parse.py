@@ -7,43 +7,42 @@ import numpy as np
 
 from grid import Grid, Cell, Constraint
 
-# The resolutions for which there are screen hashes for.
+# The resolutions for which screen hashes are pre-computed for.
 RESOLUTIONS = [(2560, 1920), (2560, 1600), (2048, 1152), (1920, 1440),
                (1920, 1200), (1920, 1080), (1680, 1050), (1600, 1200)]
 
-# Use the absolute path of this file.
+# Use the absolute path of this file to define the path to the resources directory.
 RESOURCES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources')
 
 # Path to the Steam executable.
-STEAM_PATH = 'C:\Program Files (x86)\Steam'
+STEAM_PATH = 'C:\\Program Files (x86)\\Steam'
 
 
 def average_hash(image):
-    """Computes a perceptual hash of a given image using the average hashing algorithm.
+    """Computes a perceptual hash of an image using the average hashing algorithm.
 
     Args:
-        image (numpy.ndarray): the image to hash.
+        image (numpy.ndarray): image to hash.
 
     Returns:
         numpy.ndarray: a perceptual hash of the image.
     """
-    # For each pixel, compare it to its mean.
-    # Flatten to get a 1D array of binary values.
+    # For each pixel, compare it to its mean. Flatten to get a 1D array of binary values.
     return (image > image.mean()).flatten()
 
 
 class Parser:
-    """The parent class for the MenuParser and LevelParser classes."""
+    """Contains the code common to the MenuParser and LevelParser classes."""
 
     @staticmethod
     def _load_hashes(dataset_type):
-        """Loads a dataset of pre-computed hashes.
+        """Load a dataset of pre-computed perceptual hashes.
 
         Args:
-            dataset_type (str): the dataset type to load.
+            dataset_type (str): identifier of the dataset to load.
 
         Returns:
-            tuple: the hashes and associated labels loaded from the file.
+            tuple: hashes and associated labels loaded from the file.
         """
         # Try to open the file for the dataset.
         file_path = os.path.join(RESOURCES_PATH, dataset_type, 'hashes.pickle')
@@ -53,27 +52,27 @@ class Parser:
 
         # Raise an error if the file cannot be found.
         except FileNotFoundError:
-            raise RuntimeError(f'Hashes missing for {dataset_type}')
+            raise RuntimeError(f'The {dataset_type} dataset is missing.')
 
     @staticmethod
     def _merge_boxes(boxes, x_dist, y_dist):
         """Merge bounding boxes in proximity.
 
         Args:
-            boxes (list): bounding boxes to be merged.
+            boxes (list): bounding boxes to merge.
             x_dist (float): distance between boxes in the x-axis to merge.
             y_dist (float): distance between boxes in the y-axis to merge.
 
         Returns:
-            list: the merged bounding boxes.
+            list: merged bounding boxes.
         """
         # Sort the bounding boxes by x coordinate in ascending order.
         boxes.sort(key=lambda x: x[0])
 
-        # Keep iterating until all boxes have been merged.
+        # Keep iterating until all boxes have been considered.
         merged = []
         while boxes:
-            # Get one of the boxes.
+            # Get a bounding box.
             x1, y1, w1, h1 = boxes.pop()
             x_min, y_min = x1, y1
             x_max, y_max = x1 + w1, y1 + h1
@@ -85,7 +84,7 @@ class Parser:
 
                 # Check if the box is in proximity.
                 if abs(x1 + w1 - x2) < x_dist and abs(y1 - y2) < y_dist:
-                    # If so, merge the bounding boxes.
+                    # If so, merge the two bounding boxes.
                     x_min = min(x_min, x2)
                     y_min = min(y_min, y2)
                     x_max = max(x_max, x2 + w2)
@@ -103,19 +102,19 @@ class Parser:
 
     @staticmethod
     def _find_match(hashes, labels, hashed):
-        """Find the hash with minimum hamming distance in a given list of hashes.
+        """Find the perceptual hash with minimum hamming distance in a given list of hashes.
 
         Args:
             hashes (list): hashes to compute the distances over.
-            labels (list): label corresponding to each hash.
-            hashed (numpy.ndarray): hash to compute the distance with.
+            labels (list): label corresponding to each perceptual hash.
+            hashed (numpy.ndarray): perceptual hash to compute the distance from.
 
         Returns:
-            str: label of the hash with minimum Hamming distance.
+            str: label of the perceptual hash with minimum Hamming distance.
         """
-        # Compute the Hamming distance between each hash in the list of hashes and the given hash.
+        # Compute the Hamming distance between each perceptual hash in the list of hashes and the given hash.
         similarities = [np.sum(hashed != h) for h in hashes]
-        # Return the label of the hash with minimum distance.
+        # Return the label of the perceptual hash with minimum distance.
         return labels[np.argmin(similarities)]
 
 
@@ -126,53 +125,49 @@ class MenuParser(Parser):
     SCREEN_HASH_DIMS = (480, 270)
 
     def __init__(self, window, use_level_hashes=True, use_screen_hashes=True):
-        """Initialises the menu parser by loading the required screen hashes.
+        """Initialise the menu parser by loading the required screen hashes.
 
         Args:
-            window (window.Window): the active game window to parse.
+            window (window.Window): active game window to parse.
             use_level_hashes (bool, optional): whether to load level selection hashes or not.
             use_screen_hashes (bool, optional): whether to load screen hashes or not.
         """
         self.__window = window
 
-        # Do not load level selection data if creating it in data.py
+        # Do not load level selection data if it is being created by data.py
         if use_level_hashes:
             self.__level_data = Parser._load_hashes('level_select')
 
-        # Do not load screen data if creating it in data.py
+        # Do not load screen data if it is being created by data.py
         if use_screen_hashes:
-            self.__load_hashes()
+            # Load the options path for the game currently open.
+            options_path = f'steamapps\\common\\{self.__window.title}\\saves\\options.txt'
+            options_path = os.path.join(STEAM_PATH, options_path)
+            with open(options_path, 'r') as file:
+                data = json.load(file)
 
-    def __load_hashes(self):
-        """Load the screen hashes based on the game window's resolution."""
-        # Load the options path for the game currently open.
-        options_path = f'steamapps\\common\\{self.__window.title}\\saves\\options.txt'
-        options_path = os.path.join(STEAM_PATH, options_path)
-        with open(options_path, 'r') as file:
-            data = json.load(file)
+            # Get the resolution of the game.
+            # If a non-standard resolution is being used, default to 1920x1080.
+            resolution = data['screenWidth'], data['screenHeight']
+            if resolution not in RESOLUTIONS:
+                resolution = (1920, 1080)
 
-        # Get the resolution of the game.
-        # If a non-standard resolution is being used, default to 1920x1080
-        resolution = data['screenWidth'], data['screenHeight']
-        if resolution not in RESOLUTIONS:
-            resolution = (1920, 1080)
+            # Load the screen hashes specific to the resolution.
+            dataset_type = os.path.join('screen', '{0}x{1}'.format(*resolution))
+            hashes, labels = Parser._load_hashes(dataset_type)
 
-        # Load the screen hashes specific to the game window.
-        dataset_type = os.path.join('screen', '{0}x{1}'.format(*resolution))
-        hashes, labels = Parser._load_hashes(dataset_type)
-
-        # Take out the level exit data as it is handled slightly differently.
-        self.__level_exit = hashes.pop(-1)
-        labels.pop(-1)
-        self.__screen_data = hashes, labels
+            # Take out the level exit data as it is handled slightly differently.
+            self.__level_exit = hashes.pop(-1)
+            labels.pop(-1)
+            self.__screen_data = hashes, labels
 
     def get_screen(self):
-        """Identify which menu screen is currently being displayed.
+        """Identify the menu screen that is currently being displayed.
 
         Returns:
-            str: the menu screen being displayed.
+            str: menu screen being displayed.
         """
-        # Take a screenshot of the game window, resize it, and calculate its hash.
+        # Take a screenshot of the game window, resize it, and calculate its perceptual hash.
         image = cv2.resize(self.__window.screenshot(), MenuParser.SCREEN_HASH_DIMS, interpolation=cv2.INTER_AREA)
         hashed = average_hash(image)
 
@@ -180,20 +175,20 @@ class MenuParser(Parser):
         hashes, labels = self.__screen_data
         similarities = [np.sum(hashed != h) for h in hashes]
 
-        # If the minimum similarity is too low, the screen is most likely the level exit screen.
+        # If the minimum distance is too low, the screenshot is most likely of the level exit screen.
         if min(similarities) > 22000:
             # Threshold the image.
             image = cv2.inRange(image, (180, 180, 180), (255, 255, 255))
 
-            # Compute the number of pixels where the level exit screen and image differ.
+            # Compute the number of pixels where the level exit screen and the image differ.
             if np.sum(self.__level_exit != image) > 25000:
-                # If large, the screen is likely to be in a level.
+                # If large, the screenshot is likely to be that of a level.
                 return 'in_level'
             else:
-                # Otherwise, the image is a match, i.e., it is the level exit screen.
+                # Otherwise, the screenshot is a match to the level exit screen.
                 return 'level_exit'
 
-        # Otherwise, return the screen with minimum Hamming distance.
+        # Return the screen with minimum Hamming distance.
         return labels[np.argmin(similarities)]
 
     def wait_until_loaded(self):
@@ -204,7 +199,7 @@ class MenuParser(Parser):
             image = self.__window.screenshot() # Take a screenshot.
 
             # Define a mask for orange and blue cells.
-            # The third part is a slightly different shade of blue that appears once  on the level generator screen.
+            # The third part is a slightly different shade of blue that only appears on the level generator screen.
             mask = cv2.inRange(image, Cell.ORANGE, Cell.ORANGE)
             mask += cv2.inRange(image, Cell.BLUE, Cell.BLUE)
             mask += cv2.inRange(image, (234, 164, 6), (234, 164, 6))
@@ -212,19 +207,19 @@ class MenuParser(Parser):
             # Apply the mask to identify contours.
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-            # If there are any contours, then the level had almost loaded.
             time.sleep(0.5)
             if contours:
+                # If there are any contours, then the screen has loaded.
                 return
 
         # If this is reached, the screen never loaded for some reason.
         raise RuntimeError('Wait until loaded failed.')
 
     def parse_main_menu(self):
-        """Detect and parse the buttons on the main menu screen.
+        """Identify and parse the buttons on the main menu screen.
 
         Returns:
-            dict: the coordinates of the centre of each button.
+            dict: coordinates of the centre of each button.
         """
         image = self.__window.screenshot()
 
@@ -243,14 +238,14 @@ class MenuParser(Parser):
         # Use the centre of each button as its coordinates.
         buttons = [(x + w // 2, y + h // 2) for x, y, w, h in boxes if y > cropped]
 
-        # If 4 buttons were found, extract the level generator button from the save slots.
+        # If four buttons were found, separate the level generator button from the save slots.
         if len(buttons) == 4:
             buttons.sort(key=lambda x: tuple(reversed(x)))
             level_generator = buttons.pop()
         else:
             level_generator = None
 
-        # Sort the save slot buttons by x coordinate (i.e., order is 1, 2 and 3).
+        # Sort the save slot buttons by x coordinate (i.e., the order is 1, 2, 3).
         slots = sorted(buttons, key=lambda x: x[0])
 
         # Now thresholded the original image on grey and identify contours.
@@ -265,7 +260,7 @@ class MenuParser(Parser):
         # Use the centre of each button as its coordinates.
         buttons = [(x + w // 2, y + h // 2) for x, y, w, h in boxes if y > cropped]
 
-        # If 3 buttons were found, the game must be Hexcells Infinite which has the user levels button.
+        # If three buttons were found, the game must be Hexcells Infinite which has the user levels button.
         if len(buttons) == 3:
             user_levels, options, menu_exit = buttons
 
@@ -279,17 +274,14 @@ class MenuParser(Parser):
             raise RuntimeError('Main menu parsing failed.')
 
         # Return the coordinates of the buttons as a dictionary.
-        return {'save_slots': slots,
-                'level_generator': level_generator,
-                'user_levels': user_levels,
-                'options': options,
-                'exit': menu_exit}
+        return {'save_slots': slots, 'level_generator': level_generator,
+                'user_levels': user_levels, 'options': options, 'exit': menu_exit}
 
     def parse_generator(self):
-        """Detect and parse the buttons on the level generator screen.
+        """Identify and parse the buttons on the level generator screen.
 
         Returns:
-            dict: the coordinates of the centre of each button.
+            dict: coordinates of the centre of each button.
         """
         image = self.__window.screenshot()
 
@@ -297,11 +289,11 @@ class MenuParser(Parser):
         mask = cv2.inRange(image, (240, 240, 240), (255, 255, 255))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        # Calculate bounding boxes from the contours and sort them by y coordinate (descending).
+        # Calculate bounding boxes from the contours and sort them by y coordinate in descending order.
         boxes = [cv2.boundingRect(contour) for contour in contours]
         boxes.sort(key=lambda box: box[1], reverse=True)
 
-        # Get the play button which is the closest to the bottom in the screenshot.
+        # Get the play button (closest to the bottom of the screenshot).
         x, y, w, h = boxes.pop(0)
         play_button = (x + w // 2, y + h // 2)
 
@@ -319,23 +311,21 @@ class MenuParser(Parser):
         boxes = [cv2.boundingRect(contour) for contour in contours]
         boxes = Parser._merge_boxes(boxes, image.shape[1], 100)
 
-        # Get the coordinates of the seed selection button.
+        # Get the coordinates of the centre of the seed selection button.
         x, y, w, h = boxes[0]
         seed_button = (x + w // 2, y + h // 2)
 
         # Return the coordinates of the buttons as a dictionary.
-        return {'play': play_button,
-                'random': random_button,
-                'seed': seed_button}
+        return {'play': play_button, 'random': random_button, 'seed': seed_button}
 
     def parse_level_selection(self, use_hashes=True):
-        """Detect and parse the buttons on the level generator screen.
+        """Identify and parse the buttons on the level generator screen.
 
         Args:
             use_hashes (bool, optional): whether to use pre-computed hashes or not.
 
         Returns:
-            dict: the coordinates of the centre of each level's button.
+            dict: coordinates of the centre of each button.
         """
         image = self.__window.screenshot()
 
@@ -343,11 +333,11 @@ class MenuParser(Parser):
         mask = cv2.inRange(image, (244, 244, 244), (255, 255, 255))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-        # Calculate median contour area.
+        # Calculate the median contour area.
         areas = [cv2.contourArea(contour) for contour in contours]
         median_area = np.median(areas)
 
-        # Filter out boxes that are not within 5% of the median contour area.
+        # Filter out boxes that are not within 5% of the median area.
         boxes = [cv2.boundingRect(contour) for contour, area in list(zip(contours, areas))
                  if 0.95 * median_area < area < 1.05 * median_area]
         boxes.sort(key=lambda box: box[:2], reverse=True)
@@ -360,20 +350,20 @@ class MenuParser(Parser):
             x_crop, y_crop = round(w * 0.25), round(h * 0.3)
             cropped = image[y + y_crop:y + h - y_crop, x + x_crop:x + w - x_crop]
 
-            # Threshold the cropped region using a white mask to extract the text.
-            # Then invert the result so that the text is black and the background is white.
+            # Threshold the cropped region using a white mask.
+            # Invert the result so that the text is black and the background is white.
             thresh = 255 - cv2.inRange(cropped, (240, 240, 240), (255, 255, 255))
 
             # If there are fewer than 20 black pixels, this is probably not a valid box.
             if np.count_nonzero(thresh == 0) < 20:
                 continue
 
-            # Otherwise, crop the image further to filter out any unnecessary bordering whitespace.
+            # Otherwise, crop the image further to filter out unnecessary bordering whitespace.
             coords = np.argwhere(thresh == 0)
             x0, y0 = coords.min(axis=0)
             x1, y1 = coords.max(axis=0) + 1
 
-            # Resize the cropped image and compute its hash.
+            # Resize the cropped image and compute its perceptual hash.
             thresh = cv2.resize(thresh[x0:x1, y0:y1], (52, 27), interpolation=cv2.INTER_AREA)
             hashed = average_hash(thresh)
 
@@ -381,23 +371,23 @@ class MenuParser(Parser):
             if use_hashes:
                 hashes, labels = self.__level_data
                 match = Parser._find_match(hashes, labels, hashed)
-                # Record the centre of the button for the parsed level.
+                # Record the centre of the button.
                 levels[match] = (x + w // 2, y + h // 2)
             else:
                 # Otherwise, this is being run by data.py, so record the hash. Do not try to parse it.
                 hashes.append(hashed)
 
         # Return the level button coordinates if parsing.
-        # Return the level button hashes if obtaining the reference dataset.
+        # Return the level button hashes if making the reference dataset.
         return levels if use_hashes else hashes
 
     def parse_level_exit(self):
-        """Detect and parse the buttons on the level exit screen.
+        """Identify and parse the buttons on the level exit screen.
 
         Returns:
-            list: the coordinates of the centre of each button.
+            list: coordinates of the centre of each button.
         """
-        # Take a screenshot, apply a mask to extract the buttons' text and identify contours.
+        # Take a screenshot, apply a mask to extract the buttons' text, and identify contours.
         image = self.__window.screenshot()
         mask = cv2.inRange(image, (180, 180, 180), (255, 255, 255))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -410,10 +400,10 @@ class MenuParser(Parser):
         return [(x + w // 2, y + h // 2) for x, y, w, h in boxes]
 
     def parse_level_completion(self):
-        """Detect and parse the buttons on the level completion screen.
+        """Identify and parse the buttons on the level completion screen.
 
         Returns:
-            list: the coordinates of the centre of each button.
+            list: coordinates of the centre of each button.
         """
         # Take a screenshot, apply a white mask and identify contours.
         image = self.__window.screenshot()
@@ -424,15 +414,15 @@ class MenuParser(Parser):
         boxes = [cv2.boundingRect(contour) for contour in contours]
         boxes.sort(key=lambda x: (x[1], x[0]), reverse=True)
 
-        # If 6 boxes were identified, the "next level" button is present.
+        # If six boxes were identified, the "next level" button is present.
         if len(boxes) == 6:
             next_button = (boxes[0][0] + boxes[0][2] // 2, boxes[0][1] + boxes[0][3] // 2)
             menu_button = (boxes[1][0] + boxes[1][2] // 2, boxes[1][1] + boxes[1][3] // 2)
             return next_button, menu_button
 
         else:
-            # Otherwise, this must be the last level in the set or a randomly generated level
-            # in which case there is no "next level" button.
+            # Otherwise, this must be the last level in a set, or it is a randomly generated level.
+            # In either case, there is no "next level" button.
             menu_button = (boxes[0][0] + boxes[0][2] // 2, boxes[0][1] + boxes[0][3] // 2)
             return None, menu_button
 
@@ -441,7 +431,7 @@ class LevelParser(Parser):
     """Contains the code for automatic parsing of levels."""
 
     def __init__(self, window, use_cell_counter_hashes=True, use_grid_hashes=True):
-        """Load the hashes and reference images for parsing.
+        """Load the hashes and reference images used in parsing.
 
         Args:
             window (window.Window): the active game window.
@@ -450,23 +440,24 @@ class LevelParser(Parser):
         """
         self.__window = window
 
-        # Load the cell, counter and grid constraint datasets.
+        # Load the cell and counter datasets if requested.
         if use_cell_counter_hashes:
             self.__black_data = Parser._load_hashes('black')
             self.__blue_data = Parser._load_hashes('blue')
             self.__counter_data = Parser._load_hashes('counter')
         
+        # Load the grid constraint datasets if requested.
         if use_grid_hashes:
             self.__column_data = Parser._load_hashes('column')
             self.__diagonal_data = Parser._load_hashes('diagonal')
 
-        # Load the reference cell.png file, threshold it and extract its contour.
+        # Load the reference "cell.png" file, threshold it and extract its shape.
         cell_image = cv2.imread(os.path.join(RESOURCES_PATH, 'cell.png'))
         cell_mask = cv2.inRange(cell_image, Cell.ORANGE, Cell.ORANGE)
         cell_contour, _ = cv2.findContours(cell_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         self.__cell_shape = cell_contour[0]
 
-        # Load the reference counter.png file, threshold it and extract its contour.
+        # Load the reference "counter.png" file, threshold it and extract its shape.
         counter_image = cv2.imread(os.path.join(RESOURCES_PATH, 'counter.png'))
         counter_mask = cv2.inRange(counter_image, Cell.BLUE, Cell.BLUE)
         counter_contour, _ = cv2.findContours(counter_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -494,7 +485,7 @@ class LevelParser(Parser):
         self.__cell_width = int(np.median([cell.width for cell in cells]))
         self.__cell_height = int(np.median([cell.height for cell in cells]))
 
-        # Get the minimum and maximum x and y cell (image) coordinates.
+        # Get the minimum and maximum x and y image coordinates.
         self.__x_min, self.__x_max = float('inf'), -float('inf')
         self.__y_min, self.__y_max = float('inf'), -float('inf')
         for cell in cells:
@@ -522,7 +513,7 @@ class LevelParser(Parser):
         cols = int(round((self.__x_max - self.__x_min) / x_spacing) + 1)
         rows = int(round((self.__y_max - self.__y_min) / y_spacing) + 1)
 
-        # Define the grid layout based on the row and column of each cell.
+        # Define the grid layout using the row and column of each cell.
         layout = [[None] * cols for _ in range(rows)]
         for cell in cells:
             # Map the cell's image coordinates to grid coordinates.
@@ -530,17 +521,17 @@ class LevelParser(Parser):
             col = int(round((x - self.__x_min) / x_spacing))
             row = int(round((y - self.__y_min) / y_spacing))
 
-            # Record the cell at the calculated index.
+            # Added the cell to the grid at the calculated index.
             cell.grid_coords = (row, col)
             layout[row][col] = cell
 
-        # Parse the counter values.
+        # Parse the remaining and mistake counters' values.
         _, remaining = self.parse_counters(image)
 
-        # Define a grid using the parsed layout and number of remaining blue cells to uncover.
+        # Define a grid using the parsed layout and the number of remaining blue cells.
         grid = Grid(layout, cells, remaining)
 
-        # Parse the level's grid constraints and add them to the grid.
+        # Parse the level's grid constraints..
         parsed = self.__parse_grid_constraints(image, grid, use_hashes=use_hashes)
 
         # If this is being run from data.py, return the hashes from column parsing.
@@ -548,15 +539,15 @@ class LevelParser(Parser):
         return grid if use_hashes else parsed
 
     def parse_cells(self, image, cell_colour, use_hashes=True):
-        """Identify and parse cells in a level of a given colour.
+        """Identify and parse cells of a given colour.
 
         Args:
-            image (numpy.ndarray): the screenshot to parse.
+            image (numpy.ndarray): screenshot to parse.
             cell_colour (tuple): colour of the cells to identify.
             use_hashes (bool, optional): whether to use hashes or not.
 
         Returns:
-            list: parsed cells of a given colour from the screenshot.
+            list: parsed cells of a given colour.
         """
         # Threshold the screenshot on the given cell colour and identify contours.
         mask = cv2.inRange(image, cell_colour, cell_colour)
@@ -565,8 +556,7 @@ class LevelParser(Parser):
         # Iterate over each contour.
         cells = []
         for contour in contours:
-            # Check that the contour bounds a large enough area and that its shape matches the
-            # contour calculated from the reference cell image.
+            # Check that the contour bounds a large enough area and that its shape matches reference.
             if cv2.contourArea(contour) > 550 and cv2.matchShapes(contour, self.__cell_shape, 1, 0) < 0.08:
                 # Calculate a bounding box for the contour.
                 x, y, w, h = cv2.boundingRect(contour)
@@ -585,22 +575,22 @@ class LevelParser(Parser):
                     cells.append(cell)
                 else:
                     # If this is being run from data.py, and the cell has a number,
-                    # record the hash of the cropped region.
+                    # record the perceptual hash of the cropped region.
                     if parsed is not None:
                         cells.append(parsed)
 
         return cells
 
     def __parse_cell_contents(self, image, cell_colour, use_hashes=True):
-        """Parse the interior contents of a cell.
+        """Parse the contents of a cell.
 
         Args:
-            image (numpy.ndarray): the screenshot to parse.
+            image (numpy.ndarray): screenshot to parse.
             cell_colour (tuple): colour of the cell to be parsed.
             use_hashes (bool, optional): whether to use hashes or not.
 
         Returns:
-            str: the number and hint type of the cell (if present).
+            str: number and hint type of the cell (if present).
         """
         # Orange cells do not have a cell number.
         if cell_colour == Cell.ORANGE:
@@ -614,7 +604,7 @@ class LevelParser(Parser):
         if np.count_nonzero(thresh == 0) < 20:
             return None
 
-        # Pre-process the cell's contents and calculate its hash.
+        # Pre-process the cell's contents and calculate its perceptual hash.
         thresh = LevelParser.__process_image(thresh)
         hashed = average_hash(thresh)
 
@@ -622,7 +612,7 @@ class LevelParser(Parser):
         if not use_hashes:
             return hashed
 
-        # Otherwise, use the correct dataset to match the hash against.
+        # Otherwise, use the appropriate dataset for matching the hash.
         if cell_colour == Cell.BLACK:
             hashes, labels = self.__black_data
 
@@ -643,11 +633,11 @@ class LevelParser(Parser):
             temp[:, :15] = 255
             temp[:, -15:] = 255
 
-            # Pre-process the cropped region and calculate its hash.
+            # Pre-process the cropped region and calculate its perceptual hash.
             temp = LevelParser.__process_image(temp)
             hashed = average_hash(temp)
 
-            # Parse the number (ignoring the hint type).
+            # Parse the number only (ignore the hint type).
             number = Parser._find_match(hashes, labels, hashed)
             match = f'{{{number}}}' # Add the hint type back.
 
@@ -655,7 +645,7 @@ class LevelParser(Parser):
 
     @staticmethod
     def __process_image(image):
-        """Pre-process a given image to prepare for hashing.
+        """Pre-process a given image to prepare for perceptual hashing.
 
         Args:
             image (numpy.ndarray): image to pre-process.
@@ -673,8 +663,7 @@ class LevelParser(Parser):
 
         # Resize the cropped image and apply a slight blur to smooth edges.
         image = cv2.resize(image, (53, 45), interpolation=cv2.INTER_AREA)
-        image = cv2.medianBlur(image, 3)
-        return image
+        return cv2.medianBlur(image, 3)
 
     def parse_counters(self, image=None, use_hashes=True):
         """Identify and parse the values of the remaining and mistakes counters.
@@ -684,7 +673,7 @@ class LevelParser(Parser):
             use_hashes (bool, optional): whether to use hashes or not.
 
         Returns:
-            list: the parsed counter values.
+            list: parsed counter values.
         """
         # If a screenshot was not given, take one.
         if image is None:
@@ -697,8 +686,7 @@ class LevelParser(Parser):
         # Iterate over each contour.
         parsed = []
         for contour in contours:
-            # Check that the contour bounds a large enough area and that its shape matches the
-            # contour calculated from the reference counter image.
+            # Check that the contour bounds a large enough area and that its shape matches the reference.
             if cv2.contourArea(contour) > 550 and cv2.matchShapes(contour, self.__counter_shape, 1, 0) < 0.1:
                 # Calculate a bounding box for the contour.
                 x, y, w, h = cv2.boundingRect(contour)
@@ -713,7 +701,7 @@ class LevelParser(Parser):
                 thresh = cv2.cvtColor(thresh, cv2.COLOR_BGR2GRAY)
                 thresh = cv2.resize(thresh, (200, 50), interpolation=cv2.INTER_AREA)
 
-                # Calculate a hash of the pre-processed region.
+                # Calculate a perceptual hash of the pre-processed region.
                 hashed = average_hash(thresh)
 
                 # If using hashes, find the label of the reference hash with minimum Hamming distance.
@@ -736,11 +724,11 @@ class LevelParser(Parser):
 
         Args:
             image (numpy.ndarray): screenshot to parse.
-            grid (grid.Grid): the parsed grid to add the constraints to.
+            grid (grid.Grid): parsed grid to add the constraints to.
             use_hashes (bool, optional): whether to use hashes or not.
 
         Returns:
-            list: hashes of each of the parsed grid constraints (only used by data.py)
+            list: perceptual hashes of grid constraints (only used by data.py).
         """
         # Threshold the image and identify contours.
         _, thresh = cv2.threshold(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 120, 255, cv2.THRESH_BINARY_INV)
@@ -776,23 +764,23 @@ class LevelParser(Parser):
 
             # Calculate the difference in position between the box centre and the nearest cell.
             delta_x = box_coords[0] - nearest_coords[0]
-            delta_y = nearest_coords[1] - box_coords[1]
+            delta_y = nearest_coords[1] - box_coords[1] # The direction is reversed here.
 
             # Calculate the angle between the box centre and the nearest cell.
             theta = (90 - np.degrees(np.arctan2(delta_y, delta_x))) % 360
-            # Choose the "true" angle that is closest to the computed angle.
+            # Get the "true" angle that is closest to the computed angle.
             angle = Constraint.ANGLES[np.argmin(np.abs(Constraint.ANGLES - theta))]
 
-            # Get the regin of the image corresponding to the cropped bounding box.
-            # Invert the mask from above so that text is black and background is white.
+            # Get the region of the image corresponding to the cropped bounding box.
+            # Invert the mask from above so that the text is black and the background is white.
             cropped = 255 - thresh[y:y + h, x:x + w]
 
-            # Parse the contents of the region.
-            # Number is the parsed constraint number and hint when use_hashes=True.
-            # Number is the region's hash when use_hashes=False.
+            # Parse the contents of the cropped region.
+            # Number is the parsed constraint number/hint when use_hashes=True.
+            # Number is a perceptual hash when use_hashes=False.
             number = self.__parse_grid_constraint_contents(cropped, angle, use_hashes)
 
-            # If the box did not contain anything.
+            # If the box did not contain anything, exit the method.
             if number is None:
                 continue
 
@@ -801,7 +789,7 @@ class LevelParser(Parser):
                 row, col = nearest_cell.grid_coords
                 grid.add_constraint(row, col, number, angle)
 
-            # Record the hash of the grid constraint for use in data.py
+            # Record the perceptual hash of the grid constraint for use in data.py
             parsed.append(number)
 
         return parsed
@@ -810,22 +798,22 @@ class LevelParser(Parser):
         """Parse the contents of a grid constraint.
 
         Args:
-            thresh (image): the thresholded screenshot containing the contents to parse.
-            angle (float): the angle of orientation of the constraint.
+            thresh (image): thresholded screenshot containing the contents to parse.
+            angle (float): angle of orientation of the constraint.
             use_hashes (bool, optional): whether to use hashes or not.
 
         Returns:
-            str: the parsed number and hint type for the constraint.
+            str: parsed number and hint type for the constraint.
         """
         # If there are fewer than 20 black pixels, this is not a valid region.
         if np.count_nonzero(thresh == 0) < 20:
             return None
 
-        # Pre-process the given image.
+        # Pre-process the given region of the screenshot.
         thresh = LevelParser.__process_image(thresh)
 
-        # If the angle twice (in the y-axis then the x-axis) as the diagonal dataset
-        # (i.e., 60 and 300) can be used.
+        # For these angles, flip the image twice (in the y-axis then the x-axis) as the diagonal
+        #  dataset (i.e., the data for 60 and 300) can be used.
         if angle in [120, 240]:
             thresh = cv2.flip(cv2.flip(thresh, 1), 0)
 
@@ -833,14 +821,14 @@ class LevelParser(Parser):
         elif angle in [90, 270]:
             thresh = LevelParser.__rotate(thresh, angle)
 
-        # Calculate the hash of the pre-processed image.
+        # Calculate the perceptual hash of the pre-processed region.
         hashed = average_hash(thresh)
 
-        # Return the hash and do not parse if this is being run from data.py
+        # Return the perceptual hash if this is being run from data.py
         if not use_hashes:
             return hashed
 
-        # Choose the appropriate dataset of reference hashes to use.
+        # Select the appropriate dataset of reference hashes.
         if angle in [0, 90, 270, 360]:
             hashes, labels = self.__column_data
         else:
@@ -849,7 +837,7 @@ class LevelParser(Parser):
         # Find the label of the reference hash with minimum Hamming distance.
         match = Parser._find_match(hashes, labels, hashed)
 
-        # {3}, {5} and {8} constraints are tricky to parse (they look very similar)
+        # {3}, {5} and {8} constraints are tricky to parse as they look very similar.
         # If one of these was identified, ignore the hint type and parse the number again.
         if match[0] == '{' and match[-1] == '}' and match[1] in ['3', '5', '8']:
             temp = thresh.copy()
@@ -877,8 +865,8 @@ class LevelParser(Parser):
         """Rotate an image by a given angle, using the image's centre as the point of rotation.
 
         Args:
-            image (numpy.ndarray): the image to rotate.
-            angle (float): the angle to rotate by.
+            image (numpy.ndarray): image to rotate.
+            angle (float): angle to rotate by.
 
         Returns:
             numpy.ndarray: the rotated image.
@@ -896,16 +884,16 @@ class LevelParser(Parser):
 
 
     def parse_clicked(self, grid, left_click_cells, right_click_cells, delay=False):
-        """Left and right click given cells and then parse their uncovered contents.
+        """Left and right click cells and parse their uncovered contents.
 
         Args:
             grid (grid.Grid): grid containing the cells to parse.
-            left_click_cells (list): cells to left click then parse.
-            right_click_cells (list): cells to right click then parse.
+            left_click_cells (list): cells to left click and parse.
+            right_click_cells (list): cells to right click and parse.
             delay (bool, optional): whether to use a delay after clicking cells.
 
         Returns:
-            list: the new values of the remaining and mistakes counters.
+            list: new values of the remaining and mistakes counters.
         """
         image = None
         # If there are any cells to left click, click them.
@@ -921,7 +909,7 @@ class LevelParser(Parser):
         if right_click_cells:
             self.click_cells(right_click_cells, 'right')
 
-            # Add a larger delay based on the number of rows if the particle effect has not been disabled.
+            # If the particle effect has not been disabled, add a delay based on the number of rows.
             if delay:
                 # Get the cell to right click that is highest in the level.
                 min_row = min(cell.grid_coords[0] for cell in right_click_cells)
@@ -934,11 +922,11 @@ class LevelParser(Parser):
             image = self.__window.screenshot()
             self.__parse_clicked_cells(image, right_click_cells)
 
-        # If a screenshot was not taken, take a new one.
+        # If a screenshot was not taken, take one.
         if image is None:
             image = self.__window.screenshot()
 
-        # Parse the counter values.
+        # Parse the new counter values.
         return self.parse_counters(image)
 
     def click_cells(self, cells, button):
@@ -956,11 +944,11 @@ class LevelParser(Parser):
             self.__window.click_cell(cell, button)
 
     def __parse_clicked_cells(self, image, cells):
-        """Parse the contents of a number of cells, after they have been correctly uncovered.
+        """Parse the contents of each cell in a given list, given that they have been correctly uncovered.
 
         Args:
-            image (numpy.ndarray): the screenshot to parse.
-            cells (list): the cells in the screenshot to parse the new contents of.
+            image (numpy.ndarray): screenshot to parse.
+            cells (list): cells to parse the new contents of.
         """
         # Iterate over each cell to parse.
         for cell in cells:
@@ -983,7 +971,7 @@ class LevelParser(Parser):
                 cell.colour = Cell.BLUE
             else:
                 # This should never be reached as a cell can only be revealed as blue or black.
-                cell.colour = Cell.ORANGE
+                raise RuntimeError('Cell must be blue or black after being revealed')
 
-            # Parsed the revealed cell number and hint type.
+            # Parse the revealed cell number and hint type.
             cell.number = self.__parse_cell_contents(cropped, cell.colour)

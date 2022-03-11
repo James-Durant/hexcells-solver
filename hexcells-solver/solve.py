@@ -107,7 +107,7 @@ class Solver:
             false_set = false_set.intersection(false_new)
 
         # This should never be raised, assuming that the level has a solution.
-        raise RuntimeError('Solver failed to solve level.')
+        raise RuntimeError('Solver failed to solve level')
 
     def __get_true_false_sets(self):
         """Get the representatives of the equivalence classes whose corresponding decision variable's
@@ -213,7 +213,7 @@ class Solver:
                 # Check if any constraints were identified for the cell.
                 self.__constraints[cell]
             except KeyError:
-                # Mark the set of contraints for the cell as empty.
+                # Mark the set of constraints for the cell as empty.
                 self.__constraints[cell] = set()
 
     def __get_classes(self, level):

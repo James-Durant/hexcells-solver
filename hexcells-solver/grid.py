@@ -373,7 +373,7 @@ class Cell:
         if hint in Cell.HINT_TYPES:
             self.__hint = hint
         else:
-            raise RuntimeError('Invalid cell hint type given.')
+            raise RuntimeError('Invalid cell hint type given')
 
     @property
     def colour(self):
@@ -394,7 +394,7 @@ class Cell:
         if colour in Cell.COLOURS:
             self.__colour = colour
         else:
-            raise RuntimeError('Invalid cell colour given.')
+            raise RuntimeError('Invalid cell colour given')
 
     @property
     def number(self):
@@ -417,7 +417,7 @@ class Cell:
         if parsed is None:
             # Black cells must have a number.
             if self.__colour == Cell.BLACK:
-                raise RuntimeError('Parsing missed black cell number.')
+                raise RuntimeError('Parsing missed black cell number')
             else:
                 # Blue and orange cells do not have to have a number.
                 self.__number = None
@@ -425,7 +425,7 @@ class Cell:
 
         # Only blue and black cells can contain numbers.
         if self.__colour == Cell.ORANGE:
-            raise RuntimeError('Orange cell cannot have a number.')
+            raise RuntimeError('Orange cell cannot have a number')
 
         if parsed == '?':
             # If the cell contains "?" and it is black, no further processing required.
@@ -434,7 +434,7 @@ class Cell:
                 return
             else:
                 # Only black cells can contain "?".
-                raise RuntimeError('Only black cells can have "?".')
+                raise RuntimeError('Only black cells can have "?"')
 
         # If the parsed representation is of the form {n}, set the hint type as consecutive.
         if parsed[0] == '{' and parsed[-1] == '}':
@@ -455,7 +455,7 @@ class Cell:
             self.__number = int(number)
         except ValueError:
             # If this fails, parsing must have failed.
-            raise RuntimeError('Cell number parsed incorrectly.')
+            raise RuntimeError('Cell number parsed incorrectly')
 
     def __str__(self):
         """
@@ -471,7 +471,7 @@ class Cell:
             colour = '?'
         else:
             # This should never be raised.
-            raise RuntimeError('Invalid cell colour found.')
+            raise RuntimeError('Invalid cell colour found')
 
         # Concatenate the cell's number and hint type.
         if self.__hint == 'consecutive':
@@ -487,7 +487,7 @@ class Cell:
                 number = f' {self.__number} '
         else:
             # This should never be raised.
-            raise RuntimeError('Invalid cell number/hint found.')
+            raise RuntimeError('Invalid cell number/hint found')
 
         # Concatenate the cell colour and number.
         return colour + number
@@ -533,7 +533,7 @@ class Constraint:
         if number >= 0:
             self.__number = number
         else:
-            raise RuntimeError('Invalid grid constraint number given.')
+            raise RuntimeError('Invalid grid constraint number given')
 
     @property
     def hint(self):
@@ -554,7 +554,7 @@ class Constraint:
         if hint in Constraint.HINT_TYPES:
             self.__hint = hint
         else:
-            raise RuntimeError('Invalid grid constraint hint type given.')
+            raise RuntimeError('Invalid grid constraint hint type given')
 
     @property
     def angle(self):
@@ -574,7 +574,7 @@ class Constraint:
         if angle in Constraint.ANGLES:
             self.__angle = angle
         else:
-            raise RuntimeError('Invalid grid constraint angle given.')
+            raise RuntimeError('Invalid grid constraint angle given')
 
     @property
     def members(self):

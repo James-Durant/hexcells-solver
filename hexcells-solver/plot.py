@@ -5,11 +5,10 @@ import matplotlib.pyplot as plt
 from parse import RESOURCES_PATH
 
 
-def plot_accuracy(log_path, models, file_name, split, labels=None):
+def plot_accuracy(models, file_name, split, labels=None):
     """Plot training and validation accuracy versus number of levels solved.
 
     Args:
-        log_path (str): file path to the log containing the data to plot.
         models (list): models to load logs for.
         file_name (str): file name to use when saving the plot.
         split (bool): whether to use separate plots for training and validation accuracies.
@@ -27,7 +26,8 @@ def plot_accuracy(log_path, models, file_name, split, labels=None):
     # Iterate over each model.
     for i, (model, colour) in enumerate(zip(models, colours)):
         # Load the log for the model.
-        accuracy_history = np.loadtxt(os.path.join(log_path, f'model_{model}.csv'), delimiter=',')
+        log_path = os.path.join(RESOURCES_PATH, 'models', 'logs', f'model_{model}.csv')
+        accuracy_history = np.loadtxt(log_path, delimiter=',')
 
         # Get the training and validation accuracies and the number of levels solved at each step.
         level_nums = accuracy_history[:, 0]
@@ -66,7 +66,7 @@ def plot_accuracy(log_path, models, file_name, split, labels=None):
         ax2.legend()
 
     # Create a new directory for saving figures if one does not exist.
-    save_path = os.path.join(log_path, '..', 'figures')
+    save_path = os.path.join(RESOURCES_PATH, 'models', 'figures')
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
@@ -79,11 +79,8 @@ def plot_accuracy(log_path, models, file_name, split, labels=None):
 
 
 if __name__ == '__main__':
-    # Path to the directory containing the training logs.
-    log_path = os.path.join(RESOURCES_PATH, 'models', 'logs')
-
     # If this file is being run, create the plots used in the final report.
-    plot_accuracy(log_path, [1, 2, 3, 4, 5], 'comparison_nodes_layers', True)
-    plot_accuracy(log_path, [4, 6, 7, 8, 9], 'comparison_activation_filters', True)
-    plot_accuracy(log_path, [4, 10, 11], 'comparison_replay_double', False, ['Standard', 'Experience Replay', 'Double DQN'])
-    plot_accuracy(log_path, [4, 12, 13], 'comparison_level_sizes', False, ['Small', 'Medium', 'Large'])
+    plot_accuracy([1, 2, 3, 4, 5], 'comparison_nodes_layers', True)
+    plot_accuracy([4, 6, 7, 8, 9], 'comparison_activation_filters', True)
+    plot_accuracy([4, 10, 11], 'comparison_replay_double', False, ['Standard', 'Experience Replay', 'Double DQN'])
+    plot_accuracy([4, 12, 13], 'comparison_level_sizes', False, ['Small', 'Medium', 'Large'])

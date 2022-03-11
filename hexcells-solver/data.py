@@ -416,7 +416,7 @@ class ImageData(Generator):
 
             else:
                 # The datatype given was not valid.
-                raise RuntimeError('Invalid dataset type.')
+                raise RuntimeError('Invalid dataset type')
 
         else:
             # The ground truth labels for each of the column and diagonal custom levels.
@@ -461,7 +461,8 @@ class ImageData(Generator):
                           '-16-', '-17-', '-18-', '-19-', '-20-', '-21-',
                           '-24-', '-25-', '-26-', '-22-', '-23-']
             else:
-                raise RuntimeError('Invalid dataset type.')
+                # The datatype given was not valid.
+                raise RuntimeError('Invalid dataset type')
 
             # Get the hashes of the grid constraints.
             parser = LevelParser(window, use_cell_counter_hashes=True, use_grid_hashes=False)

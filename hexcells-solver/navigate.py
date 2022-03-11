@@ -47,7 +47,7 @@ class Navigator:
         """
         # Check that the save slot is valid.
         if slot not in [1, 2, 3]:
-            raise RuntimeError('Invalid save slot given.')
+            raise RuntimeError('Invalid save slot given')
 
         # Go from the current screen to the main menu screen.
         # Skip this if hashes are not being used (this is the case when called in data.py)
@@ -208,7 +208,7 @@ class Navigator:
 
         except KeyError:
             # If the button was not parsed, the level has not been unlocked.
-            raise RuntimeError('Selected level is not unlocked yet.')
+            raise RuntimeError('Selected level is not unlocked yet')
 
         # Wait until the level has loaded and then solve it.
         self.wait_until_loaded()
@@ -235,7 +235,7 @@ class Navigator:
 
         except KeyError:
             # If the button was not parsed, the level has not been unlocked.
-            raise RuntimeError('Selected level is not unlocked yet.')
+            raise RuntimeError('Selected level is not unlocked yet')
 
         # Wait until the level has loaded and then solve it.
         self.wait_until_loaded()

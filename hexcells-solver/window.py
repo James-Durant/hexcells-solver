@@ -24,7 +24,7 @@ class Window:
         self.__title = title
         self.__hwnd = win32gui.FindWindow(None, title)
         if not self.__hwnd:
-            raise RuntimeError('Hexcells window not found.')
+            raise RuntimeError('Hexcells window not found')
 
     @property
     def title(self):
@@ -132,4 +132,4 @@ def get_window():
             try:
                 return Window('Hexcells Infinite')
             except RuntimeError:
-                raise WindowNotFoundError('Hexcells window not found.')
+                raise WindowNotFoundError('Hexcells window not found')
