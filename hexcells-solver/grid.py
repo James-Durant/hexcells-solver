@@ -4,21 +4,32 @@ import numpy as np
 class Grid:
     """Represents a Hexcells level as a grid of Cell and Constraint objects."""
 
-    # Relative coordinates of directly adjacent cells.
+    # Relative coordinates of cells in a 1-cell neighbourhood.
     INNER = [(0, -2), (1, -1), (1, 1), (0, 2), (-1, 1), (-1, -1)]
-    # Relative coordinates of cells at a 2-cell radius.
+
+    # Relative coordinates of cells in a 2-cell neighbourhood.
     OUTER = [(0, -4), (1, -3), (2, -2), (2, 0), (2, 2), (1, 3), (0, 4),
              (-1, 3), (-2, 2), (-2, 0), (-2, -2), (-1, -3)]
+
     # All cells contained within a 2-cell radius.
     COMBINED = INNER + OUTER
+
+    # Row and column directions for each grid constraint angle.
+    DIRECTIONS = {0: (1, 0),  # Move down a row only.
+                  60: (1, -1),  # Move down one row and left one column.
+                  90: (0, -1),  # Move left one column only.
+                  120: (-1, -1),  # Move up one row and left one column.
+                  240: (-1, 1),  # Move up one row and right one column.
+                  270: (0, 1),  # Move right one column only.
+                  300: (1, 1)}  # Move up one row and right one column.
 
     def __init__(self, grid, cells, remaining):
         """Encapsulate a given grid of cell objects parsed from a level.
 
         Args:
-            grid (list): a 2D list of cell objects representing the layout of a level.
-            cells (list): a list of references to all cells within a level.
-            remaining (int): number of blue cells to uncover in the cell.
+            grid (list): layout of the level.
+            cells (list): all cells within the level.
+            remaining (int): number of blue cells to uncover in the level.
         """
         self.__grid = grid
         self.__rows = len(grid)  # Number of rows.
@@ -26,6 +37,7 @@ class Grid:
         self.__cells = cells
         self.__remaining = remaining
         self.__constraints = []  # No constraints initially.
+
         # Get the image coordinates for each cell.
         self.__cell_image_coords = np.asarray([cell.image_coords for cell in cells])
 
@@ -55,7 +67,7 @@ class Grid:
 
     @remaining.setter
     def remaining(self, remaining):
-        """Sets the number of remaining blue cells to uncover.
+        """Set the number of remaining blue cells to uncover.
 
         Args:
             remaining (int): new number of blue cells to uncover.
@@ -64,13 +76,13 @@ class Grid:
         if remaining >= 0:
             self.__remaining = remaining
         else:
-            raise RuntimeError('number remaining must be greater than 0')
+            raise RuntimeError('Number of remaining blue cells must be greater than 0')
 
     @property
     def constraints(self):
         """
         Returns:
-            list: the level's grid constraints.
+            list: grid constraints of the level.
         """
         return self.__constraints
 
@@ -78,25 +90,25 @@ class Grid:
     def cells(self):
         """
         Returns:
-            int: all cells in the level.
+            list: all cells within the level.
         """
         return self.__cells
 
     def nearest_cell(self, query_coords):
-        """Get the cell that is closest to given query coordinates.
+        """Get the cell that is closest to the given query coordinates.
 
         Args:
             query_coords (tuple): image coordinates to find the nearest cell to.
 
         Returns:
-            grid.Cell: the nearest cell to the given coordinates.
+            grid.Cell: nearest cell to the given coordinates.
         """
         # Return the cell with minimum Euclidean distance.
         distances = np.linalg.norm(self.__cell_image_coords - query_coords, axis=1)
         return self.__cells[np.argmin(distances)]
 
     def add_constraint(self, row, col, parsed, angle):
-        """Adds a constraint to the grid.
+        """Add a constraint to the grid.
 
         Args:
             row (int): row that the constraint starts at.
@@ -110,19 +122,19 @@ class Grid:
             hint = 'consecutive'
             number = parsed[1:-1]  # Extract the constraint's number.
 
-        # Set the hint type of the constraint as consecutive if it was parsed as -n-
+        # Set the hint type of the constraint as non-consecutive if it was parsed as -n-
         elif parsed[0] == '-' and parsed[-1] == '-':
             hint = 'non-consecutive'
             number = parsed[1:-1]  # Extract the constraint's number.
         else:
-            # Otherwise, there is no hint type and the parsed representation
-            # is just the number.
+            # Otherwise, there is no hint type.
             hint = 'normal'
             number = parsed
 
         # Try to convert the constraint's number to an integer.
         try:
             size = int(number)
+
         except ValueError:
             # If this fails, the parsed representation must be incorrect.
             raise RuntimeError('Grid constraint parsed incorrectly')
@@ -133,53 +145,23 @@ class Grid:
 
         # Get the cells that the constraint acts on.
         cells = []
+        delta_row, delta_col = Grid.DIRECTIONS[angle]
         while 0 <= row < self.__rows and 0 <= col < self.__cols:
             # Add the cell at the current row and column (if there is one).
             cell = self[(row, col)]
             if cell is not None:
                 cells.append(cell)
 
-            # Move down a row only.
-            if angle == 0:
-                row += 1
-
-            # Move down one row and left one column.
-            elif angle == 60:
-                row += 1
-                col -= 1
-
-            # Move left one column only.
-            elif angle == 90:
-                col -= 1
-
-            # Move up one row and left one column.
-            elif angle == 120:
-                row -= 1
-                col -= 1
-
-            # Move up one row and right one column.
-            elif angle == 240:
-                row -= 1
-                col += 1
-
-            # Move right one column only.
-            elif angle == 270:
-                col += 1
-
-            # Move up one row and right one column.
-            elif angle == 300:
-                row += 1
-                col += 1
-
-            else:
-                # Otherwise, the given constraint angle must be invalid.
-                raise RuntimeError('Invalid grid constraint angle')
+            # Move to the next cell that the constraint acts on.
+            row += delta_row
+            col += delta_col
 
         # Add the constraint to the list of constraints for this level.
         self.__constraints.append(Constraint(size, hint, angle, cells))
 
     def known_cells(self):
-        """Returns:
+        """
+        Returns:
             list: the set of known (i.e., blue or black) cells.
         """
         return [cell for cell in self.cells if cell.colour != Cell.ORANGE]
@@ -203,9 +185,11 @@ class Grid:
         # For black cells (ignore cells with ?), return the adjacent cells.
         if cell.colour == Cell.BLACK and cell.number != '?':
             deltas = Grid.INNER
+
         # For blue cells with a number, return the cells in a 2-cell radius.
         elif cell.colour == Cell.BLUE and cell.number is not None:
             deltas = Grid.COMBINED
+
         else:
             # Otherwise, there are no neighbours to consider.
             deltas = []
@@ -213,14 +197,14 @@ class Grid:
         return self.find_neighbours(cell, deltas)
 
     def find_neighbours(self, cell, deltas):
-        """Get the neighbours of a cell defined by given relative coordinates (deltas).
+        """Get the neighbours of a cell defined by given relative coordinates.
 
         Args:
             cell (grid.Cell): cell to get the neighbours of.
             deltas (list): positions of surrounding cells to consider.
 
         Returns:
-            list: neighbours of the given cell, defined by deltas.
+            list: neighbours of the given cell.
         """
         row, col = cell.grid_coords
         return [self[row + d_row, col + d_col] for d_col, d_row in deltas]
@@ -229,7 +213,7 @@ class Grid:
         """Get the cells contain in a given column.
 
         Args:
-            col (int): column to get the cells of.
+            col (int): column to get the cells from.
 
         Returns:
             list: non-empty cells in the given column.
@@ -243,16 +227,17 @@ class Grid:
             key (tuple): row and column index for the cell.
 
         Returns:
-            grid.Cell: the cell at the position defined by the key.
+            grid.Cell: cell at the position defined by the key.
         """
-        row, col = key
         # Check that the cell is within the grid.
+        row, col = key
         if 0 <= row < self.__rows and 0 <= col < self.__cols:
             return self.__grid[row][col]
+
         return None
 
     def __str__(self):
-        """Returns a string representation of the grid. This is only used for debugging.
+        """Return a string representation of the grid. This is only used for debugging.
 
         Returns:
             str: string representation of the grid.
@@ -278,19 +263,19 @@ class Grid:
             if row != self.__rows - 1:
                 return_str = return_str + '_' * self.__cols * 5 + '\n'
 
-        # Add on the number of remaining cells to uncover.
-        return return_str + 'Remaining: ' + str(self.remaining) + '\n'
+        # Add the number of remaining cells to uncover.
+        return return_str + f'Remaining: {self.remaining}\n'
 
 
 class Cell:
-    """Represents an individual cell containing within a Grid (defined above)."""
+    """Represents an individual cell contained within a Grid object."""
 
     # The RGB values of the colours used for blue, black and orange cells.
     BLUE = (235, 164, 5)
     BLACK = (62, 62, 62)
     ORANGE = (41, 177, 255)
 
-    # The possible colours and hint types in Hexcells.
+    # The colours and hint types used in Hexcells.
     COLOURS = [BLUE, BLACK, ORANGE]
     HINT_TYPES = ['normal', 'consecutive', 'non-consecutive']
 
@@ -302,7 +287,7 @@ class Cell:
             width (int): width of the cell in the game window (in number of pixels).
             height (int): height of the cell in the game window (in number of pixels).
             colour (tuple): cell colour as an RGB tuple.
-            number (int, optional): number associated with the cell.
+            number (str, optional): parsed number/hint associated with the cell.
         """
         self.__image_coords = image_coords
         self.__grid_coords = None  # Initially none but is set when parsing.
@@ -331,7 +316,7 @@ class Cell:
 
     @grid_coords.setter
     def grid_coords(self, grid_coords):
-        """set the grid coordinates of the cell.
+        """Set the grid coordinates of the cell.
 
         Args:
             grid_coords (tuple): row and column values defining the cell's position.
@@ -388,7 +373,7 @@ class Cell:
         """Set the colour of the cell.
 
         Args:
-            colour (tuple): colour to set.
+            colour (tuple): cell colour to set.
         """
         # Check that the cell colour is one of the three valid values.
         if colour in Cell.COLOURS:
@@ -409,9 +394,9 @@ class Cell:
         """Set the number of the cell.
 
         Args:
-            parsed (str): parsed representation of the cell's number.
+            parsed (str): parsed representation of the cell's number/hint.
         """
-        # Assume the hint is normal by default.
+        # Initially assume that the hint is normal.
         self.__hint = 'normal'
 
         if parsed is None:
@@ -450,9 +435,10 @@ class Cell:
             # Otherwise, the hint type is normal.
             number = parsed
 
-        # Try to convert the parsed number to an integer.
         try:
+            # Try to convert the parsed number to an integer.
             self.__number = int(number)
+
         except ValueError:
             # If this fails, parsing must have failed.
             raise RuntimeError('Cell number parsed incorrectly')
@@ -460,7 +446,7 @@ class Cell:
     def __str__(self):
         """
         Returns:
-            str: a string representation of a cell.
+            str: string representation of the cell.
         """
         # Use different symbols for each cell colour.
         if self.__colour == Cell.BLUE:
@@ -489,14 +475,14 @@ class Cell:
             # This should never be raised.
             raise RuntimeError('Invalid cell number/hint found')
 
-        # Concatenate the cell colour and number.
+        # Concatenate the cell colour and number/hint.
         return colour + number
 
 
 class Constraint:
     """Represents a grid constraint within a level."""
 
-    # Valid hint types for constraints.
+    # Valid hint types and angles for constraints.
     HINT_TYPES = Cell.HINT_TYPES
     ANGLES = [0, 60, 90, 120, 240, 270, 300, 360]
 
@@ -506,7 +492,7 @@ class Constraint:
         Args:
             number (int): number associated with the constraint.
             hint (str): hint type associated with the constraint.
-            angle (int): angle of orientation of the constraint (in degrees).
+            angle (int): orientation of the constraint (in degrees).
             members (list): cells that the constraint acts on.
         """
         # Use the setters defined below.
@@ -519,7 +505,7 @@ class Constraint:
     def number(self):
         """
         Returns:
-            int: number of blue cells in the row/column/diagonal defined by the grid constraint.
+            int: number of blue cells in the row/column/diagonal defined by the constraint.
         """
         return self.__number
 
@@ -530,6 +516,7 @@ class Constraint:
         Args:
             number (int): number to set for the constraint.
         """
+        # Check the number is non-negative.
         if number >= 0:
             self.__number = number
         else:
@@ -560,7 +547,7 @@ class Constraint:
     def angle(self):
         """
         Returns:
-            int: angle of orientation of the grid constraint.
+            int: orientation of the grid constraint.
         """
         return self.__angle
 
@@ -571,6 +558,7 @@ class Constraint:
         Args:
             angle (int): angle to set.
         """
+        # Check that the angle is one of the valid values.
         if angle in Constraint.ANGLES:
             self.__angle = angle
         else:

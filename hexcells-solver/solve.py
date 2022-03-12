@@ -236,7 +236,7 @@ class Solver:
         # Otherwise, define equivalence classes of cells that are subject to the same constraints.
         for cell in self.__unknown:
             # If consecutive or non-consecutive hint types act on a cell, it must be in its own equivalence class.
-            # Even though two cells have the same constraints, hint types mean that they may not be able to switch places.
+            # Even though two cells have the same constraints, hint types mean that they cannot switch places.
             if any(constraint.hint != 'normal' for constraint in self.__constraints[cell]):
                 self.__rep_of[cell] = cell
                 self.__class_of_rep[cell] = {cell}
@@ -310,7 +310,7 @@ class Solver:
                         self.__problem += pulp.lpSum([self.__get_var(constraint.members[start]),
                                                       self.__get_var(constraint.members[start + span])]) <= 1
 
-            # For -n- grid constraints, any n consecutive cells in a row, column or diagonal may contain at most n-1 blue cells.
+            # For -n- grid constraints, any n consecutive cells may contain at most n-1 blue cells.
             elif constraint.hint == 'non-consecutive':
                 for offset in range(len(constraint.members) - constraint.number + 1):
                     self.__problem += pulp.lpSum(self.__get_var(constraint.members[offset + i])
@@ -336,30 +336,37 @@ class Solver:
                 # These constraints are only valid for black cells with a number between 2 and 4,
                 # or blue cells with numbers between 2 and 10.
                 # Cells with hint types and numbers outside these ranges are not well-defined.
-                if (cell.hint != 'normal' and ((cell.colour == Cell.BLACK and 2 <= cell.number <= 4) or (cell.colour == Cell.BLUE and 2 <= cell.number <= 10))):
-                    # Blue cells with hint types are only used in 4-6 from Hexcells Plus and cannot be created in custom levels.
-                    # In this sole level, these constraints only apply to the outer ring of the 2-cell radius neighbourhood, rather than also including
-                    # the directly adjacent neighbours). Therefore, these constraints have been implemented in the same way for the solver.
-                    # In other words, functionality for blue cells with hint types is not well-defined when they have unknown adjacent cells.
+                if (cell.hint != 'normal'
+                        and ((cell.colour == Cell.BLACK and 2 <= cell.number <= 4)
+                             or (cell.colour == Cell.BLUE and 2 <= cell.number <= 10))):
+                    # Blue cells with hint types are only used in 4-6 from Hexcells Plus.
+                    # They only apply to the outer ring of the 2-cell radius neighbourhood, rather than also including
+                    # the directly adjacent neighbours). Therefore, these constraints have been implemented in the same
+                    # way for the solver. In other words, functionality for blue cells with hint types is not
+                    # well-defined when they have unknown adjacent cells.
                     if cell.colour == Cell.BLUE:
                         neighbours = grid.find_neighbours(cell, Grid.OUTER)
 
                     n = len(neighbours)
                     if cell.hint == 'consecutive':
                         # For {n} blue cells, neighbouring cells that are at least n cells apart cannot both be blue.
-                        # The constraint is defined in a different way to the grid variant. Grid constraints skip gaps (i.e., empty cells can be ignored)
-                        # but cell constraints do not skip gaps. Additionally, cell constraints wrap around whereas grid constraints they follow straight lines.
-                        # Therefore, there may be two distances between two cells in a cell's neighbourhood: the clockwise and anti-clockwise distances.
-                        # Additionally, if there are missing cells in the neighbourhood, one or more of the distances may be invalid, as the constraint does not skip gaps.
+                        # The constraint is defined in a different way to the grid variant. Grid constraints skip gaps
+                        # (i.e., empty cells can be ignored) but cell constraints do not skip gaps. Additionally, cell
+                        # constraints wrap around whereas grid constraints they follow straight lines. Therefore, there
+                        # may be two distances between two cells in a cell's neighbourhood: the clockwise and
+                        # anti-clockwise distances. Additionally, if there are missing cells in the neighbourhood, one
+                        # or more of the distances may be invalid, as the constraint does not skip gaps.
                         # The minimum distance between two cells, while accounting for gaps, calculated by __dist.
                         if cell.colour == Cell.BLUE:
                             for i in range(n):
                                 for j in range(i + 1, n):
                                     if Solver.__dist(neighbours, i, j) in range(cell.number, n):
-                                        self.__problem += pulp.lpSum([self.__get_var(neighbours[i]), self.__get_var(neighbours[j])]) <= 1
+                                        self.__problem += pulp.lpSum([self.__get_var(neighbours[i]),
+                                                                      self.__get_var(neighbours[j])]) <= 1
 
-                        # For {n} black cells, the following two patterns cannot occur: --X-- and X--X where X denotes a blue cell and -- denotes a non-blue cell.
-                        # That is, there can be no isolated blue cell or isolated gap. Note that the indexing wraps around.
+                        # For {n} black cells, the following two patterns cannot occur: --X-- and X--X where X denotes
+                        # a blue cell and -- denotes a non-blue cell.
+                        # That is, there can be no isolated blue cell or isolated gap (indexing wraps around).
                         elif cell.colour == Cell.BLACK:
                             for i in range(n):
                                 condition = self.__get_var(neighbours[i])
@@ -367,7 +374,8 @@ class Solver:
                                 condition -= self.__get_var(neighbours[(i - 1) % n])
                                 self.__problem += -1 <= condition <= 0
 
-                    # Similarly to grid constraints, for -n- cells (either blue or black), a consecutive block of n neighbouring cells can contain at most n-1 blue cells.
+                    # Similarly to grid constraints, for -n- cells (either blue or black), a consecutive block of n
+                    # neighbouring cells can contain at most n-1 blue cells.
                     if cell.hint == 'non-consecutive':
                         for i in range(n):
                             if all(neighbours[(i + j) % n] is not None for j in range(cell.number - 1)):

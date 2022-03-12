@@ -121,7 +121,7 @@ class Navigator:
             # The new screen could be the level selection or level generator screen.
             screen = self.__menu_parser.get_screen()
 
-        # If already on the level selection screen, nothing futher needs to be done.
+        # If already on the level selection screen, nothing further needs to be done.
         if screen == 'level_select':
             return
 
@@ -144,7 +144,7 @@ class Navigator:
             # The new screen could be the level selection or level generator screen.
             screen = self.__menu_parser.get_screen()
 
-        # If already on the level selection screen, nothing futher needs to be done.
+        # If already on the level selection screen, nothing further needs to be done.
         if screen == 'level_generator':
             return
 

@@ -75,7 +75,7 @@ class Generator:
 
 
 class LearningData(Generator):
-    """Contains the code for generating training data (i.e., levels and their pre-computed solutions) for deep Q-learning."""
+    """Contains the code for generating training data for deep Q-learning."""
 
     def __init__(self):
         """Call the parent's constructor."""
@@ -136,7 +136,7 @@ class LearningData(Generator):
             solver = Solver(game_parser)
             while True:
                 # Get the cells that can be uncovered, given the current information.
-                left_click_cells, right_click_cells = solver.solve_single_step(grid, menu.window, None)
+                left_click_cells, right_click_cells = solver.solve_single_step(grid, menu.window)
 
                 # Check if there are cells in the level still to uncover.
                 if len(left_click_cells) + len(right_click_cells) - len(grid.unknown_cells()) != 0:
@@ -181,6 +181,7 @@ class LearningData(Generator):
                     # Skip the level if identified above.
                     if skip:
                         print(f'>>> Skipping {i + 1}/{num_levels}')
+                        i += 1
                         break
 
                     # Parse the level generator screen buttons.
@@ -491,7 +492,6 @@ class ImageData(Generator):
             menu.close_game()
 
             # Load Hexcells Infinite and take a screenshot of the main menu screen.
-            # The reason that Hexcells and Hexcells Plus menu screens are captured is that each menu screen is different.
             menu = self._load_game('Hexcells Infinite', resolution, use_screen_hashes=False)
             main_menu = menu.window.screenshot()
             images.append(main_menu)

@@ -29,30 +29,28 @@ MAX_REPLAY_MEMORY = 50000
 DOUBLE_DQN = False
 TARGET_UPDATE_INTERVAL = 1
 
-# Number of levels in the combined training and validation datasets; the rest is for testing.
+# Number of levels in the combined training and validation datasets (the rest is for testing).
 TRAIN_LEVELS = 1600
 
 
 class Environment:
-    """Defines an environment (i.e., a Hexcells level) in which an agent can act.
-       This class should not be instantiated. Rather it acts as the parent of the OnlineEnvironment and OfflineEnvironment classes.
-    """
+    """ Parent class for the OnlineEnvironment and OfflineEnvironment classes."""
 
     def __init__(self, grid):
-        """Create an environment from a given parsed Hexcells level.
+        """Create an environment for a parsed level.
 
         Args:
-            grid (grid.Grid): a parsed Hexcells level.
+            grid (grid.Grid): parsed level to create an environment for.
         """
         self._grid = grid
         self._solver = Solver(None)
 
-        # Define an offset for action indexing based on whether the top-left
-        # cell is present or not.
+        # Offset for action indexing based on whether the top-left cell is present.
         self._offset = 1 if self._grid[0, 0] is None else 0
 
         # Define the dimensions of the environment.
         self._state_dims = (grid.rows, grid.cols)
+
         # Maximum number of cells that can appear.
         self._max_cells = (grid.rows * grid.cols) // 2
 
@@ -63,7 +61,7 @@ class Environment:
     def state_dims(self):
         """
         Returns:
-            tuple: the dimensions of the environment.
+            tuple: dimensions of the environment.
         """
         return self._state_dims
 
@@ -71,28 +69,27 @@ class Environment:
     def max_cells(self):
         """
         Returns:
-            int: the number of possible actions in the environment.
+            int: number of cells in the environment.
         """
         return self._max_cells
 
     def get_state(self):
         """
         Returns:
-            numpy.ndarray: a matrix representation of the current level state.
+            numpy.ndarray: matrix representation of the environment state.
         """
         return self._state
 
     def _initial_state(self):
         """
         Returns:
-            numpy.ndarray: a matrix representation of the initial level state.
+            numpy.ndarray: matrix representation of the initial level state.
         """
-        # Iterate over cell of the level.
+        # Iterate over all cells in the level.
         state = np.zeros(self._state_dims)
         for row in range(self._grid.rows):
             for col in range(self._grid.cols):
-                # Set the (i,j)th matrix entry as the representative of the
-                # corresponding cell in the level.
+                # (i,j) matrix entry is the representative of the corresponding cell.
                 state[row, col] = Environment._cell_to_rep(self._grid[row, col])
 
         return state
@@ -105,7 +102,7 @@ class Environment:
             cell (grid.Cell): cell to create a representative for.
 
         Returns:
-            float: a real-valued representative for the cell.
+            float: real-valued representative for the cell.
         """
         # A blank cell is 0.
         if cell is None:
@@ -122,12 +119,12 @@ class Environment:
         elif cell.colour == Cell.BLUE:
             return 0.9
 
-        # Orange cells are 1.0
+        # Orange cells are 1
         elif cell.colour == Cell.ORANGE:
             return 1.0
 
     def _action_to_coords(self, action_index):
-        """Convert a 1-dimensional action index to a 2-dimensional row and column index.
+        """Convert a 1D action index to a 2D (row, column) index.
 
         Args:
             action_index (int): index of the action to transform.
@@ -135,14 +132,17 @@ class Environment:
         Returns:
             tuple: button action, row and column corresponding to the action index.
         """
+        # Get the button action: 0 for left click and 1 for right click.
         button = action_index // self._max_cells
         action_index %= self.max_cells
+
+        # Get the row and column of the cell to click.
         row = (2 * action_index + self._offset) // self._grid.cols
         col = (2 * action_index + self._offset) % self._grid.cols
         return int(button), int(row), int(col)
 
     def _coords_to_action(self, coords, button):
-        """Convert a 2-dimensional (row, column) index to a 1-dimensional action index.
+        """Convert a 2D (row, column) index to a 1D action index.
 
         Args:
             coords (tuple): row and column to transform.
@@ -161,26 +161,26 @@ class Environment:
         # Iterate over each unknown cell.
         action_indices = []
         for cell in self._grid.unknown_cells():
-            # Record the actions corresponding to left and right clicking each cell.
+            # Indices of the actions corresponding to left and right clicking the cell.
             action_indices.append(self._coords_to_action(cell.grid_coords, 0))
             action_indices.append(self._coords_to_action(cell.grid_coords, 1))
 
         return action_indices
 
     def _rewards(self):
-        """Calculates the rewards of all possible actions, given the cells that could be
-           clicked with the information currently available.
+        """Calculate the rewards of all possible actions, given the cells that could be
+           clicked with the available information.
 
         Returns:
             tuple: either -1 or +1 for each action, depending on whether the action is "correct" or not.
                    Also returned are the cells that could be left or right clicked.
         """
-        # Get the cells that could be left or right clicked, given the available information in the level.
+        # Get the cells that could be left or right clicked, given the available information.
         left_click_cells, right_click_cells = self._solver.solve_single_step(self._grid)
         left_click_coords = [cell.grid_coords for cell in left_click_cells]
         right_click_coords = [cell.grid_coords for cell in right_click_cells]
 
-        # Get the reward of performing each possible action in the current state.
+        # Get the reward of performing each action in the current state.
         # Times two because each cell can be either left or right clicked.
         rewards = []
         for action in range(2 * self._max_cells):
@@ -203,21 +203,21 @@ class OfflineEnvironment(Environment):
         """Initialise the offline environment.
 
         Args:
-            grid (grid.Grid): an unsolved copy of the level.
-            grid_solved (grid.Grid): a solved copy of the level.
+            grid (grid.Grid): unsolved copy of the level.
+            grid_solved (grid.Grid): solved copy of the level.
         """
-        # Call the parent constructor and save the solved copy of the level.
+        # Call the parent's constructor and save the solved copy of the level.
         super().__init__(grid)
         self._grid_solved = grid_solved
 
     def step(self, agent_action):
-        """Simulates a single step of an agent acting in the environment.
+        """Simulate a single step of an agent acting in the environment.
 
         Args:
-            agent_action (int): index of the agent's selected action
+            agent_action (int): index of the agent's selected action.
 
         Returns:
-            tuple: level state after performing the action, the reward and whether the level is now solved.
+            tuple: level state after performing the action, the rewards, and whether the level is now solved.
         """
         # Get the reward of performing each action in the current state.
         rewards, _, _ = self._rewards()
@@ -234,9 +234,9 @@ class OfflineEnvironment(Environment):
             if cell_true.colour == Cell.BLUE:
                 self._grid.remaining -= 1
 
-            # Update the current cell colour to the true value.
-            cell_curr.colour = cell_true.colour
+            # Update the cell colour to the true value.
             # Also update the number and hint type if applicable.
+            cell_curr.colour = cell_true.colour
             if cell_true.number is not None:
                 cell_curr.number = str(cell_true.number)
                 cell_curr.hint = cell_true.hint
@@ -257,22 +257,22 @@ class OnlineEnvironment(Environment):
 
         Args:
             parser (parse.GameParser): used to parse the level state at each step.
-            delay (bool): whether to use a delay after clicking cells for particles to clear.
+            delay (bool): whether to use a delay after clicking cells.
         """
-        # Call the parent constructor with a parsed grid capturing the initial level state.
+        # Call the parent's constructor with a parsed grid (i.e., the initial level state).
         super().__init__(parser.parse_grid())
         self._solver = Solver(parser)
         self.__parser = parser
         self.__delay = delay
 
     def step(self, agent_action):
-        """Simulates a single step of an agent acting in the environment.
+        """Simulate a single step of an agent acting in the environment.
 
         Args:
-            agent_action (int): index of the agent's selected action
+            agent_action (int): index of the agent's selected action.
 
         Returns:
-            tuple: level state after performing the action, the reward and whether the level is now solved.
+            tuple: level state after performing the action, the rewards, and whether the level is now solved.
         """
         # Get the reward of performing each action in the current state.
         rewards, left_click_coords, right_click_coords = self._rewards()
@@ -287,7 +287,6 @@ class OnlineEnvironment(Environment):
             # If the wrong button action was made, still perform that action to show what the agent chose.
             if rewards[agent_action] == -1:
                 # Click the cell but do not try to parse it as the action is incorrect.
-                # I.e., the cell will still be unknown.
                 self.__parser.click_cells([cell], 'right')
                 time.sleep(0.1)
 
@@ -295,7 +294,7 @@ class OnlineEnvironment(Environment):
             if len(self._grid.unknown_cells()) > 1:
                 _, remaining = self.__parser.parse_clicked(self._grid, [cell], [], self.__delay)
             else:
-                # Otherwise, the cell is the last one, so parsing could be problematic due to the level completion screen.
+                # The cell is the last one, so parsing could be problematic due to the level completion screen.
                 # Instead, just click the cell and ignore parsing.
                 self.__parser.click_cells([cell], 'left')
                 cell.colour = Cell.BLUE
@@ -307,7 +306,6 @@ class OnlineEnvironment(Environment):
             # If the wrong button action was made, still perform that action to show what the agent chose.
             if rewards[agent_action] == -1:
                 # Click the cell but do not try to parse it as the action is incorrect.
-                # I.e., the cell will still be unknown.
                 self.__parser.click_cells([cell], 'left')
                 time.sleep(0.1)
 
@@ -315,7 +313,7 @@ class OnlineEnvironment(Environment):
             if len(self._grid.unknown_cells()) > 1:
                 _, remaining = self.__parser.parse_clicked(self._grid, [], [cell], self.__delay)
             else:
-                # Otherwise, the cell is the last one, so parsing could be problematic due to the level completion screen.
+                # The cell is the last one, so parsing could be problematic due to the level completion screen.
                 # Instead, just click the cell and ignore parsing.
                 self.__parser.click_cells([cell], 'right')
                 cell.colour = Cell.BLACK
@@ -325,12 +323,11 @@ class OnlineEnvironment(Environment):
 
         else:
             # Otherwise, the chosen cell was not in the cells that could be clicked with the available information.
-            # First parse the mistakes made and remaining counter values.
+            # First parse the mistakes made and remaining counters.
             mistakes_before, remaining = self.__parser.parse_counters()
 
-            # We do not need to worry about the level completion screen as, if there is a single cell left,
-            # guessing will not be required and so the solver will identify the cell.
-            # I.e., the case will be handled above.
+            # If there is a single cell left, guessing will not be required and so the solver will identify the cell.
+            # I.e., the level completion screen will be handled above.
 
             # Check if the agent chose a left click.
             if button == 0:
@@ -350,7 +347,7 @@ class OnlineEnvironment(Environment):
                     time.sleep(0.1)
                     _, remaining = self.__parser.parse_clicked(self._grid, [cell], [], self.__delay)
 
-        # Update the grid and corresponding matrix form.
+        # Update the grid and corresponding matrix representation.
         self._grid.remaining = remaining
         self._state[row][col] = Environment._cell_to_rep(cell)
         return self._state, rewards, solved
@@ -361,11 +358,11 @@ class Agent:
 
     def __init__(self, environment, learning_rate, discount_rate, exploration_rate, experience_replay, double_dqn,
                  batch_size=BATCH_SIZE, target_update_interval=TARGET_UPDATE_INTERVAL, model_path=None):
-        """ Initialise the agent using the given hyperparameter values.
+        """Initialise the agent using the given hyperparameter values.
 
         Args:
-            environment (learn.Environment): the environment for the agent to act in.
-            learning_rate (float): controls model weights are adjusted.
+            environment (learn.Environment): environment for the agent to act in.
+            learning_rate (float): controls how model weights are adjusted.
             discount_rate (float): controls how the agent values future actions.
             exploration_rate (float): controls how much the agent explores.
             experience_replay (bool): whether to use experience replay or not.
@@ -381,8 +378,8 @@ class Agent:
         self.__exploration_rate = exploration_rate
 
         # Initialise the replay memory as empty.
-        self.__replay_memory = []
         # The memory size is 1 if experience replay is not being used.
+        self.__replay_memory = []
         self.__max_replay_memory = MAX_REPLAY_MEMORY if experience_replay else 1
 
         # If a model path is given, try to load the model.
@@ -411,8 +408,8 @@ class Agent:
 
         if double_dqn:
             # If using double deep Q-learning, create a new model with the same architecture as above.
-            self.__target_model = self.__create_model()
             # Set the weights to be the same as the main model.
+            self.__target_model = self.__create_model()
             self.__target_model.set_weights(self.__model.get_weights())
             self.__target_update_interval = target_update_interval
             self.__target_update_counter = 0
@@ -424,7 +421,7 @@ class Agent:
     def environment(self):
         """
         Returns:
-            learn.Environment: the environment in which the agent acts.
+            learn.Environment: environment in which the agent acts.
         """
         return self.__environment
 
@@ -433,7 +430,7 @@ class Agent:
         """Set the environment in which the agent acts.
 
         Args:
-            environment (learn.Environment): the environment for the agent to act in.
+            environment (learn.Environment): environment for the agent to act in.
         """
         self.__environment = environment
 
@@ -441,15 +438,15 @@ class Agent:
     def model_path(self):
         """
         Returns:
-            str: file path of the save model.
+            str: file path of the saved model.
         """
         return self.__model_path
 
     def __create_model(self):
-        """Creates the convolutional neural network model used by the agent to evaluate actions.
+        """Create the convolutional neural network model used by the agent to evaluate actions.
 
         Returns:
-            keras.Sequential: agent's model of the action-value function.
+            keras.Sequential: model of the action-value function.
         """
         # Define the input and output dimensions based on the agent's environment.
         input_dims = (*self.__environment.state_dims, 1)
@@ -475,11 +472,11 @@ class Agent:
         """Get the action chosen by the agent in a given state.
 
         Args:
-            state (numpy.ndarray): the matrix representation of the current level state.
+            state (numpy.ndarray): matrix representation of the level state.
             training (bool, optional): whether to use the epsilon-greedy strategy or not (only used in training).
 
         Returns:
-            int: the index of the agent's chosen action.
+            int: index of the agent's chosen action.
         """
         # Get the action indices of the unknown cells in the environment.
         unknown = self.__environment.unknown()
@@ -490,9 +487,11 @@ class Agent:
         else:
             # If a random action was not chosen, predict the expected future reward of each action in the given state.
             action_rewards = self.__model.predict(np.reshape(state, (1, *self.__environment.state_dims, 1)))[0]
-            # Set a reward of -infinity for known cells.
+
+            # Set a reward of negative infinity for known cells.
             filtered_rewards = np.zeros_like(action_rewards) - float('inf')
             filtered_rewards[unknown] = action_rewards[unknown]
+
             # Select the action with maximum future reward.
             return np.argmax(filtered_rewards)
 
@@ -516,9 +515,9 @@ class Agent:
         current_states = np.array([np.expand_dims(s, -1) for s, _, _, _, _ in batch])
         current_state_rewards = np.array([r for _, _, r, _, _ in batch])
 
-        # If the discount rate is non-zero, we need to consider the future reward in each state.
+        # If the discount rate is non-zero, consider the future reward in each state.
         if self.__discount_rate > 0:
-            # Use the target model is using double deep Q-learning.
+            # Use the target model if using double deep Q-learning.
             predictor = self.__target_model if self.__target_model else self.__model
 
             # Predict the expected future reward from each of the resulting states in each experience.
@@ -527,7 +526,7 @@ class Agent:
 
             # If the level is not solved in each of these resulting states, add the predicted future reward
             # with an adjustment from the discount rate.
-            # If the level is solved in the resulting state, there will be no additional rewards.
+            # If the level is solved in the state, there will be no additional rewards from that point onwards.
             for i, (_, action, _, _, solved) in enumerate(batch):
                 if not solved:
                     current_state_rewards[i][action] += self.__discount_rate * np.max(next_state_rewards[i])
@@ -560,14 +559,14 @@ class Trainer:
 
     @staticmethod
     def __train_val_accuracy(agent, levels_path, train_val_split, level_count, new_log=False):
-        """Compute the training and validation accuracy of an agent on a given set of levels.
+        """Compute the training and validation accuracies of an agent on a given set of levels.
 
         Args:
             agent (learn.Agent): agent to benchmark the performance of.
             levels_path (str): path to the file to load levels from.
             train_val_split (float): proportion of the levels to use for training.
             level_count (int): how many levels have been solved so far during training.
-            new_log (bool, optional): whether to create a new log for the accuracies.
+            new_log (bool, optional): whether to create a new log for the results.
         """
         # Get the training and validation datasets.
         print('Computing accuracy...')
@@ -587,11 +586,12 @@ class Trainer:
         if not os.path.isdir(save_path):
             os.makedirs(save_path)
 
-        # Append to the existing log if present.
+        # Append the data to the existing log if present.
         filename = f'{os.path.splitext(filename)[0]}.csv'
         file_path = os.path.join(save_path, filename)
         write_mode = 'w' if new_log or not os.path.isfile(file_path) else 'a'
 
+        # Write the data to the log file.
         with open(file_path, write_mode) as file:
             file.write(f'{level_count}, {train_accuracy}, {val_accuracy}\n')
 
@@ -640,7 +640,7 @@ class Trainer:
 
     @staticmethod
     def __accuracy(agent, levels):
-        """Computes the accuracy of an agent on a given set of levels.
+        """Compute the accuracy of an agent on a given set of levels.
 
         Args:
             agent (learn.Agent): agent to benchmark the performance of.
@@ -659,13 +659,14 @@ class Trainer:
             # Create an environment for the level.
             agent.environment = environment = OfflineEnvironment(grid, grid_solved)
 
+            # Run the agent on the level.
             solved = False
             while not solved:
                 # Get the current level state.
                 current_state = environment.get_state()
 
                 # Get the agent's chosen action in the state.
-                # Ignores the epsilon-greedy strategy (only used in training).
+                # Ignore the epsilon-greedy strategy as it is only used in training.
                 action = agent.get_action(current_state, training=False)
 
                 # Perform the agent's chosen action.
@@ -687,12 +688,12 @@ class Trainer:
     def run_offline(epochs, training, learning_rate=LEARNING_RATE, discount_rate=DISCOUNT_RATE,
                     exploration_rate=EXPLORATION_RATE, experience_replay=EXPERIENCE_REPLAY, double_dqn=DOUBLE_DQN,
                     batch_size=BATCH_SIZE, model_path=None, level_size='small', train_val_split=0.8125):
-        """Run an agent in a number of offline learning environments.
+        """Run an agent in offline learning environments.
 
         Args:
-            epochs (int): number of times to train the agent over the entire dataset.
+            epochs (int): number of times to run the agent on the entire dataset.
             training (bool, optional): whether to train the agent or not.
-            learning_rate (float, optional): controls model weights are adjusted.
+            learning_rate (float, optional): controls how model weights are adjusted.
             discount_rate (float, optional): controls how the agent values future actions.
             exploration_rate (float, optional): controls how much the agent explores.
             experience_replay (bool, optional): whether to use experience replay or not.
@@ -727,7 +728,7 @@ class Trainer:
                 agent.environment = environment = OfflineEnvironment(grid, grid_solved)
                 Trainer.__run(agent, environment, training)
 
-                # Compute and log the training and validation accuracy at 5 points during training.
+                # Compute and log the training and validation accuracies at 5 points during training.
                 level_count += 1
                 if i % (len(train_levels) // 5) == 0:
                     print(f'>>> {i}/{len(train_levels)}')
@@ -741,14 +742,14 @@ class Trainer:
     def run_online(agent, window, delay=False, training=False, learning_rate=LEARNING_RATE,
                    discount_rate=DISCOUNT_RATE, exploration_rate=EXPLORATION_RATE, experience_replay=EXPERIENCE_REPLAY,
                    double_dqn=DOUBLE_DQN, batch_size=BATCH_SIZE, model_path=None):
-        """Runs an agent in an online learning environment.
+        """Run an agent in an online learning environment.
 
         Args:
             agent (learn.Agent): agent to run in an online environment.
-            window (window.Window): the active game window to run the agent on.
+            window (window.Window): active game window to run the agent on.
             delay (bool, optional): whether to use a delay after clicking cells.
             training (bool, optional): whether train the agent or not.
-            learning_rate (float, optional): controls model weights are adjusted.
+            learning_rate (float, optional): controls how model weights are adjusted.
             discount_rate (float, optional): controls how the agent values future actions.
             exploration_rate (float, optional): controls how much the agent explores.
             experience_replay (bool, optional): whether to use experience replay or not.
@@ -757,7 +758,7 @@ class Trainer:
             model_path (str, optional): file path to an existing model to load.
 
         Returns:
-            learn.Agent: the after being run on the online environment.
+            learn.Agent: agent after being run on the online environment.
         """
         # Create an online environment for the active game window.
         parser = LevelParser(window)
@@ -766,9 +767,9 @@ class Trainer:
         # If an agent was not given, create one.
         if not agent:
             agent = Agent(environment, learning_rate, discount_rate, exploration_rate,
-                          experience_replay, double_dqn, batch_size, TARGET_UPDATE_INTERVAL, model_path)
+                          experience_replay, double_dqn, batch_size, model_path=model_path)
         else:
-            # Otherwise, update the environment of the given agent.
+            # Otherwise, update the environment of the agent.
             agent.environment = environment
 
         # Run the agent on the online environment.
@@ -786,15 +787,17 @@ class Trainer:
 
         Args:
             agent (learn.Agent): agent to run in the environment.
-            environment (learn.Environment): environment for the agent to act in
-            training (bool): whether the agent learns from experiences.
+            environment (learn.Environment): environment for the agent to act in.
+            training (bool): whether the agent should learn from experiences.
         """
         solved = False
         while not solved:
             # Get the current state of the environment.
             current_state = environment.get_state()
+
             # Get the action chosen by the agent.
             action = agent.get_action(current_state, training)
+
             # Perform the agent's chosen action.
             new_state, rewards, solved = environment.step(action)
 
@@ -807,7 +810,7 @@ if __name__ == '__main__':
     # Train a new model offline for 7 epochs.
     Trainer.run_offline(7, training=True)
 
-    # Test the accuracy of the model architecture defined above on three different level sizes.
+    # Test the accuracy of the model architecture (defined above) on three level sizes.
     # Note that these models are pre-trained.
     Trainer.test_accuracy('resources/models/model_4.h5', 'small')
     Trainer.test_accuracy('resources/models/model_12.h5', 'medium')
