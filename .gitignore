@@ -1,4 +1,4 @@
-/hexcells-solver/__pycache__
-/hexcells-solver/resources/glpk/*
+/HexSolver/__pycache__
+/HexSolver/resources/glpk/*
 /.idea
 /venv
