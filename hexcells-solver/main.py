@@ -8,21 +8,22 @@ from tkinter import messagebox
 from subprocess import Popen
 
 from data import GAMEIDS
-from parse import STEAM_PATH
 from navigate import Navigator
 from window import WindowNotFoundError
+from parse import STEAM_PATH, RESOURCES_PATH
 from learn import Trainer, LEARNING_RATE, DISCOUNT_RATE, EXPLORATION_RATE
 
 
 class GUI:
-    """Contains the code for the GUI and its associated functionality."""
+    """Contains the code for the graphical user interface and its associated functionality."""
 
     def __init__(self):
-        # Create the main GUI window
+        # Create the main GUI window.
         self.__root = tk.Tk()
         self.__root.title('HexSolver')
         self.__root.resizable(width=False, height=False)
 
+        # Define the (non-default) fonts used for the various GUI components.
         self.__button_font = ('Arial', 10)
         self.__title_font = ('Arial Black', 10)
         self.__radiobutton_font = ('Arial Black', 9)
@@ -38,7 +39,7 @@ class GUI:
         tk.mainloop()
 
     def __setup_vars(self):
-        """Define the variables set by the components of the GUI."""
+        """Define the variables used by the components of the GUI."""
         # Which game in the Hexcells series is currently running.
         self.__game_var = tk.StringVar(self.__root)
 
@@ -66,26 +67,26 @@ class GUI:
         self.__level_var.set('-')  # Not assigned initially.
         self.__level_var.trace('w', self.__check_ready_to_solve)
 
-        # Whether to create a new model or load an existing one.
+        # Whether to create a new model or to load an existing one.
         self.__model_var = tk.IntVar(self.__root)
-        self.__model_var.set(0)
+        self.__model_var.set(0)  # Initially a new model.
         self.__model_var.trace('w', self.__on_model_var_update)
 
         # Whether to train a model when running it or not.
         self.__train_var = tk.BooleanVar(self.__root)
-        self.__train_var.set(False)
+        self.__train_var.set(False)  # Initially no training.
 
         # Whether to use experience replay or not.
         self.__replay_var = tk.BooleanVar(self.__root)
-        self.__replay_var.set(False)
+        self.__replay_var.set(False)  # Initially no experience replay.
 
         # Whether to use double deep Q-learning or not.
         self.__double_var = tk.BooleanVar(self.__root)
-        self.__double_var.set(False)
+        self.__double_var.set(False)  # Initially no DDQN.
 
         # Number of epochs to run a model for.
         self.__epochs_var = tk.StringVar()
-        self.__epochs_var.set('3')
+        self.__epochs_var.set('3')  # 3 epochs initially.
 
         # Value for the learning rate hyperparameter.
         self.__learning_rate_var = tk.StringVar()
@@ -101,7 +102,7 @@ class GUI:
 
         # File path to a model to load.
         self.__model_path_var = tk.StringVar()
-        self.__model_path_var.set('')
+        self.__model_path_var.set('')  # Initially no path.
 
         # Whether to use online or offline learning.
         self.__mode_var = tk.StringVar(self.__root)
@@ -119,7 +120,7 @@ class GUI:
         self.__game_label = tk.Label(self.__game_frame, text=frame_title, font=self.__title_font)
         self.__game_label.grid(sticky='w', row=0, column=0, columnspan=2)
 
-        # Create the three radiobuttons for selecting the game to load.
+        # Create the three radiobuttons for selecting which game to load.
         self.__game_radiobuttons = []
         for i, game in enumerate(GAMEIDS, 1):
             radiobutton = tk.Radiobutton(self.__game_frame, variable=self.__game_var, value=game,
@@ -127,7 +128,7 @@ class GUI:
             radiobutton.grid(sticky='w', row=i, column=0)
             self.__game_radiobuttons.append(radiobutton)
 
-        # Create a frame to contain the "Select Save" text and a dropdown menu.
+        # Create a frame to contain the "Select Save" text and dropdown menu.
         saves = [1, 2, 3]
         self.__save_frame = tk.Frame(self.__game_frame)
         self.__save_label = tk.Label(self.__save_frame, text='Select Save:')
@@ -160,12 +161,12 @@ class GUI:
             radiobutton.grid(sticky='w', row=i + 1, column=0)
             self.__solver_radiobuttons.append(radiobutton)
 
-        # Create a frames containing a set/level selection dropdowns with an associated label.
+        # Create frames containing set and level selection dropdowns with associated labels.
         self.__solver_optionmenus = []
+        options = ['1', '2', '3', '4', '5', '6']
         labels = ['Select Set', 'Select Level']
         variables = [self.__set_var, self.__level_var]
         for i, (variable, label) in enumerate(zip(variables, labels), 1):
-            options = ['1', '2', '3', '4', '5', '6']
             frame = tk.Frame(self.__solver_frame)
             label = tk.Label(frame, text=f'{label}:')
             optionmenu = tk.OptionMenu(frame, variable, *options)
@@ -222,7 +223,7 @@ class GUI:
             self.__learning_entries.append(entry)
 
         # Create a button that brings up a file selection dialogue box when clicked.
-        # Also create an entry to display the selected file.
+        # Also, create an entry to display the selected file.
         self.__path_frame = tk.Frame(self.__learning_frame)
         self.__path_button = tk.Button(self.__path_frame, text='Select Model: ',
                                        state=tk.DISABLED, command=self.__select_model_path)
@@ -283,14 +284,14 @@ class GUI:
         self.__solver_optionmenus[0].configure(state=state)
         self.__solver_optionmenus[1].configure(state=state)
 
-        # Only enable the option to run the solver on the level generator, or run a model, if the
-        # game is Hexcells Infinite (both require level generator which is not in the other games).
+        # Only enable the option to run the solver on the level generator, or to run a model, if the
+        # game is Hexcells Infinite (both require the level generator which is not in the other games).
         state = tk.NORMAL if status and self.__game_var.get() == 'Hexcells Infinite' else tk.DISABLED
         self.__solver_radiobuttons[3].configure(state=state)
         self.__train_button.configure(state=state)
 
     def __load_game(self):
-        """Loads a chosen game in the Hexcells series."""
+        """Load a chosen game in the Hexcells series."""
         try:
             # Try to close the game currently open (if applicable).
             self.__menu.close_game()
@@ -327,7 +328,7 @@ class GUI:
                 sys.exit()
 
             except WindowNotFoundError:
-                # There is no window yet.
+                # Try again as there is no window yet.
                 self.__update_status(False)
 
         # Wait until the main menu screen has fully loaded before continuing.
@@ -401,7 +402,7 @@ class GUI:
         if self.__model_var.get() == 0:
             self.__path_button.configure(state=tk.DISABLED)
             self.__path_entry.configure(state=tk.DISABLED)
-            self.__model_path_var.set('')
+            self.__model_path_var.set('')  # Clear the text in the entry.
 
         # Otherwise, enable the model path entry and button.
         elif self.__model_var.get() == 1:
@@ -419,14 +420,14 @@ class GUI:
             self.__train_button.configure(state=tk.NORMAL)
 
     def __select_model_path(self):
-        """This method is called when the file selection button is clicked."""
-        # Get the path to resources/models using the path of this file.
-        models_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resources', 'models')
+        """This method is called when the model path selection button is clicked."""
+        # Get the path to the models file using the path of this file.
+        models_dir = os.path.join(RESOURCES_PATH, 'models')
 
         # Open a file selection dialogue box for the user to select a HDF5 file.
         model_path = filedialog.askopenfilename(parent=self.__root, initialdir=models_dir,
                                                 title='Model Selection', filetypes=[('HDF5 file', '.h5')])
-        self.__model_path_var.set(model_path)
+        self.__model_path_var.set(model_path)  # Display the selected path.
 
     def __run_solver(self):
         """This method is called when the solve button is clicked."""
@@ -437,20 +438,20 @@ class GUI:
             return
 
         try:
-            # Solve a specific level given by the user via the dropdown menus.
+            # Solve a specific level given by the user via the set and level selection dropdown menus.
             if self.__solve_var.get() == 0:
                 level = f'{self.__set_var.get()}-{self.__level_var.get()}'
                 self.__menu.solve_level(self.__save_var.get(), level, self.__delay_var.get())
 
-            # Solve a specific set of levels given by the user via the dropdown menu.
+            # Solve a specific set of levels given by the user via the set selection dropdown menu.
             elif self.__solve_var.get() == 1:
                 self.__menu.solve_set(self.__save_var.get(), self.__set_var.get(), self.__delay_var.get())
 
-            # Solve an entire game.
+            # Solve the entire game currently running..
             elif self.__solve_var.get() == 2:
                 self.__menu.solve_game(self.__save_var.get(), self.__delay_var.get())
 
-            # Solve a randomly generate level.
+            # Solve a randomly generated level.
             elif self.__solve_var.get() == 3:
                 self.__menu.level_generator(1, self.__delay_var.get())
 
@@ -459,6 +460,7 @@ class GUI:
             messagebox.showerror('Error', str(e))
 
         finally:
+            # Check that the solving options are still set to valid values.
             self.__solver_radiobutton_callback()
 
     def __run_model(self):
@@ -484,13 +486,13 @@ class GUI:
             return
 
         try:
-            # Check if offline learning was selected.
+            # Run offline learning if selected.
             if self.__mode_var.get() == 'Offline':
                 Trainer.run_offline(epochs, self.__train_var.get(), learning_rate,
                                     discount_rate, exploration_rate, self.__replay_var.get(),
                                     self.__double_var.get(), model_path=model_path)
 
-            # Check if online learning was selected.
+            # Run online learning if selected.
             elif self.__mode_var.get() == 'Online':
                 # Make sure that the game is running.
                 self.__check_game_running()
@@ -498,7 +500,7 @@ class GUI:
                     messagebox.showerror('Error', 'Hexcells window not found')
                     return
 
-                # Define a function that can be repeatedly called to run the agent.
+                # Define a function that can be repeatedly called on each epoch to run the agent.
                 def train(agent):
                     Trainer.run_online(agent, self.__menu.window, self.__delay_var.get(),
                                        self.__train_var.get(), learning_rate, discount_rate,

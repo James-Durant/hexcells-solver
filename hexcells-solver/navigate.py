@@ -12,8 +12,8 @@ class Navigator:
         """Capture the active game window.
 
         Args:
-            use_level_hashes (bool, optional): whether to load level hashes.
-            use_screen_hashes (bool, optional): whether to load screen hashes.
+            use_level_hashes (bool, optional): whether to load level perceptual hashes.
+            use_screen_hashes (bool, optional): whether to load screen perceptual hashes.
         """
         self.__window = get_window()
         self.__menu_parser = MenuParser(self.__window, use_level_hashes, use_screen_hashes)
@@ -30,7 +30,7 @@ class Navigator:
     def title(self):
         """
         Returns:
-            str: the name of the game that is currently active.
+            str: name of the game that is currently active.
         """
         return self.__window.title
 
@@ -50,7 +50,7 @@ class Navigator:
             raise RuntimeError('Invalid save slot given')
 
         # Go from the current screen to the main menu screen.
-        # Skip this if hashes are not being used (this is the case when called in data.py)
+        # Skip this if perceptual hashes are not being used (this is the case when called in data.py).
         if screen != 'main_menu':
             self.__transition_to_main_menu()
 
@@ -68,7 +68,7 @@ class Navigator:
         screen = self.__menu_parser.get_screen()
 
         # If in a level, exit it.
-        # The new screen could be the level selection screen or the level generator screen.
+        # The new screen could be the level selection or the level generator screen.
         if screen in ['in_level', 'level_completion', 'level_exit']:
             self.exit_level(screen)
 
@@ -77,7 +77,7 @@ class Navigator:
             self.back()
 
     def exit_level(self, screen=None):
-        """Exit a level to return to the level selection screen or the level generator screen.
+        """Exit a level to return to the level selection or the level generator screen.
 
         Args:
             screen (str, optional): screen that is currently showing.
@@ -110,18 +110,18 @@ class Navigator:
         """Transition to the level selection screen.
 
         Args:
-            save (int): the save slot to load.
+            save (str): save slot to load.
         """
         # Get the screen currently shown.
         screen = self.__menu_parser.get_screen()
 
-        # If the game is currently in a level, exit the level.
+        # If the game is in a level, exit it.
         if screen in ['in_level', 'level_completion', 'level_exit']:
             self.exit_level(screen)
             # The new screen could be the level selection or level generator screen.
             screen = self.__menu_parser.get_screen()
 
-        # If already on the level selection screen, nothing needs to be done.
+        # If already on the level selection screen, nothing futher needs to be done.
         if screen == 'level_select':
             return
 
@@ -138,13 +138,13 @@ class Navigator:
         # Get the screen that is currently being shown.
         screen = self.__menu_parser.get_screen()
 
-        # If the game is currently in a level, exit the level.
+        # If the game is in a level, exit it.
         if screen in ['in_level', 'level_completion', 'level_exit']:
             self.exit_level(screen)
             # The new screen could be the level selection or level generator screen.
             screen = self.__menu_parser.get_screen()
 
-        # If already on the level selection screen, nothing needs to be done.
+        # If already on the level selection screen, nothing futher needs to be done.
         if screen == 'level_generator':
             return
 
@@ -160,7 +160,7 @@ class Navigator:
 
         Args:
             continuous (bool): whether to click the "next level" button on completion.
-            level (str, optional): the level being solved.
+            level (str, optional): level being solved.
             delay (bool, optional): whether to add a delay after clicking cells.
         """
         # Solve the level.
@@ -173,7 +173,7 @@ class Navigator:
         time.sleep(1.25)
         next_button, menu_button = self.__menu_parser.parse_level_completion()
 
-        # If more levels are to be solved and the level was not the last the set.
+        # Check if more levels are to be solved and that the level was not the last in a set.
         if continuous and next_button is not None:
             self.__window.click(next_button)
             time.sleep(1.75)
@@ -193,7 +193,7 @@ class Navigator:
         """Solve a single level. This method does not assume that the level is being displayed.
 
         Args:
-            save (int): save slot to load.
+            save (str): save slot to load.
             level_str (str): level to solve.
             delay (bool, optional): whether to use a delay after clicking cells.
         """
@@ -207,18 +207,18 @@ class Navigator:
             self.__window.click(levels[level_str])
 
         except KeyError:
-            # If the button was not parsed, the level has not been unlocked.
-            raise RuntimeError('Selected level is not unlocked yet')
+            # If the level's button was not parsed, the level has not been unlocked.
+            raise RuntimeError('Selected level not unlocked yet')
 
         # Wait until the level has loaded and then solve it.
         self.wait_until_loaded()
-        self.solve(False, level_str, delay)  # False to solve the single level.
+        self.solve(False, level_str, delay)  # False to only solve the one level.
 
     def solve_set(self, save, set_str, delay=False):
         """Solve a set of levels.
 
         Args:
-            save (int): save slot to load
+            save (str): save slot to load
             set_str (str): set of levels to solve.
             delay (bool, optional): whether to add a delay after clicking cells.
         """
@@ -229,13 +229,13 @@ class Navigator:
         levels = self.__menu_parser.parse_level_selection()
 
         try:
-            # Try to click on the button corresponding to the first level.
+            # Try to click on the button corresponding to the first level in the set.
             level = set_str + '-1'
             self.__window.click(levels[level])
 
         except KeyError:
             # If the button was not parsed, the level has not been unlocked.
-            raise RuntimeError('Selected level is not unlocked yet')
+            raise RuntimeError('Selected level not unlocked yet')
 
         # Wait until the level has loaded and then solve it.
         self.wait_until_loaded()
@@ -245,7 +245,7 @@ class Navigator:
         """Solves all levels in the game currently running.
 
         Args:
-            save (int): save slot to load.
+            save (str): save slot to load.
             delay (bool, optional): whether to add a delay after clicking cells.
         """
         # Move to the level selection screen.
@@ -264,8 +264,7 @@ class Navigator:
             delay (bool, optional): whether to use a delay after clicking cells.
             train (function, optional): function to call to run a model.
         """
-        # Check that the game is Hexcells Infinite as the other two games do not
-        # have the level generator.
+        # Check that the game is Hexcells Infinite as the other two games do not have the level generator.
         if self.__window.title != 'Hexcells Infinite':
             raise RuntimeError('Only Hexcells Infinite has the level generator')
 
@@ -306,7 +305,7 @@ class Navigator:
         """Load a custom level from a given file path.
 
         Args:
-            level_path (str): path to the level to load.
+            level_path (str): path to the custom level to load.
             screen (str, optional): screen that is currently showing.
         """
         # Go from the current screen to the main menu.
@@ -319,14 +318,14 @@ class Navigator:
             pyperclip.copy(level)
 
         # Parse the main menu screen and click on the user levels button.
-        # This will load the custom level.
+        # With the level contents in the clipboard, this will load the custom level.
         buttons = self.__menu_parser.parse_main_menu()
         user_level_button = buttons['user_levels']
         self.__window.click(user_level_button)
         self.__menu_parser.wait_until_loaded()
 
     def back(self):
-        """Press the escape key and wait a short period."""
+        """Press the escape key and wait for a short period."""
         self.__window.press_key('esc')
         time.sleep(1.5)
 

@@ -18,7 +18,7 @@ GAMEIDS = {'Hexcells': '265890', 'Hexcells Plus': '271900', 'Hexcells Infinite':
 
 
 class Generator:
-    """The parent class for the LearningData and ImageData classes containing code common to both."""
+    """Parent class for the LearningData and ImageData classes and contains code common to both."""
 
     def __init__(self):
         """Store the paths to the Hexcells options.txt file and Steam executable."""
@@ -26,18 +26,18 @@ class Generator:
         self.__steam_path = os.path.join(STEAM_PATH, 'steam.exe')
 
     def _load_game(self, game, resolution, use_level_hashes=True, use_screen_hashes=True):
-        """Load a given game at a resolution, closing the game currently current if necessary.
+        """Load a chosen game at a given resolution, closing the game currently current if necessary.
 
         Args:
             game (str): game to load.
-            resolution (tuple): screen width and screen height values defining game resolution.
-            use_level_hashes (bool, optional): whether to load level hashes.
-            use_screen_hashes (bool, optional): whether to load screen hashes.
+            resolution (tuple): screen width and screen height values that define the resolution.
+            use_level_hashes (bool, optional): whether to load level perceptual hashes.
+            use_screen_hashes (bool, optional): whether to load screen perceptual hashes.
 
         Returns:
-            navigate.Navigator: the newly opened game window encapsulated as a Navigator object.
+            navigate.Navigator: newly opened game window, encapsulated as a Navigator object.
         """
-        # Try to access a running game window and close it.
+        # Try to access the active game window and close it.
         try:
             menu = Navigator(use_level_hashes, use_screen_hashes)
             menu.close_game()
@@ -60,7 +60,7 @@ class Generator:
         with open(options_path, 'w') as file:
             json.dump(data, file)
 
-        # Run the chosen game by sending the appropriate command to the Steam executable.
+        # Start the chosen game by sending a command to the Steam executable.
         Popen([self.__steam_path, f'steam://rungameid/{GAMEIDS[game]}'],
               shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
 
@@ -78,11 +78,11 @@ class LearningData(Generator):
     """Contains the code for generating training data (i.e., levels and their pre-computed solutions) for deep Q-learning."""
 
     def __init__(self):
-        """Cell the parent constructor."""
+        """Call the parent's constructor."""
         super().__init__()
 
     def make_dataset(self, num_levels):
-        """Creates a dataset consisting of levels and associated solution.
+        """Create a dataset consisting of levels and associated solutions.
 
         Args:
             num_levels (int): number of levels to generate.
@@ -154,7 +154,7 @@ class LearningData(Generator):
                         skip = True
 
                     # If there is at least one cell to left click, click and parse all identified cells,
-                    # leave one left click cell.
+                    # but leave one left click cell.
                     elif len(left_click_cells) > 0:
                         game_parser.parse_clicked(grid, left_click_cells[1:], right_click_cells)
                         left_click_cells, right_click_cells = [left_click_cells[0]], []
@@ -205,7 +205,7 @@ class LearningData(Generator):
                     menu.window.click(exit_button)
                     menu.wait_until_loaded()
 
-                    # If the file to save levels already exists, load the contents.
+                    # If the file to save levels to already exists, load its contents.
                     file_path = os.path.join(RESOURCES_PATH, 'levels', 'levels.pickle')
                     if os.path.isfile(file_path):
                         with open(file_path, 'rb') as file:
@@ -228,14 +228,14 @@ class LearningData(Generator):
 
 
 class ImageData(Generator):
-    """Contains the code for generating the hashes used in the level and menu parsing algorithms."""
+    """Contains the code for generating the perceptual hashes used in the level and menu parsing algorithms."""
 
     def __init__(self):
-        """Call the parent constructor."""
+        """Call the parent's constructor."""
         super().__init__()
 
     def make_dataset(self, dataset_type):
-        """Creates a dataset of image hashes and associated labels of a chosen type.
+        """Create a dataset of perceptual hashes and associated labels.
 
         Args:
             dataset_type (str): dataset type to generate.
@@ -245,7 +245,7 @@ class ImageData(Generator):
             self.__make_dataset_screen()
             return
 
-        # Create the file path to the directory to save the hashes to.
+        # Create the file path to the directory to save the perceptual hashes to.
         if dataset_type == 'blue_special':
             hash_path = os.path.join(RESOURCES_PATH, 'blue', 'hashes.pickle')
             game = 'Hexcells Plus'
@@ -254,109 +254,108 @@ class ImageData(Generator):
             hash_path = os.path.join(RESOURCES_PATH, dataset_type, 'hashes.pickle')
             game = 'Hexcells Infinite'
 
-        # Iterate over each resolution to generate hashes for.
+        # Iterate over each resolution to generate perceptual hashes for.
         hashes, labels = [], []
         for resolution in RESOLUTIONS:
-            # Load the appropriate game at the resolution.
-            # Only load hashes if not generating the level selection dataset.
+            # Load the appropriate game at the resolution of this iteration.
+            # Only load level selection hashes if not generating the level selection dataset.
             use_level_hashes = dataset_type != 'level_select'
             menu = self._load_game(game, resolution, use_level_hashes, False)
 
             # The column dataset is split into normal, consecutive and non-consecutive hint types.
             if dataset_type == 'column':
                 hashes_res, labels_res = [], []
-                # For each of the separate hint types.
                 for hint in ['normal', 'consecutive', 'non-consecutive']:
                     # Load the custom level specific to the hint type.
                     level_path = os.path.join(RESOURCES_PATH, dataset_type, f'{hint}_level.hexcells')
                     menu.load_custom_level(level_path, screen='main_menu')
 
-                    # Get the hashes from the custom level.
+                    # Get the perceptual hashes from the custom level.
                     hashes_hint, labels_hint = self.__get_hashes(menu.window, f'{dataset_type}_{hint}')
+
                     # Append them to the rest of the column dataset.
                     hashes_res += hashes_hint
                     labels_res += labels_hint
 
-                    # Exit the level to load the next hint type.
+                    # Exit the level to prepare for the next hint type.
                     menu.exit_level(screen='in_level')
 
             # The diagonal dataset is split into two parts for each hint type.
             elif dataset_type == 'diagonal':
                 hashes_res, labels_res = [], []
-                # Iterate over both halves for each hint type.
                 for part in ['1', '2']:
                     for hint in ['normal', 'consecutive', 'non-consecutive']:
                         # Load the custom level for the hint type and part.
                         level_path = os.path.join(RESOURCES_PATH, dataset_type, f'{hint}_{part}_level.hexcells')
                         menu.load_custom_level(level_path, screen='main_menu')
 
-                        # Get the hashes from the custom level.
+                        # Get the perceptual hashes from the custom level.
                         hashes_hint, labels_hint = self.__get_hashes(menu.window, f'{dataset_type}_{hint}_{part}')
+
                         # Append them to the rest of the diagonal dataset.
                         hashes_res += hashes_hint
                         labels_res += labels_hint
 
-                        # Exit the level to load the next hint type.
+                        # Exit the level to prepare for the next hint type or part.
                         menu.exit_level(screen='in_level')
 
             else:
                 if dataset_type == 'level_select':
-                    # Load the first save slot to transition to the level select screen.
+                    # Load the first save slot to transition to the level selection screen.
                     menu.load_save(1, screen='main_menu')
 
                 elif dataset_type == 'blue_special':
-                    # Load the first save slot to transition to the level select screen.
+                    # Load the first save slot,
                     menu.load_save(1, screen='main_menu')
-
-                    # Parse the level select screen and click on level 4-6.
+                    # Parse the level selection screen and click on level 4-6.
                     menu_parser = MenuParser(menu.window, use_level_hashes=True, use_screen_hashes=False)
                     levels = menu_parser.parse_level_selection()
                     menu.window.click(levels['4-6'])
                     menu.wait_until_loaded()
 
                 else:
-                    # In all other cases, load the singular custom level for the dataset type.
+                    # In all other cases, load the single custom level for the dataset.
                     level_path = os.path.join(RESOURCES_PATH, dataset_type, 'level.hexcells')
                     menu.load_custom_level(level_path, screen='main_menu')
 
-                # Get the hashes for the level.
+                # Get the perceptual hashes for the level.
                 hashes_res, labels_res = self.__get_hashes(menu.window, dataset_type)
 
-            # Add the hashes for this resolution to the overall dataset.
+            # Add the perceptual hashes for this resolution to the larger dataset.
             hashes += hashes_res
             labels += labels_res
 
             # Close the game to prepare for loading the next resolution.
             menu.close_game()
 
-            # The counter dataset need only be run for one resolution.
+            # The counter dataset only needs to be run for one resolution.
             if dataset_type == 'counter':
                 break
 
-        # For the special blue dataset, add the hashes and labels to the existing blue dataset.
+        # For the special blue dataset, add the perceptual hashes and labels to the existing blue dataset.
         if dataset_type == 'blue_special':
             with open(hash_path, 'rb') as file:
                 blue_hashes, blue_labels = pickle.load(file)
                 hashes += blue_hashes
                 labels += blue_labels
 
-        # Finally, record the dataset that combines the hashes and labels from all resolutions.
+        # Finally, save the dataset that combines the hashes and labels from all resolutions.
         with open(hash_path, 'wb') as file:
             pickle.dump((hashes, labels), file, protocol=pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
     def __get_hashes(window, dataset_type):
-        """Get the hashes from a game window for a given dataset type.
+        """Get the perceptual hashes from a game window for a given dataset type.
 
         Args:
-            window (window.Window): window to extract hashes from.
+            window (window.Window): window to extract perceptual hashes from.
             dataset_type (str): dataset type to generate.
 
         Returns:
             tuple: extracted hashes and associated labels.
         """
         # In all the following, use_hashes is set as false to prevent
-        # loading of hashes, as they do not exist yet!
+        # loading of perceptual hashes, as they do not exist yet.
         if dataset_type == 'level_select':
             parser = MenuParser(window, use_level_hashes=False, use_screen_hashes=False)
             labels = ['3-3', '3-2', '2-3', '2-2', '3-4', '3-1',
@@ -366,7 +365,7 @@ class ImageData(Generator):
                       '5-3', '5-2', '6-3', '6-2', '5-4', '5-1',
                       '6-4', '6-1', '5-5', '5-6', '6-5', '6-6']
 
-            # Parse the level select screen.
+            # Parse the level selection screen.
             hashes = parser.parse_level_selection(use_hashes=False)
 
         elif dataset_type in ['black', 'blue', 'blue_special', 'counter']:
@@ -383,34 +382,34 @@ class ImageData(Generator):
                 mistakes_hash = None
                 # Iterate over each of the 476 orange cells.
                 for cell in parser.parse_cells(screenshot, Cell.ORANGE):
-                    # Get hashes of the counter values.
+                    # Get perceptual hashes of the counter values.
                     mistakes_hash, remaining_hash = parser.parse_counters(screenshot, use_hashes=False)
                     hashes.append(remaining_hash)
 
-                    # Click on the cell to reduce the "remaining blue cell" counter.
+                    # Click on the cell to reduce the remaining counter.
                     window.click_cell(cell, 'left')
                     remaining -= 1
 
                     # Take a screenshot of the new level state.
                     screenshot = window.screenshot()
 
-                # The hash of the "mistakes made" counter is of the value 0.
+                # The hash of the mistakes counter is of the value 0.
                 hashes.append(mistakes_hash)
 
             elif dataset_type == 'black':
-                # Get the hashes of the black cells.
+                # Get perceptual hashes of the black cells.
                 hashes = parser.parse_cells(screenshot, Cell.BLACK, use_hashes=False)
                 # The ground truth labels for the custom level.
                 labels = ['{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '1', '2', '3',
                           '4', '5', '6', '?', '-2-', '-3-', '-4-', '{0}', '0']
 
             elif dataset_type == 'blue':
-                # Get the hashes of the blue cells.
+                # Get perceptual hashes of the blue cells.
                 hashes = parser.parse_cells(screenshot, Cell.BLUE, use_hashes=False)
                 labels = [str(i) for i in range(0, 19)]
 
             elif dataset_type == 'blue_special':
-                # Get the hashes of the blue cells.
+                # Get perceptual hashes of the blue cells.
                 hashes = parser.parse_cells(screenshot, Cell.BLUE, use_hashes=False)
                 labels = ['{5}', '-2-', '5', '4', '2', '4', '5', '{4}', '{2}', '5', '3', '10', '10']
 
@@ -419,16 +418,15 @@ class ImageData(Generator):
                 raise RuntimeError('Invalid dataset type')
 
         else:
-            # The ground truth labels for each of the column and diagonal custom levels.
-            # Take a look at the levels in resources/levels to understand these labels.
+            # Define the ground truth labels for each of the column and diagonal custom levels.
             if dataset_type == 'column_normal':
                 labels = [str(i) for i in range(0, 17)]
 
             elif dataset_type == 'column_consecutive':
-                labels = ['{' + str(i) + '}' for i in range(0, 17)]
+                labels = [f'{{{i}}}' for i in range(0, 17)]
 
             elif dataset_type == 'column_non-consecutive':
-                labels = ['-' + str(i) + '-' for i in range(2, 16)]
+                labels = [f'-{i}-' for i in range(2, 16)]
 
             elif dataset_type == 'diagonal_normal_1':
                 labels = [str(i) for i in range(1, 16)]
@@ -441,9 +439,9 @@ class ImageData(Generator):
                           '20', '23', '21', '24', '26', '27', '25', '22']
 
             elif dataset_type == 'diagonal_consecutive_1':
-                labels = ['{' + str(i) + '}' for i in range(1, 16)]
+                labels = [f'{{{i}}}' for i in range(1, 16)]
                 labels += ['{0}', '{0}']
-                labels += ['{' + str(i) + '}' for i in range(15, 0, -1)]
+                labels += [f'{{{i}}}' for i in range(15, 0, -1)]
 
             elif dataset_type == 'diagonal_consecutive_2':
                 labels = ['{24}', '{25}', '{27}', '{26}', '{23}', '{22}',
@@ -452,8 +450,8 @@ class ImageData(Generator):
                           '{21}', '{24}', '{26}', '{27}', '{25}', '{22}']
 
             elif dataset_type == 'diagonal_non-consecutive_1':
-                labels = ['-' + str(i) + '-' for i in range(2, 16)]
-                labels += ['-' + str(i) + '-' for i in range(15, 1, -1)]
+                labels = [f'-{i}-' for i in range(2, 16)]
+                labels += [f'-{i}-' for i in range(15, 1, -1)]
 
             elif dataset_type == 'diagonal_non-consecutive_2':
                 labels = ['-23-', '-24-', '-27-', '-26-', '-25-', '-22-',
@@ -461,10 +459,10 @@ class ImageData(Generator):
                           '-16-', '-17-', '-18-', '-19-', '-20-', '-21-',
                           '-24-', '-25-', '-26-', '-22-', '-23-']
             else:
-                # The datatype given was not valid.
+                # The given datatype was not valid.
                 raise RuntimeError('Invalid dataset type')
 
-            # Get the hashes of the grid constraints.
+            # Get perceptual hashes of the grid constraints.
             parser = LevelParser(window, use_cell_counter_hashes=True, use_grid_hashes=False)
             hashes = parser.parse_grid(use_hashes=False)
 
@@ -473,7 +471,7 @@ class ImageData(Generator):
         return hashes, labels
 
     def __make_dataset_screen(self):
-        """Generates the hashes of the different menu screens in Hexcells."""
+        """Generate perceptual hashes of the different menu screens in Hexcells."""
         # Iterate over each resolution to obtain data for.
         for resolution in RESOLUTIONS:
             images, labels = [], []
@@ -493,8 +491,7 @@ class ImageData(Generator):
             menu.close_game()
 
             # Load Hexcells Infinite and take a screenshot of the main menu screen.
-            # The reason that Hexcells and Hexcells Plus menu screens are captured is that
-            # each menu screen is different.
+            # The reason that Hexcells and Hexcells Plus menu screens are captured is that each menu screen is different.
             menu = self._load_game('Hexcells Infinite', resolution, use_screen_hashes=False)
             main_menu = menu.window.screenshot()
             images.append(main_menu)
@@ -508,17 +505,17 @@ class ImageData(Generator):
             menu.window.click(save_slot_buttons[0])
             menu_parser.wait_until_loaded()
 
-            # Take a screenshot of the level select screen.
+            # Take a screenshot of the level selection screen.
             level_select = menu.window.screenshot()
             images.append(level_select)
             labels.append('level_select')
 
-            # Parse the level select screen and click on level 1-1.
+            # Parse the level selection screen and click on level 1-1.
             levels = menu_parser.parse_level_selection()
             coords = levels['1-1']
             menu.window.click(coords)
 
-            # Press the escape key and take a screenshot of the resulting level exit screen.
+            # Press the escape key and take a screenshot of the level exit screen.
             time.sleep(2)
             menu.back()
             level_exit = menu.window.screenshot()
@@ -529,14 +526,14 @@ class ImageData(Generator):
             solver = Solver(game_parser)
             solver.solve(menu.window.title, '1-1')
 
-            # Take a screenshot of the resulting level completion screen.
+            # Take a screenshot of the level completion screen.
             menu.window.move_mouse()
             time.sleep(1.2)
             level_completion = menu.window.screenshot()
             images.append(level_completion)
             labels.append('level_completion')
 
-            # Parse the level completion screen and click on the button to return to the main menu.
+            # Parse the level completion screen and click on the button to return to the level selection screen.
             _, menu_button = menu_parser.parse_level_completion()
             menu.window.click(menu_button)
             menu.wait_until_loaded()
@@ -559,7 +556,7 @@ class ImageData(Generator):
             buttons = menu_parser.parse_main_menu()
             user_levels_button = buttons['user_levels']
             menu.window.click(user_levels_button)
-            time.sleep(4)  # Wait for the levels to show up.
+            time.sleep(4)  # Wait for the user levels to show up.
 
             # Take a screenshot of the user levels screen.
             user_levels = menu.window.screenshot()
@@ -578,7 +575,7 @@ class ImageData(Generator):
             images.append(options)
             labels.append('options')
 
-            # Resize each of the screenshots from above and calculate their hash.
+            # Resize each of the screenshots from above and calculate their perceptual hash.
             hashes = [average_hash(cv2.resize(image, MenuParser.SCREEN_HASH_DIMS, interpolation=cv2.INTER_AREA))
                       for image in images]
 
@@ -603,8 +600,9 @@ class ImageData(Generator):
 
 if __name__ == '__main__':
     # Before running any of the following, make sure to turn off the Steam overlay.
+    # Do not change the ordering.
 
-    # Create image hashing datasets. Do not change the ordering.
+    # Create the perceptual hashing datasets.
     image_generator = ImageData()
     image_generator.make_dataset('level_select')
     image_generator.make_dataset('black')
