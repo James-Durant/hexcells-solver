@@ -452,13 +452,13 @@ class LevelParser(Parser):
             self.__diagonal_data = Parser._load_hashes('diagonal')
 
         # Load the reference "cell.png" file, threshold it and extract its shape.
-        cell_image = cv2.imread(os.path.join(RESOURCES_PATH, 'cell.png'))
+        cell_image = cv2.imread(os.path.join(RESOURCES_PATH, 'shapes', 'cell.png'))
         cell_mask = cv2.inRange(cell_image, Cell.ORANGE, Cell.ORANGE)
         cell_contour, _ = cv2.findContours(cell_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         self.__cell_shape = cell_contour[0]
 
         # Load the reference "counter.png" file, threshold it and extract its shape.
-        counter_image = cv2.imread(os.path.join(RESOURCES_PATH, 'counter.png'))
+        counter_image = cv2.imread(os.path.join(RESOURCES_PATH, 'shapes', 'counter.png'))
         counter_mask = cv2.inRange(counter_image, Cell.BLUE, Cell.BLUE)
         counter_contour, _ = cv2.findContours(counter_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         self.__counter_shape = counter_contour[0]

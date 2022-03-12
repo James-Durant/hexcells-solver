@@ -1,0 +1,116 @@
+2000 Levels -> 1300 Train, 300 Validation, 400 Test
+
+Model 1:
+        model = Sequential([Conv2D(32, (3, 3), activation='relu', padding='same', input_shape=input_dims),
+                            Flatten(),
+                            Dense(128, activation='relu'),
+                            Dense(num_actions, activation='linear')])
+
+Model 2:
+        model = Sequential([Conv2D(64, (3, 3), activation='relu', padding='same', input_shape=input_dims),
+                            Flatten(),
+                            Dense(256, activation='relu'),
+                            Dense(num_actions, activation='linear')])
+
+Model 3:
+        model = Sequential([Conv2D(64, (3, 3), activation='relu', padding='same', input_shape=input_dims),
+                            Conv2D(64, (3, 3), activation='relu', padding='same'),
+                            Flatten(),
+                            Dense(256, activation='relu'),
+                            Dense(256, activation='relu'),
+                            Dense(num_actions, activation='linear')])
+
+Model 4:
+        model = Sequential([Conv2D(64, (3, 3), activation='relu', padding='same', input_shape=input_dims),
+                            Conv2D(64, (3, 3), activation='relu', padding='same'),
+                            Conv2D(64, (3, 3), activation='relu', padding='same'),
+                            Conv2D(64, (3, 3), activation='relu', padding='same'),
+                            Flatten(),
+                            Dense(256, activation='relu'),
+                            Dense(256, activation='relu'),
+                            Dense(256, activation='relu'),
+                            Dense(256, activation='relu'),
+                            Dense(num_actions, activation='linear')])
+
+Model 5:
+        model = Sequential([Conv2D(128, (3, 3), activation='relu', padding='same', input_shape=input_dims),
+                            Conv2D(128, (3, 3), activation='relu', padding='same'),
+                            Conv2D(128, (3, 3), activation='relu', padding='same'),
+                            Conv2D(128, (3, 3), activation='relu', padding='same'),
+                            Flatten(),
+                            Dense(512, activation='relu'),
+                            Dense(512, activation='relu'),
+                            Dense(512, activation='relu'),
+                            Dense(512, activation='relu'),
+                            Dense(512, activation='relu'),
+                            Dense(512, activation='relu'),
+                            Dense(num_actions, activation='linear')])
+
+Model 6:
+        model = Sequential([Conv2D(64, (2, 2), activation='relu', padding='same', input_shape=input_dims),
+                            Conv2D(64, (2, 2), activation='relu', padding='same'),
+                            Conv2D(64, (2, 2), activation='relu', padding='same'),
+                            Conv2D(64, (2, 2), activation='relu', padding='same'),
+                            Flatten(),
+                            Dense(256, activation='relu'),
+                            Dense(256, activation='relu'),
+                            Dense(256, activation='relu'),
+                            Dense(256, activation='relu'),
+                            Dense(num_actions, activation='linear')])
+
+Model 7:
+        model = Sequential([Conv2D(64, (4, 4), activation='relu', padding='same', input_shape=input_dims),
+                            Conv2D(64, (4, 4), activation='relu', padding='same'),
+                            Conv2D(64, (4, 4), activation='relu', padding='same'),
+                            Conv2D(64, (4, 4), activation='relu', padding='same'),
+                            Flatten(),
+                            Dense(256, activation='relu'),
+                            Dense(256, activation='relu'),
+                            Dense(256, activation='relu'),
+                            Dense(256, activation='relu'),
+                            Dense(num_actions, activation='linear')])
+
+Model 8:
+         model = Sequential([Conv2D(64, (3, 3), padding='same', input_shape=input_dims),
+                            LeakyReLU(alpha=0.1),
+                            Conv2D(64, (3, 3), padding='same'),
+                            LeakyReLU(alpha=0.1),
+                            Conv2D(64, (3, 3), padding='same'),
+                            LeakyReLU(alpha=0.3),
+                            Conv2D(64, (3, 3), padding='same'),
+                            LeakyReLU(alpha=0.1),
+                            Flatten(),
+                            Dense(256),
+                            LeakyReLU(alpha=0.1),
+                            Dense(256),
+                            LeakyReLU(alpha=0.1),
+                            Dense(256),
+                            LeakyReLU(alpha=0.1),
+                            Dense(256),
+                            LeakyReLU(alpha=0.1),
+                            Dense(num_actions, activation='linear')])
+
+Model 9:
+         model = Sequential([Conv2D(64, (3, 3), padding='same', input_shape=input_dims),
+                            ELU(alpha=1),
+                            Conv2D(64, (3, 3), padding='same'),
+                            ELU(alpha=1),
+                            Conv2D(64, (3, 3), padding='same'),
+                            ELU(alpha=1),
+                            Conv2D(64, (3, 3), padding='same'),
+                            ELU(alpha=1),
+                            Flatten(),
+                            Dense(256),
+                            ELU(alpha=1),
+                            Dense(256),
+                            ELU(alpha=1),
+                            Dense(256),
+                            ELU(alpha=1),
+                            Dense(256),
+                            ELU(alpha=1),
+                            Dense(num_actions, activation='linear')])
+
+Model 10: Experience replay with BATCH_SIZE=64
+Model 11: Double deep Q-learning
+Model 12: Model 4 architecture on medium levels
+Model 13: Model 4 architecture on large levels
