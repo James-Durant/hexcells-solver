@@ -969,8 +969,8 @@ class LevelParser(Parser):
             elif np.count_nonzero(cropped == Cell.BLUE) > 10:
                 cell.colour = Cell.BLUE
             else:
-                # This should never be reached as a cell can only be revealed as blue or black.
-                raise RuntimeError('Cell must be blue or black after being revealed')
+                # This is reached if a mistake is made.
+                return
 
             # Parse the revealed cell number and hint type.
             cell.number = self.__parse_cell_contents(cropped, cell.colour)

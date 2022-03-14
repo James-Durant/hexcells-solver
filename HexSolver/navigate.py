@@ -280,7 +280,7 @@ class Navigator:
                 play_button, random_button = buttons['play'], buttons['random']
 
                 # Click on the button to input a new random seed.
-                self.__window.click(random_button)
+                self.__window.click(random_button, move_mouse=False)
 
                 # Click on the button to generate the level.
                 self.__window.click(play_button)

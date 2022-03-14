@@ -114,7 +114,7 @@ class LearningData(Generator):
 
             # Click on the seed button to input the level's seed.
             play_button, seed_button = buttons['play'], buttons['seed']
-            menu.window.click(seed_button)
+            menu.window.click(seed_button, move_mouse=False)
             time.sleep(0.2)
             menu.window.paste()  # Paste the level's seed.
             time.sleep(0.2)
